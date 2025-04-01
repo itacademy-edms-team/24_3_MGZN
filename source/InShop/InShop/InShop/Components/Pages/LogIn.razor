@@ -1,0 +1,39 @@
+﻿@page "/"
+@rendermode InteractiveAuto 
+
+<PageTitle>LogIn</PageTitle>
+
+<h1>Вход для администраторов</h1>
+
+<form>
+    <p>Число входов: @countLogins</p>
+    <div class="mb-3">
+        <label for="InputUsername" class="form-label">Имя пользователя</label>
+        <input type="username" class="form-control" id="InputUsername">
+    </div>
+    <div class="mb-3">
+        <label for="InputPassword" class="form-label">Пароль</label>
+        <input type="password" class="form-control" id="InputPassword1">
+    </div>
+    <div class="mb-3 form-check">
+        <input type="checkbox" class="form-check-input" id="Check">
+        <label class="form-check-label" for="exampleCheck1">Запомнить меня</label>
+    </div>
+    <div class="d-grid gap-2 col-6 mx-auto">
+        <button class="btn btn-primary" type="button" @onclick="LogInButton">Войти</button>
+    </div>
+</form>
+
+@code {
+    private int countLogins = 0;
+    private void LogInButton()
+    {
+        countLogins++;
+    }
+}
+
+
+
+
+
+

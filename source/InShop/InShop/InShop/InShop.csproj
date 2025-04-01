@@ -8,7 +8,12 @@
 
   <ItemGroup>
     <ProjectReference Include="..\InShop.Client\InShop.Client.csproj" />
+    <PackageReference Include="BootstrapBlazor" Version="9.5.1" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="8.0.14" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="css\" />
   </ItemGroup>
 
 </Project>

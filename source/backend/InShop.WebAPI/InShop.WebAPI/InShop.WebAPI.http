@@ -1,0 +1,6 @@
+@InShop.WebAPI_HostAddress = http://localhost:5269
+
+GET {{InShop.WebAPI_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

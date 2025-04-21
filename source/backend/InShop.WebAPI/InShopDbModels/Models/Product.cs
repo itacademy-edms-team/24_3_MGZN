@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace InShopDataLayer.Models;
+namespace InShopDbModels.Models;
 
 public partial class Product
 {
@@ -13,7 +13,7 @@ public partial class Product
 
     public decimal ProductPrice { get; set; }
 
-    public bool? ProductAvailability { get; set; }
+    public bool ProductAvailability { get; set; }
 
     public int ProductCategoryId { get; set; }
 

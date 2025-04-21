@@ -1,11 +1,18 @@
+using InShopBLLayer.Extensions;
+using InShopDbModels.Extensions;
 
-namespace InShopDBModels.WebAPI
+namespace InShop.WebAPI
 {
     public class Program
     {
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+
+            var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+
+            builder.Services.AddInShopRepositories(connectionString);
+            builder.Services.AddInShopServices();
 
             // Add services to the container.
 

@@ -14,6 +14,7 @@ namespace InShopBLLayer.MappingProfiles
         public ProductProfile()
         {
             this.CreateMap<Product, ProductDto>().ReverseMap();
+            this.CreateMap<ProductCreateDto, Product>();
         }
     }
 }

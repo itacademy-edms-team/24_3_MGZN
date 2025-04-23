@@ -31,11 +31,10 @@ namespace InShopBLLayer.Services
             var products = await _repository.GetProducts();
             return _mapper.Map<IEnumerable<ProductDto>>(products);
         }
-        public async Task<int> CreateProduct(ProductDto productDto)
+        public async Task CreateProduct(ProductCreateDto productDto)
         {
             var product = _mapper.Map<Product>(productDto);
-            await _repository.CreateProduct(product); // Ваш текущий метод
-            return product.ProductId; // Возвращаем ID после сохранения
+            await _repository.CreateProduct(product); 
         }
         public async Task DeleteProduct(int id)
         {

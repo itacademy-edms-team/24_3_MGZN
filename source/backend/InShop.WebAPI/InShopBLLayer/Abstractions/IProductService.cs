@@ -11,7 +11,7 @@ namespace InShopBLLayer.Abstractions
     {
         Task<IEnumerable<ProductDto>> GetProducts();
         Task<ProductDto?> GetProduct(int id);
-        Task<int> CreateProduct(ProductDto productDto);
+        Task CreateProduct(ProductCreateDto productDto);
         Task UpdateProduct(ProductDto productDto);
         Task DeleteProduct(int id);
     }

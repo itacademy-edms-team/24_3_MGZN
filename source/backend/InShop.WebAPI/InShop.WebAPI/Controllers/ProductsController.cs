@@ -27,27 +27,22 @@ namespace InShop.WebAPI.Controllers
             return Ok(products);
         }
         [HttpPost]
-        public async Task<IActionResult> Create([FromBody] ProductDto product)
+        public async Task<IActionResult> Create([FromBody] ProductCreateDto productdto)
         {
-            // Cервис возвращает ID созданного продукта
-            var productId = await _productService.CreateProduct(product);
-
-            return CreatedAtAction(
-                nameof(Get),
-                new { id = productId },
-                new { Id = productId }); // Возвращаем только ID
+            await _productService.CreateProduct(productdto);
+            return Ok("Товар Создан");
         }
         [HttpPut]
         public async Task<IActionResult> Update([FromBody] ProductDto product)
         {
             await _productService.UpdateProduct(product);
-            return Ok();
+            return Ok("Информация о товаре обновлена");
         }
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
             await _productService.DeleteProduct(id);
-            return NoContent();
+            return Ok("Товар удалён");
         } 
 
     }

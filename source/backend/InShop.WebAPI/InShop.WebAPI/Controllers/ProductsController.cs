@@ -1,7 +1,7 @@
 ﻿using InShopBLLayer.Abstractions;
 using InShopBLLayer.Services;
-using Contracts.Dtos;
 using Microsoft.AspNetCore.Mvc;
+using Contracts.Dtos.ProductsDtos;
 
 namespace InShop.WebAPI.Controllers
 {

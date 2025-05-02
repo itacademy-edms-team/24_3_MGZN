@@ -9,6 +9,7 @@ namespace InShopDbModels.Abstractions
 {
     public interface  IProductRepository
     {
+        //CRUD
         Task<IEnumerable<Product>> GetProducts();
         Task<Product> GetProduct(int id);
         Task DeleteProduct(int id);

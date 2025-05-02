@@ -1,20 +1,15 @@
-﻿using System.ComponentModel.DataAnnotations;
-
-namespace Contracts.Dtos
+﻿namespace Contracts.Dtos.ProductsDtos
 {
-    public class ProductUpdateDto
+    public class ProductDto
     {
-        [Required]
+        public int ProductId { get; set; }
         public string ProductName { get; set; } = null!;
-
         public string? ProductDescription { get; set; }
-
-        [Range(0.01, double.MaxValue)]
         public decimal ProductPrice { get; set; }
-
         public bool ProductAvailability { get; set; }
-
-        [Url]
+        public int ProductStockQuantity { get; set; }
         public string? ImageUrl { get; set; }
+        public int ProductCategoryId { get; set; }
+        
     }
 }

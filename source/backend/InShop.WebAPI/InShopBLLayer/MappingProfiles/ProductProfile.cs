@@ -4,8 +4,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Contracts.Dtos;
 using InShopDbModels.Models;
+using Contracts.Dtos.ProductsDtos;
 
 namespace InShopBLLayer.MappingProfiles
 {

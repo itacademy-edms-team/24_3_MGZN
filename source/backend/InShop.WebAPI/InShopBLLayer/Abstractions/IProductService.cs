@@ -1,4 +1,4 @@
-﻿using Contracts.Dtos;
+﻿using Contracts.Dtos.ProductsDtos;
 using System;
 using System.Collections.Generic;
 using System.Linq;

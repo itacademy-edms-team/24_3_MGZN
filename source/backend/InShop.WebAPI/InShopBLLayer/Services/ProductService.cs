@@ -1,5 +1,5 @@
 ﻿using AutoMapper;
-using Contracts.Dtos;
+using Contracts.Dtos.ProductsDtos;
 using InShopBLLayer.Abstractions;
 using InShopDbModels.Abstractions;
 using InShopDbModels.Models;

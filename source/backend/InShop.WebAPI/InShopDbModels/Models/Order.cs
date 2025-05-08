@@ -13,7 +13,7 @@ public partial class Order
 
     public int? ShipCompanyId { get; set; }
 
-    public string? ShipAddres { get; set; }
+    public string? ShipAddress { get; set; }
 
     public DateOnly? ShipDate { get; set; }
 
@@ -23,13 +23,13 @@ public partial class Order
 
     public string CustomerFullname { get; set; } = null!;
 
-    public decimal OrderTotalAmount { get; set; }
-
     public string PayMethod { get; set; } = null!;
 
     public string CustomerEmail { get; set; } = null!;
 
     public string CustomerPhoneNumber { get; set; } = null!;
+
+    public decimal OrderTotalAmount { get; set; }
 
     public virtual ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
 

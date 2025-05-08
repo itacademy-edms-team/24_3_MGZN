@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace InShopDbModels.Abstractions
 {
-    public interface  IProductRepository
+    public interface IProductRepository
     {
         Task<IEnumerable<Product>> GetProducts();
         Task<Product> GetProduct(int id);

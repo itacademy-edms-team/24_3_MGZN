@@ -30,7 +30,7 @@ public partial class AppDbContext : DbContext
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-        => optionsBuilder.UseSqlServer("Server=DESKTOP-AR0BS4O;Database=InShopDB;Trusted_Connection=True;TrustServerCertificate=True");
+        => optionsBuilder.UseSqlServer("Server=DESKTOP-AR0BS4O;Database=InShopDB;Trusted_Connection=True;TrustServerCertificate=True;");
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -54,11 +54,18 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.CustomerEmail).HasMaxLength(250);
             entity.Property(e => e.CustomerFullname).HasMaxLength(50);
             entity.Property(e => e.CustomerPhoneNumber).HasMaxLength(50);
-            entity.Property(e => e.OrderStatus).HasMaxLength(50);
-            entity.Property(e => e.OrderTotalAmount).HasColumnType("money");
+            entity.Property(e => e.OrderDate).HasDefaultValueSql("(getdate())");
+            entity.Property(e => e.OrderStatus)
+                .HasMaxLength(50)
+                .HasDefaultValue("Создан");
+            entity.Property(e => e.OrderTotalAmount)
+                .HasDefaultValueSql("((0.0))")
+                .HasColumnType("money");
             entity.Property(e => e.PayMethod).HasMaxLength(50);
-            entity.Property(e => e.PayStatus).HasMaxLength(50);
-            entity.Property(e => e.ShipAddres).HasMaxLength(500);
+            entity.Property(e => e.PayStatus)
+                .HasMaxLength(50)
+                .HasDefaultValue("Не оплачен");
+            entity.Property(e => e.ShipAddress).HasMaxLength(500);
             entity.Property(e => e.ShipMethod).HasMaxLength(50);
 
             entity.HasOne(d => d.ShipCompany).WithMany(p => p.Orders)
@@ -68,9 +75,16 @@ public partial class AppDbContext : DbContext
 
         modelBuilder.Entity<OrderItem>(entity =>
         {
-            entity.ToTable("Order_Items");
+            entity.ToTable("Order_Items", tb =>
+                {
+                    tb.HasTrigger("SetInitialProductPrice");
+                    tb.HasTrigger("trg_UpdateOrderTotal");
+                });
 
             entity.Property(e => e.Price).HasColumnType("money");
+            entity.Property(e => e.TotalPrice)
+                .HasComputedColumnSql("([QuantityItem]*[Price])", true)
+                .HasColumnType("money");
 
             entity.HasOne(d => d.Order).WithMany(p => p.OrderItems)
                 .HasForeignKey(d => d.OrderId)

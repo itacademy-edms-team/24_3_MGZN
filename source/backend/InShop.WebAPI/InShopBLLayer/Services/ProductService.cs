@@ -47,7 +47,7 @@ namespace InShopBLLayer.Services
             if (!await _repository.ExistsProduct(productDto.ProductId))
                 throw new Exception("Товар не найден");
             var editedProduct = _mapper.Map<Product>(productDto);
-            await _repository.UpdateProducts(editedProduct);
+            await _repository.UpdateProduct(editedProduct);
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿using InShopBLLayer.Abstractions;
+﻿    using InShopBLLayer.Abstractions;
 using InShopBLLayer.Services;
 using Contracts.Dtos;
 using Microsoft.AspNetCore.Mvc;
@@ -27,15 +27,15 @@ namespace InShop.WebAPI.Controllers
             return Ok(products);
         }
         [HttpPost]
-        public async Task<IActionResult> Create([FromBody] ProductCreateDto productdto)
+        public async Task<IActionResult> Create([FromBody] ProductCreateDto productDto)
         {
-            await _productService.CreateProduct(productdto);
+            await _productService.CreateProduct(productDto);
             return Ok("Товар Создан");
         }
         [HttpPut]
-        public async Task<IActionResult> Update([FromBody] ProductDto product)
+        public async Task<IActionResult> Update([FromBody] ProductDto productDto)
         {
-            await _productService.UpdateProduct(product);
+            await _productService.UpdateProduct(productDto);
             return Ok("Информация о товаре обновлена");
         }
         [HttpDelete("{id}")]

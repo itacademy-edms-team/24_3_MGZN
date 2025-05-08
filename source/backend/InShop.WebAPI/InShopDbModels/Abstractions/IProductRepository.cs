@@ -13,7 +13,7 @@ namespace InShopDbModels.Abstractions
         Task<Product> GetProduct(int id);
         Task DeleteProduct(int id);
         Task CreateProduct(Product product);
-        Task UpdateProducts(Product product);
+        Task UpdateProduct(Product product);
         Task<bool> ExistsProduct(int id);
     }
 }

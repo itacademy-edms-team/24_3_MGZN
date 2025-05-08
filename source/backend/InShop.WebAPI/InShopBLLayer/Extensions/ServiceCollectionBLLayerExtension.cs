@@ -16,6 +16,8 @@ namespace InShopBLLayer.Extensions
         {
             services.AddAutoMapper(config => config.AddProfile<ProductProfile>());
             services.AddScoped<IProductService, ProductService>();
+            services.AddAutoMapper(config => config.AddProfile<CategoryProfile>());
+            services.AddScoped<ICategoryService, CategoryService>();
             return services;
         }
     }

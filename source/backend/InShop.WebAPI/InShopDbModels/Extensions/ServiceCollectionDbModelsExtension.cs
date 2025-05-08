@@ -18,6 +18,7 @@ namespace InShopDbModels.Extensions
             services.AddDbContext<AppDbContext>(options =>
                    options.UseSqlServer(connectionString));
             services.AddScoped<IProductRepository, ProductRepository>();
+            services.AddScoped<ICategoryRepository, CategoryRepository>();
             return services;
         }
     }

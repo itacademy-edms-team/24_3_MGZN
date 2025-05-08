@@ -30,12 +30,6 @@ namespace InShopDbModels.Repositories
         public async Task DeleteProduct(int id)
         {
             var product = await GetProduct(id);
-
-            if (product == null)
-            {
-                throw new Exception("Товар не найден");
-            }
-
             _appDbContext.Products.Remove(product);
             await _appDbContext.SaveChangesAsync();
         }
@@ -44,7 +38,7 @@ namespace InShopDbModels.Repositories
             await _appDbContext.Products.AddAsync(product);
             await _appDbContext.SaveChangesAsync();
         }
-        public async Task UpdateProducts(Product product)
+        public async Task UpdateProduct(Product product)
         {
             _appDbContext.Products.Update(product);
             await _appDbContext.SaveChangesAsync();

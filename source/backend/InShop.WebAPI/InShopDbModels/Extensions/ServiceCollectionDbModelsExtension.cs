@@ -19,6 +19,7 @@ namespace InShopDbModels.Extensions
                    options.UseSqlServer(connectionString));
             services.AddScoped<IProductRepository, ProductRepository>();
             services.AddScoped<ICategoryRepository, CategoryRepository>();
+            services.AddScoped<IShipCompanyRepository, ShipCompanyRepository>();
             return services;
         }
     }

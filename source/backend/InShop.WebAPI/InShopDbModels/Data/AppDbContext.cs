@@ -56,8 +56,7 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.CustomerPhoneNumber).HasMaxLength(50);
             entity.Property(e => e.OrderDate).HasDefaultValueSql("(getdate())");
             entity.Property(e => e.OrderStatus)
-                .HasMaxLength(50)
-                .HasDefaultValue("Создан");
+                .HasMaxLength(50).HasConversion<string>();
             entity.Property(e => e.OrderTotalAmount)
                 .HasDefaultValueSql("((0.0))")
                 .HasColumnType("money");

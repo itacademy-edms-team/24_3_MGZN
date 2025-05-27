@@ -9,6 +9,17 @@ namespace InShop.WebAPI
         {
             var builder = WebApplication.CreateBuilder(args);
 
+            // Добавляем поддержку CORS
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("AllowSpecificOrigin", policy =>
+                {
+                    policy.WithOrigins("http://localhost:3000") // Разрешаем запросы только с этого домена
+                          .AllowAnyHeader()                    // Разрешаем любые заголовки
+                          .AllowAnyMethod();                   // Разрешаем любые HTTP-методы
+                });
+            });
+
             var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
             builder.Services.AddInShopRepositories(connectionString);
@@ -22,6 +33,9 @@ namespace InShop.WebAPI
             builder.Services.AddSwaggerGen();
 
             var app = builder.Build();
+
+            // Используем CORS
+            app.UseCors("AllowSpecificOrigin");
 
             // Configure the HTTP request pipeline.
             if (app.Environment.IsDevelopment())

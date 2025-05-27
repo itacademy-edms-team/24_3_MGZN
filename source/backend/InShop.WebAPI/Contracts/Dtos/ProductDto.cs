@@ -10,6 +10,7 @@
         public int ProductStockQuantity { get; set; }
         public string? ImageUrl { get; set; }
         public int ProductCategoryId { get; set; }
+        public string ProductCategoryName { get; set; } = null!;
         
     }
 }

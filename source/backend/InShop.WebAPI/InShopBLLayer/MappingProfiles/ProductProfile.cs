@@ -13,7 +13,9 @@ namespace InShopBLLayer.MappingProfiles
     {
         public ProductProfile()
         {
-            this.CreateMap<Product, ProductDto>().ReverseMap();
+            this.CreateMap<Product, ProductDto>()
+                    .ForMember(p => p.ProductCategoryName, o => o.MapFrom(t => t.ProductCategory.CategoryName))
+                    .ReverseMap();
             this.CreateMap<ProductCreateDto, Product>();
         }
     }

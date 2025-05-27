@@ -2,12 +2,11 @@
 using System.Collections.Generic;
 
 namespace InShopDbModels.Models;
-
 public partial class Order
 {
     public int OrderId { get; set; }
 
-    public string OrderStatus { get; set; } = null!;
+    public OrderStatusType OrderStatus { get; set; }
 
     public DateOnly OrderDate { get; set; }
 

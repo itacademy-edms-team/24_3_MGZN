@@ -47,7 +47,7 @@ namespace InShop.WebAPI
             app.UseHttpsRedirection();
 
             app.UseAuthorization();
-
+            app.UseStaticFiles();
 
             app.MapControllers();
 

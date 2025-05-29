@@ -20,4 +20,8 @@
     <ProjectReference Include="..\InShopDbModels\InShopDbModels.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="wwwroot\images\" />
+  </ItemGroup>
+
 </Project>

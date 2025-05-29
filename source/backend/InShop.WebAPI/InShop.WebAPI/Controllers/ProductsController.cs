@@ -45,7 +45,7 @@ namespace InShop.WebAPI.Controllers
             return Ok("Товар удалён");
         }
         [HttpGet("products-by-category")]
-        public async Task<IActionResult> GetProductsByCategory(string categoryName)
+        public async Task<IActionResult> GetProductsByCategory([FromQuery] string categoryName)
         {
             var productsByCategory = await _productService.GetProductsByCategoryName(categoryName);
             return Ok(productsByCategory);

@@ -48,5 +48,11 @@ namespace InShopDbModels.Repositories
         {
             return await _appDbContext.Products.AnyAsync(p => p.ProductId == id);
         }
+        public async Task<IEnumerable<Product>> GetProductsByCategoryId(int categoryId)
+        {
+            return await _appDbContext.Products
+                .Where(p => p.ProductCategoryId == categoryId)
+                .ToListAsync();
+        }
     }
 }

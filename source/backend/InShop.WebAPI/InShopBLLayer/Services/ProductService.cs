@@ -13,41 +13,51 @@ namespace InShopBLLayer.Services
 {
     public class ProductService : IProductService
     {
-        private readonly IProductRepository _repository;
+        private readonly IProductRepository _productRepository;
         private readonly IMapper _mapper;
-        public ProductService(IProductRepository repository, IMapper mapper)
+        private readonly ICategoryRepository _categoryRepository;
+        public ProductService(IProductRepository productRepository, ICategoryRepository categoryRepository, IMapper mapper)
         {
-            _repository = repository;
+            _productRepository = productRepository;
+            _categoryRepository = categoryRepository;
             _mapper = mapper;
         }
 
         public async Task<ProductDto?> GetProduct(int id)
         {
-            var product = await _repository.GetProduct(id);
+            var product = await _productRepository.GetProduct(id);
             return _mapper.Map<ProductDto>(product);
         }
         public async Task<IEnumerable<ProductDto>> GetProducts()
         {
-            var products = await _repository.GetProducts();
+            var products = await _productRepository.GetProducts();
             return _mapper.Map<IEnumerable<ProductDto>>(products);
         }
         public async Task CreateProduct(ProductCreateDto productDto)
         {
             var product = _mapper.Map<Product>(productDto);
-            await _repository.CreateProduct(product); 
+            await _productRepository.CreateProduct(product); 
         }
         public async Task DeleteProduct(int id)
         {
-            if (!await _repository.ExistsProduct(id))
+            if (!await _productRepository.ExistsProduct(id))
                 throw new Exception("Товар не найден");
-            await _repository.DeleteProduct(id);
+            await _productRepository.DeleteProduct(id);
         }
         public async Task UpdateProduct(ProductDto productDto)
         {
-            if (!await _repository.ExistsProduct(productDto.ProductId))
+            if (!await _productRepository.ExistsProduct(productDto.ProductId))
                 throw new Exception("Товар не найден");
             var editedProduct = _mapper.Map<Product>(productDto);
-            await _repository.UpdateProduct(editedProduct);
+            await _productRepository.UpdateProduct(editedProduct);
+        }
+        public async Task<IEnumerable<ProductDto>> GetProductsByCategoryName(string categoryName)
+        {
+            var categoryId = await _categoryRepository.GetCategoryByName(categoryName);
+            if (categoryId == null)
+                throw new Exception("Категория не найдена");
+            var products = await _productRepository.GetProductsByCategoryId(categoryId);
+            return _mapper.Map<IEnumerable<ProductDto>>(products);
         }
     }
 }

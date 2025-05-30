@@ -31,6 +31,52 @@ header img {
     height: auto;
 }
 
+.header-content {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.cart-icon {
+    cursor: pointer; /* Делаем иконку кликабельной */
+    transition: opacity 0.3s ease; /* Анимация при наведении */
+}
+
+.cart-icon:hover {
+    opacity: 0.8; /* Прозрачность при наведении */
+}
+
+.cart-image {
+    width: 50px; /* Размер изображения корзины */
+    height: auto;
+}
+
+/* Стили для анимации загрузки */
+.loader-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh; /* Центрирование по высоте экрана */
+}
+
+.loader {
+    width: 60px;
+    height: 60px;
+    border: 6px solid #f3f3f3; /* Светло-серый фон */
+    border-top: 6px solid #000; /* Черный цвет для спиннера */
+    border-radius: 12px; /* Скругленные углы */
+    animation: spin 1s linear infinite; /* Анимация вращения */
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
 .categories {
     list-style-type: none;
     padding: 0;
@@ -132,4 +178,80 @@ header img {
 .product-card p {
     font-size: 0.9em;
     color: #666;
+}
+
+/* Стили для модального окна */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8); /* Полупрозрачный фон */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 999; /* Модальное окно поверх всего */
+}
+
+.modal-content {
+    background-color: #fff;
+    width: 30%; /* Уменьшаем ширину до 30% */
+    max-width: 400px; /* Максимальная ширина */
+    padding: 20px; /* Уменьшаем отступы */
+    border-radius: 12px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    position: relative;
+    text-align: center;
+}
+
+.modal-close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: none;
+    border: none;
+    font-size: 20px; /* Уменьшаем размер кнопки закрытия */
+    cursor: pointer;
+    color: #000;
+    transition: color 0.3s ease;
+}
+
+.modal-close:hover {
+    color: #ff4d4d; /* Красный цвет при наведении */
+}
+
+.modal-image {
+    width: 100%;
+    height: auto;
+    border-radius: 8px;
+    margin-bottom: 15px; /* Уменьшаем отступ */
+}
+
+.modal-price {
+    font-size: 1.2em; /* Уменьшаем размер текста цены */
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 10px; /* Уменьшаем отступ */
+}
+
+.modal-description {
+    font-size: 0.9em; /* Уменьшаем размер текста описания */
+    color: #666;
+    margin-bottom: 15px; /* Уменьшаем отступ */
+}
+
+.modal-add-to-cart {
+    background-color: #000;
+    color: #fff;
+    border: none;
+    padding: 8px 16px; /* Уменьшаем размер кнопки */
+    font-size: 0.9em; /* Уменьшаем размер текста кнопки */
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.modal-add-to-cart:hover {
+    background-color: #333;
 }

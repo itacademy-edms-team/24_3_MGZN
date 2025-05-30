@@ -13,10 +13,14 @@ function App() {
     // Состояние для управления видимостью выпадающих списков
     const [expandedCategories, setExpandedCategories] = useState({});
 
+    // Состояние для модального окна
+    const [selectedProduct, setSelectedProduct] = useState(null); // Выбранный товар для модального окна
+    const [isModalOpen, setIsModalOpen] = useState(false); // Состояние модального окна
+
     // Функция для загрузки категорий из API
     const fetchCategories = async () => {
         try {
-            const response = await fetch('https://localhost:7275/api/Category');
+            const response = await fetch('https://localhost:7275/api/Category'); 
             if (!response.ok) {
                 throw new Error(`Ошибка ${response.status}: ${response.statusText}`);
             }
@@ -58,6 +62,23 @@ function App() {
         }
     };
 
+    // Функция для открытия модального окна
+    const openModal = (product) => {
+        setSelectedProduct(product); // Устанавливаем выбранный товар
+        setIsModalOpen(true); // Открываем модальное окно
+    };
+
+    // Функция для закрытия модального окна
+    const closeModal = () => {
+        setIsModalOpen(false); // Закрываем модальное окно
+        setSelectedProduct(null); // Очищаем выбранный товар
+    };
+
+    // Функция для обработки клика на корзину
+    const handleCartClick = () => {
+        alert('Корзина пока пуста!'); // Пример действия при клике
+    };
+
     // Загружаем категории при монтировании компонента
     useEffect(() => {
         fetchCategories();
@@ -65,18 +86,44 @@ function App() {
 
     return (
         <div className="App">
+            {/* Модальное окно */}
+            {isModalOpen && selectedProduct && (
+                <div className="modal-overlay" onClick={closeModal}>
+                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                        <button className="modal-close" onClick={closeModal}>
+                            &times;
+                        </button>
+                        <img
+                            src={`https://localhost:7275${selectedProduct.imageUrl}`}
+                            alt={selectedProduct.productName}
+                            className="modal-image"
+                        />
+                        <h2>{selectedProduct.productName}</h2>
+                        <p className="modal-price">{selectedProduct.productPrice} ₽</p>
+                        <p className="modal-description">{selectedProduct.productDescription || 'Описание отсутствует'}</p>
+                        <button className="modal-add-to-cart">Добавить в корзину</button>
+                    </div>
+                </div>
+            )}
+
             {/* Шапка страницы */}
             <header>
                 <h1>InShop</h1>
-                <img src="logo.png" alt="Логотип магазина" className='logo' />
+                <div className="cart-icon" onClick={handleCartClick}>
+                    <img src="cart-icon.png" alt="Корзина" className="cart-image" />
+                </div>
             </header>
 
             {/* Основное содержимое */}
             <main>
-                <h2>Категории товаров</h2>
+                <h2>Каталог товаров</h2>
 
-                {/* Индикатор загрузки */}
-                {loading && <p>Загрузка...</p>}
+                 {/* Анимация загрузки */}
+                {loading && (
+                    <div className="loader-container">
+                        <div className="loader"></div>
+                    </div>
+                )}
 
                 {/* Сообщение об ошибке */}
                 {error && <p style={{ color: 'red' }}>Ошибка: {error}</p>}
@@ -108,7 +155,7 @@ function App() {
                                 {expandedCategories[category.categoryName] && (
                                     <ul className="products-list">
                                         {productsByCategory[category.categoryName]?.map((product) => (
-                                            <li key={product.productId} className="product-card">
+                                            <li key={product.productId} className="product-card" onClick={() => openModal(product)}>
                                                 <img
                                                     src={`https://localhost:7275${product.imageUrl}`}
                                                     alt={product.productName}
@@ -137,7 +184,7 @@ function App() {
                 <p>&copy; 2025 InShop. Все права защищены.</p>
                 <ul>
                     <li>
-                        <a href="#">О нас</a>
+                        <a href="#">О нас</a> 
                     </li>
                     <li>
                         <a href="#">Контакты</a>

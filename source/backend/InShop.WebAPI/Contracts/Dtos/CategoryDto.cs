@@ -10,5 +10,6 @@ namespace Contracts.Dtos
     {
         public int CategoryId { get; set; }
         public string CategoryName { get; set; } = null!;
+        public string? ImageURL { get; set; }
     }
 }

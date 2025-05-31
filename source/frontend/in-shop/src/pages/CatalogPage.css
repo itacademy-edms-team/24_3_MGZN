@@ -1,0 +1,67 @@
+/* Стили для каталога товаров */
+.catalog-page {
+    display: flex;
+    flex-direction: column; /* Вертикальное расположение элементов */
+    align-items: center; /* Центрируем элементы по горизонтали */
+    min-height: 100vh; /* Гарантируем, что контейнер занимает всю высоту экрана */
+    padding: 20px; /* Добавляем небольшой отступ вокруг всего содержимого */
+}
+
+.catalog-title {
+    font-size: 24px; /* Размер шрифта */
+    font-weight: bold; /* Жирный текст */
+    margin-bottom: 20px; /* Отступ снизу (перед списком категорий) */
+    text-align: center; /* Выравнивание текста по центру */
+}
+
+.categories-container {
+    display: flex;
+    justify-content: center; /* Центрируем список по горизонтали */
+    align-items: center; /* Центрируем список по вертикали */
+    flex-grow: 1; /* Занимаем оставшееся пространство */
+}
+
+.categories-list {
+    display: flex;
+    flex-wrap: wrap; /* Разрешаем перенос карточек на новую строку */
+    justify-content: center; /* Центрируем карточки по горизонтали */
+    gap: 50px; /* Расстояние между карточками */
+    list-style-type: none;
+    padding: 0;
+    max-width: 1200px; /* Ограничиваем максимальную ширину списка */
+    margin: 0 auto; /* Выравниваем по центру */
+}
+
+.category-card {
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    text-align: center;
+    transition: transform 0.3s ease;
+    cursor: pointer;
+
+    /* Увеличиваем размер карточки */
+    width: 300px; /* Увеличиваем ширину */
+    height: 300px; /* Увеличиваем высоту */
+}
+
+.category-card img {
+    width: 65%;
+    height: auto;
+    object-fit: cover;
+    margin-bottom: 10px;
+    margin-top: 20px; /* Добавляем отступ сверху */
+}
+
+.category-card p {
+    font-size: 1em;
+    color: #333;
+    margin: 0;
+    text-align: center; /* Выравнивание текста по центру */
+    padding: 0 10px; /* Добавляем внутренние отступы для текста */
+}
+
+.category-card:hover {
+    transform: scale(1.05);
+}

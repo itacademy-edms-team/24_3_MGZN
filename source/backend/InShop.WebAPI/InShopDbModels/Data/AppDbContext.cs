@@ -47,6 +47,7 @@ public partial class AppDbContext : DbContext
         modelBuilder.Entity<Category>(entity =>
         {
             entity.Property(e => e.CategoryName).HasMaxLength(50);
+            entity.Property(e => e.ImageURL).HasMaxLength(50);
         });
 
         modelBuilder.Entity<Order>(entity =>

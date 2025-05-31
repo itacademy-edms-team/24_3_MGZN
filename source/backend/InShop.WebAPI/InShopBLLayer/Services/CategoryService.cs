@@ -54,5 +54,13 @@ namespace InShopBLLayer.Services
             var editedCategory = _mapper.Map<Category>(categoryDto);
             await _repository.UpdateCategory(editedCategory);
         }
+        public async Task<CategoryDto> GetCategoryByName(string categoryName)
+        {
+            var categoryId = await _repository.GetCategoryByName(categoryName);
+            var category = await _repository.GetCategory(categoryId);
+            if (category == null)
+                throw new Exception("Категория не найдена");
+            return _mapper.Map<CategoryDto>(category);
+        } 
     }
 }

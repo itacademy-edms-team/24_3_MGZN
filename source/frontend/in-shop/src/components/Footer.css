@@ -1,0 +1,33 @@
+.footer {
+    background-color: #000;
+    color: #fff;
+    padding: 20px;
+    text-align: center;
+}
+
+.footer p {
+    margin: 0;
+    font-size: 0.9em;
+}
+
+.footer ul {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-top: 10px;
+}
+
+.footer ul li {
+    list-style-type: none;
+}
+
+.footer ul li a {
+    color: #fff;
+    text-decoration: none;
+    font-size: 0.9em;
+    transition: color 0.3s ease;
+}
+
+.footer ul li a:hover {
+    color: #ff4d4d;
+}

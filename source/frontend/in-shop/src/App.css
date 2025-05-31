@@ -1,71 +1,29 @@
-/* src/App.css */
-
 .App {
-    font-family: 'Open Sans', sans-serif;
-    margin: 0;
-    padding: 0;
-    background-color: #ffffff;
-    color: #444;
-    line-height: 1.6;
-}
-
-header {
     display: flex;
     flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    gap: 10px;
-    background-color: #000;
+    min-height: 100vh;
+}
+
+main {
+    flex: 1;
     padding: 20px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
-header h1 {
-    margin: 0;
-    color: #fff;
-    margin-bottom: 10px;
-}
 
-header img {
-    width: 50px;
-    height: auto;
-}
-
-.header-content {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.cart-icon {
-    cursor: pointer; /* Делаем иконку кликабельной */
-    transition: opacity 0.3s ease; /* Анимация при наведении */
-}
-
-.cart-icon:hover {
-    opacity: 0.8; /* Прозрачность при наведении */
-}
-
-.cart-image {
-    width: 50px; /* Размер изображения корзины */
-    height: auto;
-}
-
-/* Стили для анимации загрузки */
 .loader-container {
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 100vh; /* Центрирование по высоте экрана */
+    height: 100vh;
 }
 
 .loader {
     width: 60px;
     height: 60px;
-    border: 6px solid #f3f3f3; /* Светло-серый фон */
-    border-top: 6px solid #000; /* Черный цвет для спиннера */
-    border-radius: 12px; /* Скругленные углы */
-    animation: spin 1s linear infinite; /* Анимация вращения */
+    border: 6px solid #f3f3f3;
+    border-top: 6px solid #000;
+    border-radius: 12px;
+    animation: spin 1s linear infinite;
 }
 
 @keyframes spin {
@@ -75,183 +33,4 @@ header img {
     100% {
         transform: rotate(360deg);
     }
-}
-
-.categories {
-    list-style-type: none;
-    padding: 0;
-}
-
-/* Стили для категории */
-.category-title {
-    font-size: 1.2em;
-    margin: 15px 0; /* Увеличенные отступы между категориями */
-    color: white; /* Белый текст для контраста */
-    cursor: pointer;
-    transition: all 0.3s ease; /* Плавная анимация */
-    position: relative; /* Обязательно для псевдоэлемента */
-    padding: 15px; /* Увеличенные внутренние отступы */
-    width: 100%; /* Прямоугольник занимает всю ширину */
-    display: block; /* Элемент занимает всю ширину */
-    text-align: center; /* Текст по центру */
-    border-radius: 12px; /* Большие скругленные углы */
-    overflow: hidden; /* Скрываем лишние части элемента */
-    z-index: 1; /* Убедитесь, что текст находится над фоном */
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Легкая тень для объема */
-}
-
-/* Градиентный фон */
-.category-title::before {
-    content: ''; /* Обязательное свойство */
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(135deg, #b8b8b8, #555555); /* Градиент */
-    border-radius: 12px; /* Скругленные углы */
-    z-index: -1; /* Фон находится под текстом */
-    transition: transform 0.3s ease; /* Анимация для фона */
-}
-
-/* Анимация при наведении */
-.category-title:hover::before {
-    transform: scale(1.05); /* Немного увеличиваем фон */
-}
-
-.category-title:hover {
-    color: #ffffff; /* Яркий текст при наведении */
-    box-shadow: 0 6px 10px rgba(0, 0, 0, 0.2); /* Усиливаем тень */
-}
-
-.categories li {
-    font-size: 1.2em;
-    margin: 10px 0;
-    color: #444;
-    cursor: pointer;
-}
-
-.categories li:hover {
-    color: #007BFF;
-}
-
-.products-container {
-    margin-top: 20px;
-}
-
-.products-list {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 20px;
-    list-style-type: none;
-    padding: 0;
-}
-
-.product-card {
-    background-color: #fff;
-    border-radius: 8px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    padding: 15px;
-    width: 200px;
-    text-align: center;
-    transition: transform 0.3s ease;
-    overflow-wrap: break-word; /* Разрешает перенос слов */
-}
-
-.product-card:hover {
-    transform: scale(1.05);
-}
-
-.product-image {
-    width: 100%;
-    height: auto;
-    border-radius: 8px;
-    object-fit: cover;
-}
-
-.product-card h4 {
-    margin: 10px 0;
-    font-size: 1.1em;
-}
-
-.product-card p {
-    font-size: 0.9em;
-    color: #666;
-}
-
-/* Стили для модального окна */
-.modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.8); /* Полупрозрачный фон */
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 999; /* Модальное окно поверх всего */
-}
-
-.modal-content {
-    background-color: #fff;
-    width: 30%; /* Уменьшаем ширину до 30% */
-    max-width: 400px; /* Максимальная ширина */
-    padding: 20px; /* Уменьшаем отступы */
-    border-radius: 12px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    position: relative;
-    text-align: center;
-}
-
-.modal-close {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    background: none;
-    border: none;
-    font-size: 20px; /* Уменьшаем размер кнопки закрытия */
-    cursor: pointer;
-    color: #000;
-    transition: color 0.3s ease;
-}
-
-.modal-close:hover {
-    color: #ff4d4d; /* Красный цвет при наведении */
-}
-
-.modal-image {
-    width: 100%;
-    height: auto;
-    border-radius: 8px;
-    margin-bottom: 15px; /* Уменьшаем отступ */
-}
-
-.modal-price {
-    font-size: 1.2em; /* Уменьшаем размер текста цены */
-    font-weight: bold;
-    color: #333;
-    margin-bottom: 10px; /* Уменьшаем отступ */
-}
-
-.modal-description {
-    font-size: 0.9em; /* Уменьшаем размер текста описания */
-    color: #666;
-    margin-bottom: 15px; /* Уменьшаем отступ */
-}
-
-.modal-add-to-cart {
-    background-color: #000;
-    color: #fff;
-    border: none;
-    padding: 8px 16px; /* Уменьшаем размер кнопки */
-    font-size: 0.9em; /* Уменьшаем размер текста кнопки */
-    border-radius: 8px;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-}
-
-.modal-add-to-cart:hover {
-    background-color: #333;
 }

@@ -43,5 +43,11 @@ namespace InShop.WebAPI.Controllers
             await _categoryService.DeleteCategory(id);
             return Ok("Информация о категории удалена");
         }
+        [HttpGet("categoryName")]
+        public async Task<IActionResult> GetCategoryByName([FromQuery] string categoryName)
+        {
+            var category = await _categoryService.GetCategoryByName(categoryName);
+            return Ok(category);
+        }
     }
 }

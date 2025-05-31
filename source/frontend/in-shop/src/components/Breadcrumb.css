@@ -1,0 +1,22 @@
+.breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 1em;
+    color: #333; /* Цвет текста */
+    margin-bottom: 20px; /* Отступ снизу */
+}
+
+.breadcrumb a {
+    text-decoration: none;
+    color: #333; /* Цвет ссылок */
+    transition: color 0.3s ease;
+}
+
+.breadcrumb a:hover {
+    color: #ff4d4d; /* Цвет при наведении */
+}
+
+.breadcrumb span {
+    color: #555; /* Цвет текущего раздела */
+}

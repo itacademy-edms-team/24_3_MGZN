@@ -1,95 +1,19 @@
+/* src/index.css */
 body {
+    margin: 0;
     font-family: 'Open Sans', sans-serif;
-    margin: 0;
-    padding: 0;
-    background-color: #ffffff;
-    color: #444;
-    line-height: 1.6;
+    background-color: #f9f9f9;
+    color: #333;
 }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
-}
-
-main {
-    padding: 35px;
-    max-width: 800px;
-    margin: 0 auto;
-    text-align: center;
-}
-
-main h2 {
-    font-size: 1.5em;
-    margin-bottom: 20px;
-    color: #555;
-}
-.toggle-checkbox {
-    display: none; /* Скрываем чекбоксы */
-}
-
-.products {
-    list-style-type: none;
-    padding: 0;
-    margin-top: 10px;
-    max-height: 0; /* Скрываем список по умолчанию */
-    overflow: hidden; /* Прячем содержимое */
-    transition: max-height 0.3s ease; /* Плавное раскрытие */
-}
-
-.products li {
-    font-size: 1em;
-    color: #444;
-    padding: 5px 10px;
-    background-color: #ffffff;
-    margin: 5px 0;
-    border-radius: 3px;
-    transition: background-color 0.3s ease;
-}
-
-.products li:hover {
-    background-color: #f0f0f0;
-}
-
-/* Показываем список товаров при активации чекбокса */
-.toggle-checkbox:checked + .products {
-    max-height: 200px; /* Высота, достаточная для отображения всех товаров */
-}
-
-/* Стиль для футера */
-footer {
-    background-color: #000000;
-    color: #fff;
-    margin-top: 245px;
-    padding: 50px;
-    text-align: center;
-    font-size: 0.9em;
-}
-
-footer p {
-    margin: 0;
-    margin-bottom: 10px;
-}
-
-footer ul {
-    list-style-type: none;
-    padding: 0;
-    margin: 0;
-    display: flex;
-    justify-content: center;
-    gap: 15px;
-}
-
-footer ul li {
-    display: inline;
-}
-
-footer ul li a {
-    color: #fff;
+a {
     text-decoration: none;
-    transition: color 0.3s ease;
+    color: inherit;
 }
 
-footer ul li a:hover {
-    color: #007BFF;
+ul {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+    
 }

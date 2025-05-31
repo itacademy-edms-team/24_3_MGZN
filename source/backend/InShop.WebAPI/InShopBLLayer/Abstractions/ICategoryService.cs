@@ -14,5 +14,6 @@ namespace InShopBLLayer.Abstractions
         Task CreateCategory(CategoryCreateDto categoryDto);
         Task DeleteCategory(int id);
         Task UpdateCategory(CategoryDto categoryDto);
+        Task<CategoryDto> GetCategoryByName(string categoryName);
     }
 }

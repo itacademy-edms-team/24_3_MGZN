@@ -45,17 +45,33 @@ const ProductPage = () => {
             />
             <div className="product-page">
                 <div className="product-details">
+                    {/* Изображение товара */}
                     <img
                         src={`https://localhost:7275${product.imageUrl}`} 
                         alt={product.productName}
                         onError={(e) => {
-                            e.target.src = '/placeholder-image.jpg';
+                            e.target.src = 'https://localhost:7275/images/placeholder.svg';
                         }}
                         loading="lazy"
                     />
-                    <h2>{product.productName}</h2>
-                    <p>Цена: {product.productPrice} ₽</p>
-                    <p>{product.productDescription}</p>
+
+                    {/* Информация о товаре */}
+                    <div className="product-info">
+                        <h2>{product.productName}</h2>
+
+                        {/* Условное отображение наличия товара */}
+                        {product.productStockQuantity > 0 ? (
+                            <p>На складе: {product.productStockQuantity} шт.</p>
+                        ) : (
+                            <p className="out-of-stock">Нет в наличии</p>
+                        )}
+
+                        <p className="product-price">Цена: {product.productPrice} ₽</p>
+                        <p className="product-description">{product.productDescription}</p>
+                        <button className="add-to-cart-button">
+                            {product.productStockQuantity > 0 ? 'Добавить в корзину' : 'Недоступно'}
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

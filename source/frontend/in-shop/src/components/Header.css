@@ -16,6 +16,7 @@
 .header h1 {
     margin: 0;
     font-size: 1.5em;
+    padding-left: 30px;
 }
 
 .breadcrumb {
@@ -38,6 +39,8 @@
 .cart-icon {
     cursor: pointer;
     transition: opacity 0.3s ease;
+    padding-right: 40px;
+    padding-top: 5px;
 }
 
 .cart-icon:hover {
@@ -45,6 +48,6 @@
 }
 
 .cart-icon img {
-    width: 24px;
+    width: 40px;
     height: auto;
 }

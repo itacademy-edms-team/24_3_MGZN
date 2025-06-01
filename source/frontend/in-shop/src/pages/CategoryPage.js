@@ -5,11 +5,9 @@ import Breadcrumb from '../components/Breadcrumb'; // Импортируем Bre
 import './CategoryPage.css';
 
 const CategoryPage = () => {
-    const { categoryName } = useParams(); // Получаем параметр categoryName
+    const { categoryName } = useParams();
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
-
-    console.log('Параметр categoryName:', categoryName); // Логируем categoryName
 
     useEffect(() => {
         axios.get(`https://localhost:7275/api/Products/products-by-category?categoryName=${encodeURIComponent(categoryName)}`)
@@ -33,23 +31,33 @@ const CategoryPage = () => {
 
     return (
         <div className="category-page">
-            <h2>{decodeURIComponent(categoryName || '')}</h2> {/* Отображаем название категории */}
-            <Breadcrumb categoryName={categoryName} /> {/* Передаем categoryName */}
+            {/* Хлебные крошки */}
+            <Breadcrumb categoryName={categoryName} />
+
+            {/* Заголовок категории */}
+            <h2>{decodeURIComponent(categoryName || '')}</h2>
+
+            {/* Список товаров */}
             <ul className="products-list">
                 {products.map((product) => (
                     <li key={product.productId} className="product-card">
-                        <Link to={`/product/${encodeURIComponent(product.productId)}`}> {/* Добавляем Link */}
-                            <img
-                                src={`https://localhost:7275${product.imageUrl}`} 
-                                alt={product.productName}
-                                onError={(e) => {
-                                    e.target.src = 'https://localhost:7275/images/placeholder.png';
-                                }}
-                                loading="lazy"
-                            />
-                            <h3>{product.productName}</h3>
-                            <p>{product.productPrice} ₽</p>
-                        </Link>
+                        <Link to={`/product/${encodeURIComponent(product.productId)}`} className="product-link">
+                            <div className="product-content">
+                                <img
+                                    src={`https://localhost:7275${product.imageUrl}`} 
+                                    alt={product.productName}
+                                    onError={(e) => {
+                                        e.target.src = 'https://localhost:7275/images/placeholder.svg'; 
+                                    }}
+                                    loading="lazy"
+                                />
+                                
+                            </div>
+                            <div className="product-info">
+                                <h3>{product.productName}</h3>
+                                <p>{product.productPrice} ₽</p>
+                            </div>
+                       </Link>
                     </li>
                 ))}
             </ul>

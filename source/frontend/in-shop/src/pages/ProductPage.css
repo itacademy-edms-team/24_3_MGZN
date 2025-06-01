@@ -1,26 +1,74 @@
+/* Стили для страницы товара */
 .product-page {
-    text-align: center;
-    max-width: 800px;
+    max-width: 1000px; /* Увеличиваем максимальную ширину карточки */
     margin: 0 auto;
-    padding: 20px;
+    padding: 40px; /* Увеличиваем внешние отступы */
     background-color: #fff;
-    border-radius: 8px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    border-radius: 12px; /* Увеличиваем скругление углов */
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1); /* Увеличиваем тень */
+}
+
+.product-details {
+    display: flex; /* Размещаем изображение и информацию рядом */
+    align-items: center; /* Выравниваем элементы по центру по вертикали */
+    gap: 60px; /* Увеличиваем расстояние между изображением и информацией */
 }
 
 .product-page img {
-    width: 100%;
-    height: auto;
-    object-fit: cover;
-    margin-bottom: 20px;
+    width: 45%; /* Увеличиваем ширину изображения */
+    height: auto; /* Сохраняем пропорции */
+    object-fit: cover; /* Обрезка изображения, если необходимо */
+    border-radius: 12px; /* Увеличиваем скругление углов изображения */
+    align-self: center; /* Центрируем изображение по вертикали */
+}
+
+.product-subinfo {
+    display: flex;
+    flex-direction: column; /* Размещаем текст и кнопку в колонку */
+    justify-content: space-between; /* Равномерное распределение по высоте */
+    gap: 20px; /* Увеличиваем расстояние между элементами */
+    width: 55%; /* Увеличиваем ширину текстового блока */
+    height: 100%; /* Занимает всю доступную высоту */
+}
+
+/* Стиль для текста "Нет в наличии" */
+.out-of-stock {
+    color: #24242475; /* Красный цвет текста */
+    font-weight: bold; /* Жирный текст */
 }
 
 .product-page h2 {
-    margin-bottom: 10px;
+    margin: 20px;
+    font-size: 1.8em; /* Увеличиваем размер заголовка */
+    color: #333;
 }
 
-.product-page p {
-    font-size: 0.9em;
+.product-price {
+    margin: 20px;
+    font-size: 1.4em; /* Увеличиваем размер цены */
+    color: #000;
+    font-weight: bold;
+}
+
+.product-description {
+    margin: 20px;
+    font-size: 1.1em; /* Увеличиваем размер описания */
     color: #666;
-    margin-bottom: 10px;
+    line-height: 1.6; /* Улучшаем читаемость */
+}
+
+.add-to-cart-button {
+    margin: 20px;
+    background-color: #000; /* Черный фон */
+    color: #fff; /* Белый текст */
+    border: none; /* Убираем границу */
+    padding: 15px 30px; /* Увеличиваем внутренние отступы */
+    font-size: 1.2em; /* Увеличиваем размер текста кнопки */
+    cursor: pointer;
+    border-radius: 6px; /* Увеличиваем скругление углов кнопки */
+    transition: background-color 0.3s ease; /* Анимация при наведении */
+}
+
+.add-to-cart-button:hover {
+    background-color: #333; /* Темно-серый фон при наведении */
 }

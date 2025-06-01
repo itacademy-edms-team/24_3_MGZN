@@ -1,11 +1,25 @@
+/* Стили для страницы категории */
 .category-page {
     text-align: center;
+    padding: 20px;
 }
 
+.placeholder-svg {
+    width: 40%; /* Устанавливаем размер */
+    height: auto; /* Сохраняем пропорции */
+    margin: auto; /* Центрируем по вертикали и горизонтали */
+}
+
+/* Стили для списка товаров */
 .products-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 20px;
+    display: flex;
+    flex-wrap: wrap; /* Разрешаем перенос карточек на новую строку */
+    justify-content: flex-start; /* Выравнивание карточек по левому краю */
+    gap: 20px; /* Расстояние между карточками */
+    list-style-type: none; /* Убираем маркеры списка */
+    padding: 0; /* Убираем внутренние отступы */
+    max-width: 1400px; /* Ограничиваем максимальную ширину контейнера */
+    margin: 0 auto; /* Центрируем контейнер */
 }
 
 .product-card {
@@ -15,24 +29,51 @@
     overflow: hidden;
     text-align: center;
     transition: transform 0.3s ease;
+    cursor: pointer;
+
+    /* Фиксированная ширина карточки */
+    width: 250px; /* 20% ширины контейнера минус отступы */
+    height: 300px; /* Фиксированная высота карточки */
+
+    /* Используем Flexbox для вертикального выравнивания */
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between; /* Текст будет прижат к низу */
 }
 
-.product-card:hover {
-    transform: scale(1.05);
+.product-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%; /* Высота контейнера равна высоте карточки */
+}
+
+.product-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Выравнивание текста по центру */
+    margin-top: auto; /* Прижимает текст к низу */
 }
 
 .product-card img {
-    width: 100%;
-    height: auto;
-    object-fit: cover;
+    width: 100%; /* Изображение занимает всю ширину карточки */
+    height: 200px; /* Фиксированная высота изображения */
+    object-fit: cover; /* Обрезка изображения, если необходимо */
+    margin-bottom: -20px;
 }
 
 .product-card h3 {
-    margin: 10px 0;
-    font-size: 1.1em;
+    font-size: 1.2em;
+    margin: 0;
+    padding: 0 20px; /* Добавляем внутренние отступы для текста */
 }
 
 .product-card p {
-    font-size: 0.9em;
-    color: #666;
+    font-size: 1em;
+    color: #333;
+    margin: 0;
+    padding: 0 10px; /* Добавляем внутренние отступы для текста */
+}
+
+.product-card:hover {
+    transform: scale(1.05); /* Небольшое увеличение при наведении */
 }

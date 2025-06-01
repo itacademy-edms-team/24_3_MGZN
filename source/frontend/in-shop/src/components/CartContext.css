@@ -1,0 +1,167 @@
+.cart-count {
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    background-color: #ffffff;
+    color: #fff;
+    font-size: 0.8em;
+    font-weight: bold;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Стили для модального окна */
+.cart-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.cart-modal {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    width: 400px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.cart-modal h2 {
+    margin-bottom: 20px;
+    font-size: 1.5em;
+    color: #333;
+}
+
+.cart-modal ul {
+    list-style-type: none;
+    padding: 0;
+}
+
+.cart-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 10px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+}
+
+.cart-item img {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 8px;
+    margin-right: 10px;
+}
+
+.cart-item-details {
+    flex-grow: 1;
+}
+
+.cart-item-details h4 {
+    margin: 0;
+    font-size: 1.2em;
+    color: #333;
+}
+
+.cart-item-details p {
+    margin: 5px 0;
+    font-size: 1em;
+    color: #666;
+}
+
+.cart-item button {
+    background-color: #000000;
+    color: #fff;
+    border: none;
+    padding: 5px 10px;
+    cursor: pointer;
+    border-radius: 4px;
+    margin-top: 10px;
+}
+
+.cart-item button:hover {
+    background-color: #0000007c;
+}
+
+.clear-cart-button {
+    background-color: #000 !important; /* Принудительно черный фон */
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    font-size: 1em;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background-color 0.3s ease;
+}
+
+.clear-cart-button:hover {
+    background-color: #0000001f;
+}
+
+.continue-shopping-button {
+    background-color: #000;
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    font-size: 1em;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background-color 0.3s ease;
+    text-decoration: none; /* Убираем подчеркивание для ссылки */
+}
+
+.continue-shopping-button:hover {
+    background-color: #00000075;
+}
+
+.cart-actions {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+}
+
+.cart-actions button {
+    background-color: #000000;
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    font-size: 1em;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background-color 0.3s ease;
+}
+
+.cart-actions a {
+    background-color: #000000;
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    font-size: 1em;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background-color 0.3s ease;
+}
+
+.cart-actions button:hover,
+.cart-actions a:hover {
+    background-color: #00000075;
+}
+
+.cart-actions a {
+    text-decoration: none;
+    color: #fff;
+}
+

@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
 import Breadcrumb from '../components/Breadcrumb'; // Импортируем Breadcrumb
+import { CartContext } from '../components/CartContext'; // Импортируем CartContext
 import './ProductPage.css';
 
 const ProductPage = () => {
@@ -9,6 +10,9 @@ const ProductPage = () => {
     const [product, setProduct] = useState(null);
     const [relatedProducts, setRelatedProducts] = useState([]);
     const [loading, setLoading] = useState(true);
+
+    // Получаем функцию добавления товара из контекста корзины
+    const { addToCart } = useContext(CartContext);
 
     useEffect(() => {
         // Загружаем данные о товаре
@@ -86,7 +90,10 @@ const ProductPage = () => {
 
                         {/* Кнопка "Добавить в корзину" */}
                         {product.productStockQuantity > 0 ? (
-                            <button className="add-to-cart-button">
+                            <button
+                                className="add-to-cart-button"
+                                onClick={() => addToCart(product)} // Добавляем товар в корзину
+                            >
                                 Добавить в корзину
                             </button>
                         ) : null} {/* Если товара нет, кнопка не отображается */}

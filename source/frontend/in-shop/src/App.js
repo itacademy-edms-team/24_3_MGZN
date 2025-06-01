@@ -8,22 +8,35 @@ import Footer from './components/Footer';
 import CatalogPage from './pages/CatalogPage';
 import CategoryPage from './pages/CategoryPage';
 import ProductPage from './pages/ProductPage';
+import { CartProvider } from './components/CartContext'; // Импортируем CartProvider
 
 function App() {
     return (
         <Router>
-            <div className="App">
-                <Header />
-                <main>
-                    <Routes>
-                        <Route path="/" element={<CatalogPage />} />
-                        <Route path="/catalog" element={<CatalogPage />} />
-                        <Route path="/category/:categoryName" element={<CategoryPage />} />
-                        <Route path="/product/:productId" element={<ProductPage />} />
-                    </Routes>
-                </main>
-                <Footer />
-            </div>
+            {/* Оборачиваем всё приложение в CartProvider */}
+            <CartProvider>
+                <div className="App">
+                    {/* Хедер с иконкой корзины */}
+                    <Header />
+
+                    {/* Основной контент */}
+                    <main>
+                        <Routes>
+                            {/* Главная страница */}
+                            <Route path="/" element={<CatalogPage />} />
+                            {/* Страница каталога */}
+                            <Route path="/catalog" element={<CatalogPage />} />
+                            {/* Страница категории */}
+                            <Route path="/category/:categoryName" element={<CategoryPage />} />
+                            {/* Страница товара */}
+                            <Route path="/product/:productId" element={<ProductPage />} />
+                        </Routes>
+                    </main>
+
+                    {/* Футер */}
+                    <Footer />
+                </div>
+            </CartProvider>
         </Router>
     );
 }

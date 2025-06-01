@@ -72,3 +72,81 @@
 .add-to-cart-button:hover {
     background-color: #333; /* Темно-серый фон при наведении */
 }
+
+/* Стили для раздела "Другие товары этой категории" */
+.related-products {
+    margin-top: 40px; /* Отступ сверху */
+}
+
+.related-products h3 {
+    font-size: 1.5em;
+    color: #333;
+    margin-bottom: 20px;
+}
+
+.related-products-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    list-style-type: none;
+    padding: 0;
+}
+
+/* Стили для карточки товара (related-product-card) */
+.related-product-card {
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    text-align: center;
+    transition: transform 0.3s ease, box-shadow 0.3s ease; /* Анимация трансформации и тени */
+    cursor: pointer;
+
+    /* Фиксированная ширина карточки */
+    width: calc(20% - 16px); /* 20% ширины контейнера минус отступы */
+    height: 300px; /* Фиксированная высота карточки */
+
+    /* Используем Flexbox для вертикального выравнивания */
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between; /* Текст будет прижат к низу */
+}
+
+.related-product-card:hover {
+    transform: translateY(-10px); /* Поднимаем карточку на 10px */
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2); /* Усиливаем тень */
+}
+
+.related-product-card img {
+    width: 100%; /* Ширина изображения */
+    height: auto; /* Сохраняем пропорции */
+    object-fit: cover; /* Обрезка изображения, если необходимо */
+    border-radius: 8px; /* Скругляем углы изображения */
+    transition: transform 0.3s ease; /* Анимация масштабирования изображения */
+}
+
+.related-product-card:hover img {
+    transform: scale(1.05); /* Небольшое увеличение изображения */
+}
+
+.related-product-card h4 {
+    margin: 20px;
+    font-size: 1.2em;
+    color: #333;
+    transition: color 0.3s ease; /* Анимация изменения цвета текста */
+}
+
+.related-product-card:hover h4 {
+    color: #000; /* Темнеет текст при наведении */
+}
+
+.related-product-card p {
+    margin-bottom: 20px;
+    font-size: 1em;
+    color: #666;
+    transition: color 0.3s ease; /* Анимация изменения цвета текста */
+}
+
+.related-product-card:hover p {
+    color: #333; /* Темнеет текст при наведении */
+}

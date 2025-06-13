@@ -28,9 +28,11 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<ShipCompany> ShipCompanies { get; set; }
 
+    public virtual DbSet<UserSession> UserSessions { get; set; }
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-        => optionsBuilder.UseSqlServer("Server=DESKTOP-AR0BS4O;Database=InShopDB;Trusted_Connection=True;TrustServerCertificate=True;");
+        => optionsBuilder.UseSqlServer("Server=DESKTOP-AR0BS4O;Database=InShopDB;Integrated Security=True;TrustServerCertificate=True");
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -47,7 +49,9 @@ public partial class AppDbContext : DbContext
         modelBuilder.Entity<Category>(entity =>
         {
             entity.Property(e => e.CategoryName).HasMaxLength(50);
-            entity.Property(e => e.ImageURL).HasMaxLength(50);
+            entity.Property(e => e.ImageUrl)
+                .HasMaxLength(50)
+                .HasColumnName("ImageURL");
         });
 
         modelBuilder.Entity<Order>(entity =>
@@ -56,8 +60,7 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.CustomerFullname).HasMaxLength(50);
             entity.Property(e => e.CustomerPhoneNumber).HasMaxLength(50);
             entity.Property(e => e.OrderDate).HasDefaultValueSql("(getdate())");
-            entity.Property(e => e.OrderStatus)
-                .HasMaxLength(50).HasConversion<string>();
+            entity.Property(e => e.OrderStatus).HasMaxLength(50);
             entity.Property(e => e.OrderTotalAmount)
                 .HasDefaultValueSql("((0.0))")
                 .HasColumnType("money");
@@ -67,6 +70,11 @@ public partial class AppDbContext : DbContext
                 .HasDefaultValue("Не оплачен");
             entity.Property(e => e.ShipAddress).HasMaxLength(500);
             entity.Property(e => e.ShipMethod).HasMaxLength(50);
+
+            entity.HasOne(d => d.Session).WithMany(p => p.Orders)
+                .HasForeignKey(d => d.SessionId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_Orders_UserSession");
 
             entity.HasOne(d => d.ShipCompany).WithMany(p => p.Orders)
                 .HasForeignKey(d => d.ShipCompanyId)
@@ -88,8 +96,7 @@ public partial class AppDbContext : DbContext
 
             entity.HasOne(d => d.Order).WithMany(p => p.OrderItems)
                 .HasForeignKey(d => d.OrderId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_Order_Items_Orders");
+                .HasConstraintName("FK_OrderItems_Orders");
 
             entity.HasOne(d => d.Product).WithMany(p => p.OrderItems)
                 .HasForeignKey(d => d.ProductId)
@@ -115,6 +122,19 @@ public partial class AppDbContext : DbContext
 
             entity.Property(e => e.Contact).HasMaxLength(500);
             entity.Property(e => e.ShipCompanyName).HasMaxLength(100);
+        });
+
+        modelBuilder.Entity<UserSession>(entity =>
+        {
+            entity.HasKey(e => e.SessionId);
+
+            entity.ToTable("UserSession");
+
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime");
+            entity.Property(e => e.UserIpaddress)
+                .HasMaxLength(45)
+                .IsUnicode(false)
+                .HasColumnName("UserIPAddress");
         });
 
         OnModelCreatingPartial(modelBuilder);

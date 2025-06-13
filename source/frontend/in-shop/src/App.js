@@ -9,6 +9,7 @@ import CatalogPage from './pages/CatalogPage';
 import CategoryPage from './pages/CategoryPage';
 import ProductPage from './pages/ProductPage';
 import { CartProvider } from './components/CartContext'; // Импортируем CartProvider
+import SessionHandler from './components/SessionHandler.tsx';
 
 function App() {
     return (
@@ -16,6 +17,7 @@ function App() {
             {/* Оборачиваем всё приложение в CartProvider */}
             <CartProvider>
                 <div className="App">
+                    <SessionHandler />
                     {/* Хедер с иконкой корзины */}
                     <Header />
 

@@ -7,7 +7,7 @@ const Footer = () => {
             <div className="footer-container">
                 {/* Логотип или название */}
                 <div className="logo">
-                    <h1>InShop</h1>
+                    <h1>.InShop</h1>
                 </div>
 
                 {/* Категории */}

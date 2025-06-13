@@ -2,11 +2,12 @@
 using System.Collections.Generic;
 
 namespace InShopDbModels.Models;
+
 public partial class Order
 {
     public int OrderId { get; set; }
 
-    public OrderStatusType OrderStatus { get; set; }
+    public string OrderStatus { get; set; } = null!;
 
     public DateOnly OrderDate { get; set; }
 
@@ -30,7 +31,11 @@ public partial class Order
 
     public decimal OrderTotalAmount { get; set; }
 
+    public int SessionId { get; set; }
+
     public virtual ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
+
+    public virtual UserSession Session { get; set; } = null!;
 
     public virtual ShipCompany? ShipCompany { get; set; }
 }

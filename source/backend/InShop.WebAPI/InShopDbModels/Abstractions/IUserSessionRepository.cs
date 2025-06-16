@@ -9,6 +9,7 @@ namespace InShopDbModels.Abstractions
 {
     public interface IUserSessionRepository
     {
-        Task CreateUserSession(UserSession userSession);
+        Task<int> CreateUserSession(UserSession userSession);
+        Task<UserSession> GetSessionById(int sessionId);
     }
 }

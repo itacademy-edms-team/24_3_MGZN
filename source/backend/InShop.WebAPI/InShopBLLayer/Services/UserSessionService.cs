@@ -21,10 +21,14 @@ namespace InShopBLLayer.Services
             _repository = repository;
             _mapper = mapper;
         }
-        public async Task CreateUserSession(UserSessionDto userSessionDto)
+        public async Task<int> CreateUserSession(UserSessionDto userSessionDto)
         {
             var session = _mapper.Map<UserSession>(userSessionDto);
-            await _repository.CreateUserSession(session);
+            return await _repository.CreateUserSession(session);
         }
+        public async Task<UserSession> GetSession(int sessionId)
+        {
+            return await _repository.GetSessionById(sessionId);
+        } 
     }
 }

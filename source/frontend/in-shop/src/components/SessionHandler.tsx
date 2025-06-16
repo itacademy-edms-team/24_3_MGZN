@@ -1,24 +1,21 @@
 import React from 'react';
-import { useUserSession } from '../hooks/useUserSession.ts';
+import { useSession } from '../hooks/useUserSession.ts';
 
 const SessionHandler: React.FC = () => {
-  const { loading, error } = useUserSession();
+  const { sessionId, loading, error } = useSession();
 
   if (loading) {
-    return <div>Инициализация сессии...</div>;
+    return <div>Создание сессии...</div>;
   }
 
   if (error) {
     return (
-      <div className="error-message">
+      <div className="error">
         Ошибка: {error}
-        <br />
-        <small>Используется резервный IP</small>
+        <button onClick={() => window.location.reload()}>Повторить</button>
       </div>
     );
   }
-
-  return null; // Или любой другой JSX, если нужно отобразить информацию о сессии
 };
 
 export default SessionHandler;

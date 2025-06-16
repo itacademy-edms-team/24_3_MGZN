@@ -1,6 +1,7 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Contracts.Dtos;
 using InShopBLLayer.Abstractions;
-using Contracts.Dtos;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace InShop.WebAPI.Controllers
 {
@@ -17,8 +18,12 @@ namespace InShop.WebAPI.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateSession([FromBody] UserSessionDto userSessionDto)
         {
-            await _userSessionService.CreateUserSession(userSessionDto);
-            return Ok("Сессия создана");
+            var sessionId = await _userSessionService.CreateUserSession(userSessionDto);
+            return Ok(new SessionCreationResult
+            {
+                SessionId = sessionId,
+                Message = "Сессия успешно создана"
+            });
         }
     }
 }

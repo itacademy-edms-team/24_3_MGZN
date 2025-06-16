@@ -1,40 +1,52 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'https://localhost:7275/api'; // Замените на ваш URL
-
-export interface UserSessionDto {
+interface SessionData {
+  sessionId: number;
   userIpaddress: string;
-  createdAt: string; // Будем отправлять как строку в ISO формате
+  createdAt: string;
 }
 
-let isSessionCreationInProgress = false;
+// Глобальное состояние
+let sessionPromise: Promise<number> | null = null;
 
-export const createUserSession = async (ipAddress: string): Promise<void> => {
-    if (isSessionCreationInProgress) return;
-    isSessionCreationInProgress = true;
-    try {
-    const requestData: UserSessionDto = {
-      userIpaddress: ipAddress,
-      createdAt: new Date().toISOString() // Преобразуем дату в ISO строку
-    };
-
-    await axios.post(`${API_BASE_URL}/UserSession`, requestData, {
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-  } catch (error) {
-    console.error('Ошибка при создании сессии:', error);
-    throw error;
+export const createUserSession = async (): Promise<number> => {
+  // Если запрос уже в процессе - возвращаем существующий промис
+  if (sessionPromise) {
+    return sessionPromise;
   }
+
+  sessionPromise = (async () => {
+    try {
+      // 1. Получаем IP клиента
+      const ipResponse = await axios.get('https://api.ipify.org?format=json');
+      const ip = ipResponse.data.ip || '127.0.0.1';
+
+      // 2. Отправляем запрос на создание сессии
+      const response = await axios.post<SessionData>('https://localhost:7275/api/UserSession', {
+        userIpaddress: ip,
+        createdAt: new Date().toISOString()
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
+
+      // 3. Сохраняем данные сессии
+      localStorage.setItem('sessionId', response.data.sessionId.toString());
+      return response.data.sessionId;
+    } catch (error) {
+      console.error('Session creation failed:', error);
+      throw error;
+    } finally {
+      sessionPromise = null;
+    }
+  })();
+
+  return sessionPromise;
 };
 
-export const getClientIp = async (): Promise<string> => {
-  try {
-    const response = await axios.get('https://api.ipify.org?format=json');
-    return response.data.ip;
-  } catch (error) {
-    console.error('Ошибка при получении IP:', error);
-    return '127.0.0.1'; // Fallback IP
-  }
+export const getCurrentSessionId = (): number | null => {
+  const sessionId = localStorage.getItem('sessionId');
+  return sessionId ? parseInt(sessionId) : null;
 };

@@ -1,82 +1,145 @@
 // CartContext.js
-
-// Импортируем необходимые модули из React
 import React, { createContext, useState, useEffect } from 'react';
-// Импортируем стили для компонента (если они нужны)
-import './CartContext.css';
+import axios from 'axios';
 
-// Создаем контекст корзины. Этот контекст будет использоваться для передачи данных о корзине между компонентами.
 export const CartContext = createContext();
 
-// CartProvider — это провайдер контекста, который оборачивает все дочерние компоненты и предоставляет им доступ к данным корзины.
 export const CartProvider = ({ children }) => {
-    // Состояние корзины. Изначально корзина пуста (пустой массив).
-    const [cart, setCart] = useState([]);
+    const [cart, setCart] = useState([]); // Состояние корзины
+    const [isCartOpen, setIsCartOpen] = useState(false); // Состояние видимости модального окна
+    const [loading, setLoading] = useState(false); // Состояние загрузки
+    const [error, setError] = useState(null); // Состояние ошибки
 
-    // Состояние видимости модального окна корзины. По умолчанию окно закрыто (false).
-    const [isCartOpen, setIsCartOpen] = useState(false);
+    // Загрузка корзины из бэкенда
+    const fetchCart = async () => {
+        try {
+            setLoading(true);
+            const sessionId = localStorage.getItem('sessionId');
+            if (!sessionId) {
+                throw new Error('SessionId не найден.');
+            }
 
-    // Эффект загрузки корзины из localStorage при монтировании компонента
-    useEffect(() => {
-        // Пытаемся получить сохраненную корзину из localStorage.
-        // Если данных нет, инициализируем корзину пустым массивом.
-        const savedCart = JSON.parse(localStorage.getItem('cart')) || [];
-        // Устанавливаем загруженные данные в состояние cart.
-        setCart(savedCart);
-    }, []); // Этот эффект выполняется только один раз при монтировании компонента.
+            const response = await axios.get(`https://localhost:7275/api/Order/cart?sessionId=${encodeURIComponent(sessionId)}`);
+            setCart(response.data);
+            setError(null);
+        } catch (err) {
+            console.error('Ошибка загрузки корзины:', err);
+            setError(err.message || 'Не удалось загрузить корзину.');
+        } finally {
+            setLoading(false);
+        }
+    };
 
-    // Эффект сохранения корзины в localStorage при каждом изменении состояния cart
-    useEffect(() => {
-        // Сохраняем текущее состояние корзины в localStorage в виде строки JSON.
-        localStorage.setItem('cart', JSON.stringify(cart));
-    }, [cart]); // Этот эффект выполняется каждый раз, когда изменяется состояние cart.
+    // Открытие модального окна корзины
+    const openCart = () => {
+        setIsCartOpen(true);
+        fetchCart(); // Загружаем корзину при открытии
+    };
+
+    // Закрытие модального окна корзины
+    const closeCart = () => {
+        setIsCartOpen(false);
+    };
 
     // Функция для добавления товара в корзину
-    const addToCart = (product) => {
-        // Проверяем, существует ли товар с таким же productId уже в корзине.
-        const existingProduct = cart.find((item) => item.productId === product.productId);
+    const addToCart = async (product) => {
+        try {
+            const sessionId = localStorage.getItem('sessionId');
+            if (!sessionId) throw new Error('SessionId не найден.');
 
-        if (existingProduct) {
-            // Если товар уже есть в корзине, увеличиваем его количество на 1.
-            setCart(
-                cart.map((item) =>
-                    item.productId === product.productId
-                        ? { ...item, quantity: item.quantity + 1 } // Обновляем количество
-                        : item // Оставляем остальные товары без изменений
+            const response = await axios.post('https://localhost:7275/api/Order', {
+                productId: product.productId,
+                sessionId: parseInt(sessionId, 10)
+            });
+
+            // После добавления товара перезагружаем корзину
+            await fetchCart();
+            
+        } catch (error) {
+            console.error('Ошибка добавления товара:', error);
+            alert('Не удалось добавить товар.');
+        }
+    };
+
+    // Функция изменения количества товара
+    const changeQuantity = async (orderItemId, newQuantity) => {
+        try {
+            const sessionId = localStorage.getItem('sessionId');
+            if (!sessionId) throw new Error('SessionId не найден.');
+
+            // Отправляем запрос на бэкенд для обновления количества
+            await axios.put('https://localhost:7275/api/Order/updateQuantity', {
+                orderItemId,
+                quantity: newQuantity
+            });
+
+            // Обновляем локальное состояние корзины БЕЗ перезагрузки
+            setCart((prevCart) =>
+                prevCart.map((item) =>
+                    item.orderItemId === orderItemId
+                        ? { ...item, quantity: newQuantity }
+                        : item
                 )
             );
-        } else {
-            // Если товара еще нет в корзине, добавляем его с количеством 1.
-            setCart([...cart, { ...product, quantity: 1 }]);
+
+            // Пересчитываем итоговую сумму заказа (если нужно)
+            // Это можно сделать на бэкенде или локально
+        } catch (error) {
+            console.error('Ошибка обновления количества:', error);
+            alert('Не удалось обновить количество.');
         }
     };
 
     // Функция для удаления товара из корзины
-    const removeFromCart = (productId) => {
-        // Фильтруем массив корзины, исключая товар с указанным productId.
-        setCart(cart.filter((item) => item.productId !== productId));
+    const removeFromCart = async (orderItemId) => {
+        try {
+            const sessionId = localStorage.getItem('sessionId');
+            if (!sessionId) throw new Error('SessionId не найден.');
+
+            await axios.delete(`https://localhost:7275/api/Order/${orderItemId}`);
+
+            // Обновляем локальное состояние корзины БЕЗ перезагрузки
+            setCart((prevCart) => prevCart.filter((item) => item.orderItemId !== orderItemId));
+
+        } catch (error) {
+            console.error('Ошибка удаления товара:', error);
+            alert('Не удалось удалить товар.');
+        }
     };
 
     // Функция для очистки корзины
-    const clearCart = () => {
-        // Устанавливаем состояние корзины в пустой массив.
-        setCart([]);
+    const clearCart = async () => {
+        try {
+            const sessionId = localStorage.getItem('sessionId');
+            if (!sessionId) throw new Error('SessionId не найден.');
+
+            // Отправляем запрос на бэкенд для очистки корзины
+            await axios.delete(`https://localhost:7275/api/Order/clear?sessionId=${parseInt(sessionId, 10)}`);
+
+            // Очищаем локальное состояние корзины
+            setCart([]);
+        } catch (error) {
+            console.error('Ошибка очистки корзины:', error);
+            alert('Не удалось очистить корзину.');
+        }
     };
 
-    // Возвращаем провайдер контекста, предоставляющий доступ к данным и функциям корзины.
     return (
         <CartContext.Provider
             value={{
-                cart, // Текущее состояние корзины
-                addToCart, // Функция для добавления товара
-                removeFromCart, // Функция для удаления товара
-                clearCart, // Функция для очистки корзины
-                isCartOpen, // Состояние видимости модального окна
-                openCart: () => setIsCartOpen(true), // Функция для открытия модального окна
-                closeCart: () => setIsCartOpen(false), // Функция для закрытия модального окна
+                cart,
+                isCartOpen,
+                loading,
+                error,
+                openCart,
+                closeCart,
+                addToCart,
+                removeFromCart,
+                clearCart,
+                changeQuantity,
+                fetchCart
             }}
         >
-            {/* Все дочерние компоненты получают доступ к контексту */}
             {children}
         </CartContext.Provider>
     );

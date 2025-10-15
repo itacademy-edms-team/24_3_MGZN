@@ -2,7 +2,7 @@ import React, { useEffect, useState, useContext } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
 import Breadcrumb from '../components/Breadcrumb'; // Импортируем Breadcrumb
-import { CartContext } from '../components/CartContext'; // Импортируем CartContext
+import { CartContext } from '../components/CartContext';
 import './ProductPage.css';
 
 const ProductPage = () => {
@@ -16,7 +16,7 @@ const ProductPage = () => {
 
     useEffect(() => {
         // Загружаем данные о товаре
-        axios.get(`https://localhost:7275/api/Products/${productId}`) 
+        axios.get(`https://localhost:7275/api/Products/${productId}`)
             .then((response) => {
                 const productData = response.data;
                 console.log('Данные о товаре:', productData); // Логируем данные о товаре
@@ -92,7 +92,7 @@ const ProductPage = () => {
                         {product.productStockQuantity > 0 ? (
                             <button
                                 className="add-to-cart-button"
-                                onClick={() => addToCart(product)} // Добавляем товар в корзину
+                               onClick={() => addToCart(product)} // Добавляем товар в корзину
                             >
                                 Добавить в корзину
                             </button>

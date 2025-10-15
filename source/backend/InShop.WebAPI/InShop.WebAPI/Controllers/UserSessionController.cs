@@ -10,17 +10,33 @@ namespace InShop.WebAPI.Controllers
     public class UserSessionController : ControllerBase
     {
         private readonly IUserSessionService _userSessionService;
-        public UserSessionController(IUserSessionService userSessionService)
+        private readonly IOrderService _orderService;
+        public UserSessionController(IUserSessionService userSessionService, IOrderService orderService)
         {
             _userSessionService = userSessionService;
+            _orderService = orderService;
         }
 
         [HttpPost]
         public async Task<IActionResult> CreateSession([FromBody] UserSessionDto userSessionDto)
         {
             var sessionId = await _userSessionService.CreateUserSession(userSessionDto);
+            OrderDto newOrderDto = new OrderDto
+            {
+                OrderStatus = "Draft",
+                OrderDate = DateOnly.FromDateTime(DateTime.Now),
+                ShipMethod = "draft",
+                PayStatus = "Unpayed",
+                CustomerFullname = "draft",
+                PayMethod = "draft",
+                CustomerEmail = "draft",
+                CustomerPhoneNumber = "draft",
+                SessionId = sessionId,
+            };
+            var orderId = await _orderService.CreateOrder(newOrderDto);
             return Ok(new SessionCreationResult
             {
+                OrderId = orderId,
                 SessionId = sessionId,
                 Message = "Сессия успешно создана"
             });

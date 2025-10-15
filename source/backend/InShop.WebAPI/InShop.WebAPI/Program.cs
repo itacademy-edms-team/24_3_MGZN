@@ -9,7 +9,7 @@ namespace InShop.WebAPI
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // Добавляем поддержку CORS
+            //CORS
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("AllowSpecificOrigin", policy =>

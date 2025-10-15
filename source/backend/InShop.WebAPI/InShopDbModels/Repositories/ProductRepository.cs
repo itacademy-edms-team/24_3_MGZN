@@ -25,9 +25,12 @@ namespace InShopDbModels.Repositories
         }
         public async Task<Product> GetProduct(int id)
         {
-            return await _appDbContext.Products.Include(p => p.ProductCategory).Where(p => p.ProductId == id).FirstOrDefaultAsync();
-            //return await _appDbContext.Orders.Include(p => p.OrderItems).ThenInclude(oi => oi.Product).ToListAsync();
+            return await _appDbContext.Products
+                                .Include(p => p.ProductCategory)
+                                .Where(p => p.ProductId == id)
+                                .FirstOrDefaultAsync();
         }
+        //return await _appDbContext.Orders.Include(p => p.OrderItems).ThenInclude(oi => oi.Product).ToListAsync();
         public async Task DeleteProduct(int id)
         {
             var product = await GetProduct(id);

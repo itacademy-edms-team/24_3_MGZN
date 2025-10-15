@@ -7,6 +7,7 @@ import Header from './components/Header';
 import Footer from './components/Footer';
 import CatalogPage from './pages/CatalogPage';
 import CategoryPage from './pages/CategoryPage';
+import CartModal from './components/CartModal'; // Добавляем CartModal
 import ProductPage from './pages/ProductPage';
 import { CartProvider } from './components/CartContext'; // Импортируем CartProvider
 import SessionHandler from './components/SessionHandler.tsx';
@@ -20,7 +21,7 @@ function App() {
                     <SessionHandler />
                     {/* Хедер с иконкой корзины */}
                     <Header />
-
+                    <CartModal /> {/* Добавляем модальное окно корзины */}
                     {/* Основной контент */}
                     <main>
                         <Routes>

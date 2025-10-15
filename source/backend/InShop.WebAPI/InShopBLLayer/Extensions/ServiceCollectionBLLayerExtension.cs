@@ -22,6 +22,8 @@ namespace InShopBLLayer.Extensions
             services.AddScoped<IShipCompanyService, ShipCompanyService>();
             services.AddScoped<IUserSessionService, UserSessionService>();
             services.AddAutoMapper(config => config.AddProfile<UserSessionProfile>());
+            services.AddScoped<IOrderService, OrderService>();
+            services.AddAutoMapper(config => config.AddProfile<OrderProfile>());
             return services;
         }
     }

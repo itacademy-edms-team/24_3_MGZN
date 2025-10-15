@@ -14,21 +14,22 @@ namespace InShopBLLayer.Services
 {
     public class UserSessionService : IUserSessionService
     {
-        private readonly IUserSessionRepository _repository;
+        private readonly IUserSessionRepository _userSessionRepository;
+        private readonly IOrderRepository _orderRepository;
         private readonly IMapper _mapper;
         public UserSessionService(IUserSessionRepository repository, IMapper mapper)
         {
-            _repository = repository;
+            _userSessionRepository = repository;
             _mapper = mapper;
         }
         public async Task<int> CreateUserSession(UserSessionDto userSessionDto)
         {
             var session = _mapper.Map<UserSession>(userSessionDto);
-            return await _repository.CreateUserSession(session);
+            return await _userSessionRepository.CreateUserSession(session);
         }
         public async Task<UserSession> GetSession(int sessionId)
         {
-            return await _repository.GetSessionById(sessionId);
+            return await _userSessionRepository.GetSessionById(sessionId);
         } 
     }
 }

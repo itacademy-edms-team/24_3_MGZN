@@ -6,10 +6,9 @@ using System.Threading.Tasks;
 
 namespace Contracts.Dtos
 {
-    public class SessionCreationResult
+    public class AddToCartDto
     {
-        public int OrderId { get; set; }
+        public int ProductId { get; set; }
         public int SessionId { get; set; }
-        public string Message { get; set; }
     }
 }

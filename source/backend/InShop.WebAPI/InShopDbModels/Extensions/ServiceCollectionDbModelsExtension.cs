@@ -21,6 +21,8 @@ namespace InShopDbModels.Extensions
             services.AddScoped<ICategoryRepository, CategoryRepository>();
             services.AddScoped<IShipCompanyRepository, ShipCompanyRepository>();
             services.AddScoped<IUserSessionRepository, UserSessionRepository>();
+            services.AddScoped<IOrderRepository, OrderRepository>();
+            //services.AddScoped<IOrderItemRepository, OrderItemRepository>();
             return services;
         }
     }

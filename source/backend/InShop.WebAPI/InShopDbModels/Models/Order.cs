@@ -38,4 +38,5 @@ public partial class Order
     public virtual UserSession Session { get; set; } = null!;
 
     public virtual ShipCompany? ShipCompany { get; set; }
+
 }

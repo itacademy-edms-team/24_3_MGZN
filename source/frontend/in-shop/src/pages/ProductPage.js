@@ -117,7 +117,7 @@ const ProductPage = () => {
                                     />
                                 </Link>
                                 <h4>{relatedProduct.productName}</h4>
-                                <p>Цена: {relatedProduct.productPrice} ₽</p>
+                                <p>{relatedProduct.productPrice} ₽</p>
                             </li>
                         ))}
                     </ul>

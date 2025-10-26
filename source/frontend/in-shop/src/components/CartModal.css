@@ -235,7 +235,7 @@
 }
 
 .clear-cart-button,
-.checkout-button {
+.checkout-cart-button {
     flex: 1;
     padding: 12px;
     border: none;

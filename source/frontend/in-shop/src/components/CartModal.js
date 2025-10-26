@@ -3,6 +3,7 @@ import React, { useContext, useState, useEffect } from 'react';
 import { CartContext } from '../components/CartContext';
 import CartItem from '../components/CartItem'; // Импортируем оптимизированную карточку
 import './CartModal.css';
+import { Link } from 'react-router-dom';
 
 const CartModal = () => {
     const { isCartOpen, closeCart, cart, loading, error, clearCart } = useContext(CartContext);
@@ -71,9 +72,9 @@ const CartModal = () => {
                                     <button onClick={clearCart} className="clear-cart-button">
                                         Очистить корзину
                                     </button>
-                                    <button className="checkout-button">
+                                    <Link to="/checkout" onClick={closeCart} className="checkout-cart-button">
                                         Оформить заказ
-                                    </button>
+                                    </Link>
                                 </div>
                             </div>
                         </>

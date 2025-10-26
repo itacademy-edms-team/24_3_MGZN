@@ -11,6 +11,7 @@ import CartModal from './components/CartModal'; // Добавляем CartModal
 import ProductPage from './pages/ProductPage';
 import { CartProvider } from './components/CartContext'; // Импортируем CartProvider
 import SessionHandler from './components/SessionHandler.tsx';
+import CheckoutPage from './pages/CheckoutPage';
 
 function App() {
     return (
@@ -33,6 +34,7 @@ function App() {
                             <Route path="/category/:categoryName" element={<CategoryPage />} />
                             {/* Страница товара */}
                             <Route path="/product/:productId" element={<ProductPage />} />
+                            <Route path="/checkout" element={<CheckoutPage />} /> {/* Добавляем маршрут для оформления заказа */}
                         </Routes>
                     </main>
 

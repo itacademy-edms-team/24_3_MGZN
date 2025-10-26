@@ -102,9 +102,6 @@ const CheckoutPage = () => {
                             <strong>{(totalAmount + 1500).toFixed(2)} ₽</strong>
                         </div>
                     </div>
-                    <button className="checkout-button" onClick={() => document.querySelector('form').dispatchEvent(new Event('submit'))}>
-                        Оформить заказ
-                    </button>
                 </div>
             </div>
         </div>

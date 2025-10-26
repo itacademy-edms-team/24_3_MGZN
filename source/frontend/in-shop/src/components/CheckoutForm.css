@@ -47,3 +47,80 @@
     outline: none;
 }
 
+/* Стили для сообщений об ошибках */
+.error-message {
+    color: #ff4d4d; /* Красный цвет текста */
+    font-size: 0.9em; /* Уменьшенный размер шрифта */
+    margin: 5px 0 0 0; /* Отступ сверху */
+    text-align: left; /* Выравнивание текста по левому краю */
+    font-weight: 500; /* Полужирный текст */
+}
+
+/* Стили для полей ввода с ошибками */
+.form-group input,
+.form-group textarea,
+.form-group select {
+    width: 100%; /* Занимает всю ширину контейнера */
+    padding: 10px; /* Внутренние отступы */
+    border: 1px solid #ddd; /* Серая граница */
+    border-radius: 8px; /* Скругленные углы */
+    font-size: 1em; /* Размер шрифта */
+    transition: border-color 0.2s ease; /* Анимация при фокусе */
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+    border-color: #000; /* Черная граница при фокусе */
+    outline: none; /* Убираем стандартный outline */
+}
+
+/* Стили для полей ввода с ошибками */
+.form-group input:invalid,
+.form-group textarea:invalid,
+.form-group select:invalid {
+    border-color: #ff4d4d; /* Красная граница при ошибке */
+}
+
+.form-group input.valid,
+.form-group textarea.valid,
+.form-group select.valid {
+    border-color: #4caf50; /* Зеленая граница при корректном вводе */
+}
+
+.checkout-button {
+    display:flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #000;
+    padding: 20px;
+    border-radius: 20px;
+    font-size: 18px;
+}
+
+.checkout-button:hover {
+    background-color: #333;
+}
+
+.submit-button {
+    background-color: #000; /* Черный фон */
+    color: #fff; /* Белый текст */
+    border: none; /* Убираем границу */
+    display:flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #000;
+    padding: 20px;
+    border-radius: 20px;
+    font-size: 18px;
+    font-size: 1em; /* Размер шрифта */
+    cursor: pointer; /* Курсор указателя */
+    transition: background-color 0.3s ease; /* Анимация при наведении */
+    font-weight: 500; /* Полужирный текст */
+    margin-top: 20px; /* Отступ сверху */
+    width: 100%; /* Занимает всю ширину контейнера */
+}
+
+.submit-button:hover {
+    background-color: #333; /* Темно-серый фон при наведении */
+}

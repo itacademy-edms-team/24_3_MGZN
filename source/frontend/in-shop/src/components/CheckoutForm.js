@@ -8,7 +8,7 @@ const CheckoutForm = ({ onSubmit }) => {
         customerEmail: '',
         customerPhoneNumber: '',
         shipAddress: '',
-        shipMethod: 'Доставка на дом',
+        shipMethod: 'Самовывоз',
         payMethod: 'Онлайн',
         shipCompanyId: null
     });
@@ -16,6 +16,15 @@ const CheckoutForm = ({ onSubmit }) => {
     const [shipCompanies, setShipCompanies] = useState([]); // Список компаний доставки
     const [loading, setLoading] = useState(false); // Состояние загрузки
     const [error, setError] = useState(null); // Состояние ошибки
+
+    // Состояния для ошибок валидации
+    const [errors, setErrors] = useState({
+        customerFullName: '',
+        customerEmail: '',
+        customerPhoneNumber: '',
+        shipAddress: '',
+        shipCompanyId: '' // Ошибка для выбора компании доставки
+    });
 
     // Загрузка компаний доставки
     useEffect(() => {
@@ -38,14 +47,91 @@ const CheckoutForm = ({ onSubmit }) => {
         fetchShipCompanies();
     }, []);
 
+    // Функция валидации email
+    const validateEmail = (email) => {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
+    };
+
+    // Функция валидации телефона
+    const validatePhone = (phone) => {
+        // Регулярное выражение для проверки разных форматов телефона
+        const phoneRegex = /^(\+7|8)?[\s\-]?\(?[0-9]{3}\)?[\s\-]?[0-9]{3}[\s\-]?[0-9]{2}[\s\-]?[0-9]{2}$/;
+        return phoneRegex.test(phone);
+    };
+
+    // Функция валидации ФИО
+    const validateFullName = (name) => {
+        return name.trim().length > 0;
+    };
+
+    // Функция валидации адреса
+    const validateAddress = (address) => {
+        return address.trim().length > 0;
+    };
+
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
+
+        // Очищаем ошибку при изменении поля
+        if (errors[name]) {
+            setErrors(prev => ({ ...prev, [name]: '' }));
+        }
     };
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        onSubmit(formData);
+        
+        // Проверка валидации перед отправкой
+        let isValid = true;
+        const newErrors = {};
+
+        // Валидация ФИО
+        if (!validateFullName(formData.customerFullName)) {
+            newErrors.customerFullName = 'Введите корректное ФИО (пример: Иванов Иван Иванович)';
+            isValid = false;
+        }
+
+        // Валидация email
+        if (!validateEmail(formData.customerEmail)) {
+            newErrors.customerEmail = 'Введите корректный email (пример: user@example.com)';
+            isValid = false;
+        }
+
+        // Валидация телефона
+        if (!validatePhone(formData.customerPhoneNumber)) {
+            newErrors.customerPhoneNumber = 'Введите корректный номер телефона (+79999999999, +7 (999) 999 99 99, 89999999999)';
+            isValid = false;
+        }
+
+        // Валидация адреса
+        if (!validateAddress(formData.shipAddress)) {
+            newErrors.shipAddress = 'Введите корректный адрес (пример: ул. Ленина, д. 1, кв. 1)';
+            isValid = false;
+        }
+
+        // Валидация компании доставки (если выбран способ "Служба доставки")
+        if (formData.shipMethod === 'Служба доставки' && !formData.shipCompanyId) {
+            newErrors.shipCompanyId = 'Выберите компанию доставки';
+            isValid = false;
+        }
+
+        setErrors(newErrors);
+
+        if (isValid) {
+            onSubmit(formData);
+        } else {
+            // Прокручиваем к первому полю с ошибкой
+            const firstErrorField = Object.keys(newErrors)[0];
+            if (firstErrorField) {
+                const element = document.querySelector(`[name="${firstErrorField}"]`);
+                if (element) {
+                    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    element.focus();
+                }
+            }
+        }
     };
 
     return (
@@ -53,27 +139,16 @@ const CheckoutForm = ({ onSubmit }) => {
             <h2>Покупатель</h2>
             
             <div className="form-group">
-                <label>Телефон</label>
-                <input
-                    type="text"
-                    name="customerPhoneNumber"
-                    value={formData.customerPhoneNumber}
-                    onChange={handleChange}
-                    placeholder="+7 (9__) ___ __ __"
-                    required
-                />
-            </div>
-
-            <div className="form-group">
                 <label>ФИО</label>
                 <input
                     type="text"
                     name="customerFullName"
                     value={formData.customerFullName}
                     onChange={handleChange}
-                    placeholder="Ваше имя"
+                    placeholder="Иванов Иван Иванович"
                     required
                 />
+                {errors.customerFullName && <p className="error-message">{errors.customerFullName}</p>}
             </div>
 
             <div className="form-group">
@@ -86,18 +161,23 @@ const CheckoutForm = ({ onSubmit }) => {
                     placeholder="email@example.com"
                     required
                 />
+                {errors.customerEmail && <p className="error-message">{errors.customerEmail}</p>}
             </div>
 
             <div className="form-group">
-                <label>Адрес доставки</label>
-                <textarea
-                    name="shipAddress"
-                    value={formData.shipAddress}
+                <label>Телефон</label>
+                <input
+                    type="text"
+                    name="customerPhoneNumber"
+                    value={formData.customerPhoneNumber}
                     onChange={handleChange}
-                    placeholder="Улица, дом, квартира"
+                    placeholder="+7 (9__) ___ __ __"
                     required
                 />
+                {errors.customerPhoneNumber && <p className="error-message">{errors.customerPhoneNumber}</p>}
             </div>
+
+            
 
             <div className="form-group">
                 <label>Способ оплаты</label>
@@ -123,6 +203,20 @@ const CheckoutForm = ({ onSubmit }) => {
                 </select>
             </div>
 
+            {formData.shipMethod !== 'Самовывоз' && (
+                <div className="form-group">
+                    <label>Адрес доставки</label>
+                    <textarea
+                        name="shipAddress"
+                        value={formData.shipAddress}
+                        onChange={handleChange}
+                        placeholder="Улица, дом, квартира"
+                        required
+                    />
+                    {errors.shipAddress && <p className="error-message">{errors.shipAddress}</p>}
+                </div>
+            )}
+
             {formData.shipMethod === 'Служба доставки' && (
                 <div className="form-group">
                     <label>Компания доставки</label>
@@ -145,8 +239,13 @@ const CheckoutForm = ({ onSubmit }) => {
                             ))}
                         </select>
                     )}
+                    {errors.shipCompanyId && <p className="error-message">{errors.shipCompanyId}</p>}
                 </div>
             )}
+
+            <button type="submit" className="submit-button">
+                Оформить заказ
+            </button>
         </form>
     );
 };

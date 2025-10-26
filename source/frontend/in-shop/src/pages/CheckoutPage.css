@@ -51,19 +51,7 @@
 
 
 
-.checkout-button {
-    display:flex;
-    align-items: center;
-    justify-content: center;
-    background-color: #000;
-    padding: 20px;
-    border-radius: 20px;
-    font-size: 18px;
-}
 
-.checkout-button:hover {
-    background-color: #333;
-}
 
 /* Адаптивность */
 @media (max-width: 768px) {
@@ -83,7 +71,4 @@
         order: 1;
     }
 
-    .checkout-button {
-        order: 2;
-    }
 }

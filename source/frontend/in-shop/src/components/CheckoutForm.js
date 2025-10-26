@@ -9,7 +9,7 @@ const CheckoutForm = ({ onSubmit }) => {
         customerPhoneNumber: '',
         shipAddress: '',
         shipMethod: 'Самовывоз',
-        payMethod: 'Онлайн',
+        payMethod: 'Наличными при получении',
         shipCompanyId: null
     });
 

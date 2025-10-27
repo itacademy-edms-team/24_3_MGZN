@@ -60,9 +60,11 @@ const CheckoutForm = ({ onSubmit }) => {
         return phoneRegex.test(phone);
     };
 
-    // Функция валидации ФИО
+    // Функция валидации ФИО (гибкая)
     const validateFullName = (name) => {
-        return name.trim().length > 0;
+        // Регулярное выражение для проверки ФИО (3 слова с возможными дефисами и пробелами)
+        const fullNameRegex = /^[А-ЯЁ][а-яё\-]+\s+[А-ЯЁ][а-яё\-]+\s+[А-ЯЁ][а-яё\-]+$/;
+        return fullNameRegex.test(name.trim());
     };
 
     // Функция валидации адреса
@@ -73,6 +75,21 @@ const CheckoutForm = ({ onSubmit }) => {
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
+
+    // Валидация в реальном времени
+        if (name === 'customerFullName') {
+            if (value && !validateFullName(value)) {
+                setErrors(prev => ({
+                    ...prev,
+                    customerFullName: 'Введите корректное ФИО (пример: Иванов Иван Иванович)'
+                }));
+            } else {
+                setErrors(prev => ({
+                    ...prev,
+                    customerFullName: ''
+                }));
+            }
+        }
 
         // Очищаем ошибку при изменении поля
         if (errors[name]) {
@@ -106,7 +123,7 @@ const CheckoutForm = ({ onSubmit }) => {
         }
 
         // Валидация адреса
-        if (!validateAddress(formData.shipAddress)) {
+        if (formData.shipMethod !== 'Самовывоз' && !validateAddress(formData.shipAddress)) {
             newErrors.shipAddress = 'Введите корректный адрес (пример: ул. Ленина, д. 1, кв. 1)';
             isValid = false;
         }

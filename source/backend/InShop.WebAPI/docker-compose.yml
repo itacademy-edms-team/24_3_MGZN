@@ -1,0 +1,27 @@
+services:
+  inshop-api:
+    build:
+      context: .
+      dockerfile: InShop.WebAPI/Dockerfile
+    ports:
+      - "5000:8080"
+    depends_on:
+      - sqlserver
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Docker
+      - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=InShopDB;User=sa;Password=cybersjStrong@Passw0rd;TrustServerCertificate=true;
+      - ASPNETCORE_URLS=http://+:8080
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      SA_PASSWORD: "YourStrong@Passw0rd"
+      ACCEPT_EULA: "Y"
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+      - ./init:/docker-entrypoint-initdb.d  # Копируем init.sql в контейнер
+
+volumes:
+  sqlserver_data:

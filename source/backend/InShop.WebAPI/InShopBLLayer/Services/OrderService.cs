@@ -3,6 +3,7 @@ using Contracts.Dtos;
 using InShopBLLayer.Abstractions;
 using InShopDbModels.Abstractions;
 using InShopDbModels.Models;
+using InShopDbModels.Repositories;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -137,6 +138,16 @@ namespace InShopBLLayer.Services
             }).ToList();
 
             return cartItems;
+        }
+        public async Task<List<ShipCompanyDto>> GetAllShipCompanies()
+        {
+            var companies = await _orderReposiotory.GetAllShipCompanies();
+            return companies.Select(c => new ShipCompanyDto
+            {
+                ShipCompanyId = c.ShipCompanyId,
+                ShipCompanyName = c.ShipCompanyName,
+                Contact = c.Contact
+            }).ToList();
         }
     }
 }

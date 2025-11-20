@@ -47,8 +47,15 @@ namespace InShop.WebAPI.Controllers
         [HttpGet("products-by-category")]
         public async Task<IActionResult> GetProductsByCategory([FromQuery] string categoryName)
         {
-            var productsByCategory = await _productService.GetProductsByCategoryName(categoryName);
-            return Ok(productsByCategory);
+            try
+            {
+                var productsByCategory = await _productService.GetProductsByCategoryName(categoryName);
+                return Ok(productsByCategory);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
     }
 }

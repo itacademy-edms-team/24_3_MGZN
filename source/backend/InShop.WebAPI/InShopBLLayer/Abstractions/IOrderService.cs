@@ -15,5 +15,6 @@ namespace InShopBLLayer.Abstractions
         Task UpdateOrderItemQuantity(int orderItemId, int quantity);
         Task ClearCart(int sessionId);
         Task<List<CartItemDto>> GetCartBySessionId(int sessionId);
+        Task<List<ShipCompanyDto>> GetAllShipCompanies();
     }
 }

@@ -21,5 +21,6 @@ namespace InShopDbModels.Abstractions
         Task<Order> GetOrderById(int orderId);
         Task DeleteAllOrderItems(int orderId);
         Task<List<OrderItem>> GetOrderItemsByOrderId(int orderId);
+        Task<List<ShipCompany>> GetAllShipCompanies();
     }
 }

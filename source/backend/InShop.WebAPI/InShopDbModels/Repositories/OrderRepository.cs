@@ -90,5 +90,9 @@ namespace InShopDbModels.Repositories
                 .Include(oi => oi.Product)
                 .ToListAsync();
         }
+        public async Task<List<ShipCompany>> GetAllShipCompanies()
+        {
+            return await _appDbContext.ShipCompanies.ToListAsync();
+        }
     }
 }

@@ -14,6 +14,9 @@ namespace InShopBLLayer.Extensions
     {
         public static IServiceCollection AddInShopServices(this IServiceCollection services)
         {
+            // Кэш
+            services.AddMemoryCache();
+
             services.AddAutoMapper(config => config.AddProfile<ProductProfile>());
             services.AddScoped<IProductService, ProductService>();
             services.AddAutoMapper(config => config.AddProfile<CategoryProfile>());
@@ -24,6 +27,10 @@ namespace InShopBLLayer.Extensions
             services.AddAutoMapper(config => config.AddProfile<UserSessionProfile>());
             services.AddScoped<IOrderService, OrderService>();
             services.AddAutoMapper(config => config.AddProfile<OrderProfile>());
+            services.AddScoped<IEmailVerificationService, EmailVerificationService>();
+            services.AddScoped<IEmailSender, EmailSender>();
+            services.AddScoped<EmailVerificationService>();
+
             return services;
         }
     }

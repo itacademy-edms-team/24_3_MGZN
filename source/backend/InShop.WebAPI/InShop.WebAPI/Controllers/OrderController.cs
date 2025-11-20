@@ -78,5 +78,18 @@ namespace InShop.WebAPI.Controllers
                 return BadRequest(ex.Message);
             }
         }
+        [HttpGet("shipCompanies")]
+        public async Task<IActionResult> GetShipCompanies()
+        {
+            try
+            {
+                var companies = await _orderService.GetAllShipCompanies();
+                return Ok(companies);
+            }
+            catch(Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
     }
 }

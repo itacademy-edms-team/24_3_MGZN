@@ -128,7 +128,7 @@ public partial class AppDbContext : DbContext
         {
             entity.HasKey(e => e.SessionId);
 
-            entity.ToTable("UserSession");
+            entity.ToTable("UserSessions");
 
             entity.Property(e => e.CreatedAt).HasColumnType("datetime");
             entity.Property(e => e.UserIpaddress)

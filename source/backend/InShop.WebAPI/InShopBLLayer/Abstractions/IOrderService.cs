@@ -9,12 +9,15 @@ namespace InShopBLLayer.Abstractions
 {
     public interface IOrderService
     {
-        Task<int> CreateOrder(OrderDto orderDto);
+        Task<int> CreateNewOrder(OrderDto orderDto);
         Task<(int OrderId, int OrderItemId)> AddProductToCart(int productId, int sessionId);
         Task RemoveProductFromCart(int orderItemId);
         Task UpdateOrderItemQuantity(int orderItemId, int quantity);
         Task ClearCart(int sessionId);
         Task<List<CartItemDto>> GetCartBySessionId(int sessionId);
         Task<List<ShipCompanyDto>> GetAllShipCompanies();
+        Task<OrderResponseDto> CreateOrder(CreateOrderRequestDto request);
+        Task<OrderResponseDto?> GetOrderByIdAsync(int orderId);
+        Task<OrderResponseDto?> GetOrderBySessionIdAsync(int sessionId);
     }
 }

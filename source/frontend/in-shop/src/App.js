@@ -12,6 +12,9 @@ import ProductPage from './pages/ProductPage';
 import { CartProvider } from './components/CartContext'; // Импортируем CartProvider
 import SessionHandler from './components/SessionHandler.tsx';
 import CheckoutPage from './pages/CheckoutPage';
+import EmailVerificationPage from './pages/EmailVerificationPage'; // Импортируем новую страницу
+import OrderSuccessPage from './pages/OrderSuccessPage/OrderSuccessPage'; // Импортируем страницу успешного заказа
+import PaymentPage from './pages/PaymentPage';
 
 function App() {
     return (
@@ -34,7 +37,10 @@ function App() {
                             <Route path="/category/:categoryName" element={<CategoryPage />} />
                             {/* Страница товара */}
                             <Route path="/product/:productId" element={<ProductPage />} />
-                            <Route path="/checkout" element={<CheckoutPage />} /> {/* Добавляем маршрут для оформления заказа */}
+                            <Route path="/checkout" element={<CheckoutPage />} /> 
+                            <Route path="/email-verification" element={<EmailVerificationPage />} /> 
+                            <Route path="/order-success" element={<OrderSuccessPage />} />
+                            <Route path="/payment" element={<PaymentPage />} />
                         </Routes>
                     </main>
 

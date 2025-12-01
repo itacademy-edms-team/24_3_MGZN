@@ -6,14 +6,16 @@ using System.Threading.Tasks;
 
 namespace Contracts.Dtos
 {
-    public class OrderItemDto
+    public class OrderItemResponse
     {
+        public int OrderItemId { get; set; }
         public int OrderId { get; set; }
-
         public int ProductId { get; set; }
-
-        public int QuantityItem { get; set; }
-
+        public int Quantity { get; set; }
         public decimal Price { get; set; }
+        public decimal TotalPrice { get; set; }
+
+        // Информация о товаре
+        public ProductDto Product { get; set; } = new();
     }
 }

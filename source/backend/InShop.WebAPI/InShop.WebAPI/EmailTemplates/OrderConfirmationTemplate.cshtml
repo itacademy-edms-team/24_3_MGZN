@@ -1,0 +1,46 @@
+﻿@using InShopBLLayer.Models
+@model OrderConfirmationTemplateModel
+
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f9f9f9; }
+    .header { background-color: #4CAF50; color: white; padding: 20px; text-align: center; }
+    .content { padding: 20px; background-color: white; margin: 20px auto; max-width: 600px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .item { display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid #eee; }
+    .item-image { width: 60px; height: 60px; object-fit: cover; margin-right: 15px; border-radius: 4px; }
+    .item-details { flex: 1; }
+    .item-name { font-weight: bold; margin: 0; }
+    .item-quantity { color: #666; font-size: 0.9em; }
+    .total { font-weight: bold; font-size: 1.2em; margin-top: 20px; text-align: right; }
+    .footer { text-align: center; padding: 20px; color: #777; font-size: 0.9em; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h2>Ваш заказ #@Model.OrderId подтверждён!</h2>
+  </div>
+  <div class="content">
+    <p>Дата заказа: @Model.OrderDate</p>
+    <p>Статус: @Model.OrderStatus</p>
+    <h3>Состав заказа:</h3>
+    <div class="items-list">
+      @foreach (var item in Model.OrderItems)
+      {
+        <div class='item'>
+          <div class='item-details'>
+            <p class='item-name'>@item.ProductName</p>
+            <p class='item-quantity'>@item.QuantityItem шт. × @item.Price = @item.TotalPrice</p>
+          </div>
+        </div>
+      }
+    </div>
+    <p class="total">Итого: @Model.OrderTotalAmount</p>
+    <p>Спасибо за покупку!</p>
+  </div>
+  <div class="footer">
+    &copy; @DateTime.UtcNow.Year My Shop. Все права защищены.
+  </div>
+</body>
+</html>

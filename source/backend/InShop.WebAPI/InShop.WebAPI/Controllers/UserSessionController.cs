@@ -33,7 +33,7 @@ namespace InShop.WebAPI.Controllers
                 CustomerPhoneNumber = "draft",
                 SessionId = sessionId,
             };
-            var orderId = await _orderService.CreateOrder(newOrderDto);
+            var orderId = await _orderService.CreateNewOrder(newOrderDto);
             return Ok(new SessionCreationResult
             {
                 OrderId = orderId,

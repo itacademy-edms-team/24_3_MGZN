@@ -1,8 +1,13 @@
 // src/components/CheckoutForm.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { CartContext } from '../components/CartContext';
 import './CheckoutForm.css';
 
 const CheckoutForm = ({ onSubmit }) => {
+    const { cart } = useContext(CartContext); // Получаем корзину из контекста
+    const navigate = useNavigate(); // Для навигации после оформления заказа
+
     const [formData, setFormData] = useState({
         customerFullName: '',
         customerEmail: '',
@@ -19,7 +24,7 @@ const CheckoutForm = ({ onSubmit }) => {
 
     // Состояния для ошибок валидации
     const [errors, setErrors] = useState({
-        customerFullName: '',
+        customerFullname: '',
         customerEmail: '',
         customerPhoneNumber: '',
         shipAddress: '',
@@ -111,7 +116,7 @@ const CheckoutForm = ({ onSubmit }) => {
         }
 
         // Валидация email
-        if (!validateEmail(formData.customerEmail)) {
+        if (!formData.customerEmail || !validateEmail(formData.customerEmail)) {
             newErrors.customerEmail = 'Введите корректный email (пример: user@example.com)';
             isValid = false;
         }
@@ -137,7 +142,58 @@ const CheckoutForm = ({ onSubmit }) => {
         setErrors(newErrors);
 
         if (isValid) {
-            onSubmit(formData);
+            // Подготовка данных для заказа
+            const orderData = {
+                sessionId: parseInt(localStorage.getItem('sessionId')) || 0,
+                shipCompanyId: formData.shipMethod === 'Служба доставки' ? (formData.shipCompanyId ? parseInt(formData.shipCompanyId) : 1) : 1,
+                shipAddress: formData.shipMethod === 'Самовывоз' ? 'Самовывоз' : formData.shipAddress,
+                shipMethod: formData.shipMethod,
+                payMethod: formData.payMethod,
+                customerFullname: formData.customerFullName,
+                customerEmail: formData.customerEmail,
+                customerPhoneNumber: formData.customerPhoneNumber,
+                orderTotalAmount: parseFloat((cart.reduce((sum, item) => sum + (item.productPrice * item.quantity), 0) + (formData.shipMethod === 'Служба доставки' ? 1500 : 0)).toFixed(2)),
+                orderItems: cart.map(item => ({
+                    productId: item.productId,
+                    productName: item.productName,
+                    quantityItem: item.quantity,
+                    price: parseFloat(item.productPrice.toFixed(2))
+                })),
+                shipCompanyName: formData.shipMethod === 'Служба доставки' ? 
+                    shipCompanies.find(company => company.shipCompanyId === parseInt(formData.shipCompanyId))?.shipCompanyName : 
+                    'Самовывоз'
+            };
+            
+            // Сохранение данных заказа в локальном хранилище
+            try {
+                localStorage.setItem('orderData', JSON.stringify(orderData));
+                console.log('Данные заказа успешно сохранены в localStorage:', orderData);
+            } catch (error) {
+                console.error('Ошибка при сохранении данных в localStorage:', error);
+            }
+            
+            // Отправка запроса на отправку email с кодом подтверждения
+            fetch('https://localhost:7275/api/Verification/send-code', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email: formData.customerEmail
+                })
+            })
+            .then(response => {
+                if (!response.ok) throw new Error(`Ошибка ${response.status}: ${response.statusText}`);
+                return response.json();
+            })
+            .then(data => {
+                // Перенаправление на страницу подтверждения электронной почты
+                navigate('/email-verification', { state: { email: formData.customerEmail } });
+            })
+            .catch(err => {
+                console.error('Ошибка отправки email с кодом:', err);
+                alert('Не удалось отправить код подтверждения. Проверьте соединение с интернетом.');
+            });
         } else {
             // Прокручиваем к первому полю с ошибкой
             const firstErrorField = Object.keys(newErrors)[0];
@@ -153,7 +209,7 @@ const CheckoutForm = ({ onSubmit }) => {
 
     return (
         <form onSubmit={handleSubmit} className="checkout-form">
-            <h2>Покупатель</h2>
+            <h2>Данные заказа</h2>
             
             <div className="form-group">
                 <label>ФИО</label>
@@ -165,7 +221,7 @@ const CheckoutForm = ({ onSubmit }) => {
                     placeholder="Иванов Иван Иванович"
                     required
                 />
-                {errors.customerFullName && <p className="error-message">{errors.customerFullName}</p>}
+                {errors.customerFullname && <p className="error-message">{errors.customerFullname}</p>}
             </div>
 
             <div className="form-group">
@@ -204,7 +260,7 @@ const CheckoutForm = ({ onSubmit }) => {
                     onChange={handleChange}
                 >
                     <option key="online" value="Онлайн">Онлайн</option>
-                    <option key="cash" value="Наличными">Наличными при получении</option>
+                    <option key="cash" value="Наличными при получении">Наличными при получении</option>
                 </select>
             </div>
 
@@ -260,6 +316,20 @@ const CheckoutForm = ({ onSubmit }) => {
                 </div>
             )}
 
+            <div className="order-summary">
+                <div className="order-total">
+                    <span>Стоимость товаров:</span>
+                    <span>{cart.reduce((sum, item) => sum + (item.productPrice * item.quantity), 0).toFixed(2)} ₽</span>
+                </div>
+                <div className="order-total">
+                    <span>Доставка:</span>
+                    <span>{formData.shipMethod === 'Служба доставки' ? '1500.00 ₽' : 'Самовывоз'}</span>
+                </div>
+                <div className="order-total">
+                    <span>Итого к оплате:</span>
+                    <span>{parseFloat((cart.reduce((sum, item) => sum + (item.productPrice * item.quantity), 0) + (formData.shipMethod === 'Служба доставки' ? 1500 : 0)).toFixed(2))} ₽</span>
+                </div>
+            </div>
             <button type="submit" className="submit-button">
                 Оформить заказ
             </button>

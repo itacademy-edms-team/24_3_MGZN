@@ -14,38 +14,7 @@ const CheckoutPage = () => {
     // Общая сумма заказа
     const totalAmount = cart.reduce((sum, item) => sum + (item.productPrice * item.quantity), 0);
 
-    // Обработчик отправки формы
-    const handleSubmit = async (formData) => {
-        try {
-            const sessionId = localStorage.getItem('sessionId');
-            if (!sessionId) throw new Error('SessionId не найден.');
-
-            // Здесь вы отправляете данные на бэкенд
-            await fetch('https://localhost:7275/api/Order/checkout', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    sessionId,
-                    ...formData,
-                    items: cart.map(item => ({
-                        productId: item.productId,
-                        quantity: item.quantity,
-                        price: item.productPrice
-                    })),
-                    totalAmount
-                })
-            });
-
-            // После успешной отправки перенаправляем на страницу подтверждения
-            alert('Заказ успешно оформлен!');
-            navigate('/order-success');
-        } catch (err) {
-            console.error('Ошибка оформления заказа:', err);
-            alert('Не удалось оформить заказ.');
-        }
-    };
+    
 
     return (
         <div className="checkout-page">
@@ -55,7 +24,7 @@ const CheckoutPage = () => {
                 {/* Левая колонка: Форма и список товаров */}
                 <div className="checkout-left">
                     {/* Форма оформления заказа */}
-                    <CheckoutForm onSubmit={handleSubmit} />
+                    <CheckoutForm />
                     
                 </div>
                 {/* Правая колонка: Итоговая стоимость */}
@@ -82,25 +51,6 @@ const CheckoutPage = () => {
                                 ))}
                             </div>
                         )}
-                    </div>
-                    <div className="summary-box">
-                        <h3>Стоимость заказа</h3>
-                        <div className="summary-row">
-                            <span>Товары ({cart.length})</span>
-                            <span>{totalAmount.toFixed(2)} ₽</span>
-                        </div>
-                        <div className="summary-row">
-                            <span>Доставка</span>
-                            <span>1500 ₽</span>
-                        </div>
-                        <div className="summary-row">
-                            <span>Скидка</span>
-                            <span>-0 ₽</span>
-                        </div>
-                        <div className="summary-row">
-                            <span>Итого</span>
-                            <strong>{(totalAmount + 1500).toFixed(2)} ₽</strong>
-                        </div>
                     </div>
                 </div>
             </div>

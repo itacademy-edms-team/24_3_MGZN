@@ -18,16 +18,17 @@ namespace InShopDbModels.Repositories
         {
             _appDbContext = context;
         }
-        public async Task<int> CreateOrder(Order order)
+        public async Task<int> CreateNewOrder(Order order)
         {
             await _appDbContext.Orders.AddAsync(order);
             await _appDbContext.SaveChangesAsync();
             return order.OrderId;
         }
-        public async Task UpdateOrder(Order order)
+        public async Task<Order> UpdateOrder(Order order)
         {
             _appDbContext.Orders.Update(order);
             await _appDbContext.SaveChangesAsync();
+            return order;
         }
         public async Task<Order> GetDraftOrderBySessionId(int sessionId)
         {
@@ -71,10 +72,6 @@ namespace InShopDbModels.Repositories
                 await _appDbContext.SaveChangesAsync();
             }
         }
-        public async Task<Order> GetOrderById(int orderId)
-        {
-            return await _appDbContext.Orders.FindAsync(orderId);
-        }
         public async Task DeleteAllOrderItems(int orderId)
         {
             var items = await _appDbContext.OrderItems
@@ -93,6 +90,28 @@ namespace InShopDbModels.Repositories
         public async Task<List<ShipCompany>> GetAllShipCompanies()
         {
             return await _appDbContext.ShipCompanies.ToListAsync();
+        }
+
+        public async Task<Order> CreateOrder(Order order)
+        {
+            _appDbContext.Orders.Add(order);
+            await _appDbContext.SaveChangesAsync();
+            return order;
+        }
+
+        public async Task<Order?> GetOrderById(int orderId)
+        {
+            return await _appDbContext.Orders
+                .Include(o => o.OrderItems)
+                .ThenInclude(oi => oi.Product)
+                .FirstOrDefaultAsync(o => o.OrderId == orderId);
+        }
+        public async Task<Order?> GetOrderBySessionIdAsync(int sessionId)
+        {
+            return await _appDbContext.Orders
+                .Include(o => o.OrderItems)
+                .ThenInclude(oi => oi.Product)
+                .FirstOrDefaultAsync(o => o.SessionId == sessionId);
         }
     }
 }

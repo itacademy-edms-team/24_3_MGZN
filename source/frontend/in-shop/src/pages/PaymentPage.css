@@ -1,0 +1,163 @@
+/* PaymentPage.css */
+
+.payment-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #ffffff;
+  padding: 20px;
+}
+
+.payment-container {
+  width: 100%;
+  max-width: 600px;
+  border: 2px solid #000000;
+  padding: 48px;
+  background-color: #ffffff;
+}
+
+.payment-container h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin: 0 0 32px 0;
+  color: #000000;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+
+.order-summary {
+  border: 2px solid #000000;
+  padding: 24px;
+  margin-bottom: 32px;
+  background-color: #f5f5f5;
+}
+
+.order-summary p {
+  margin: 12px 0;
+  font-size: 1rem;
+  color: #000000;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.order-summary strong {
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.875rem;
+  letter-spacing: 0.05em;
+  color: #666666;
+}
+
+/* --- Новые стили для формы --- */
+.payment-form {
+  margin-bottom: 32px;
+}
+
+.payment-form h2 {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 24px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #000000;
+}
+
+.form-group {
+  margin-bottom: 16px; /* Расстояние между полями */
+}
+
+.form-group label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #333;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 12px 16px; /* Внутренний отступ */
+  border: 2px solid #000000; /* Граница */
+  font-size: 1rem;
+  background-color: #ffffff;
+  box-sizing: border-box; /* Учитываем padding в ширине */
+  transition: border-color 0.2s ease;
+}
+
+.form-group input:focus {
+  outline: none; /* Убираем стандартный outline */
+  border-color: #333; /* Цвет границы при фокусе */
+}
+
+.form-row {
+  display: flex;
+  gap: 16px; /* Расстояние между полями в строке */
+}
+
+.form-row .form-group {
+  flex: 1; /* Поля в строке занимают равное место */
+}
+
+/* --- /Новые стили для формы --- */
+
+.payment-actions {
+  display: flex;
+  gap: 16px;
+  padding-top: 32px; /* Отступ сверху */
+  /* border-top: 2px solid #000000; Убрана верхняя граница */
+}
+
+.pay-button,
+.cancel-button {
+  flex: 1;
+  height: 56px;
+  font-size: 1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  border: 2px solid #000000;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pay-button {
+  background-color: #000000;
+  color: #ffffff;
+}
+
+.pay-button:hover {
+  background-color: #333333;
+}
+
+.cancel-button {
+  background-color: #ffffff;
+  color: #000000;
+}
+
+.cancel-button:hover {
+  background-color: #f5f5f5;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .payment-container {
+    padding: 32px 24px;
+  }
+
+  .payment-container h1 {
+    font-size: 2rem;
+  }
+
+  .form-row {
+    flex-direction: column; /* На мобильных устройствах поля в столбец */
+    gap: 0;
+  }
+
+  .payment-actions {
+    flex-direction: column;
+  }
+}

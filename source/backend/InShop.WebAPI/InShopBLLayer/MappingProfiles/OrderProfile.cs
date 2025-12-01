@@ -14,6 +14,13 @@ namespace InShopBLLayer.MappingProfiles
         public OrderProfile()
         {
             this.CreateMap<OrderDto, Order>().ReverseMap();
+            CreateMap<CreateOrderRequestDto, Order>()
+            .ForMember(dest => dest.OrderItems, opt => opt.MapFrom(src => src.OrderItems));
+
+            CreateMap<CreateOrderItemRequest, OrderItem>();
+
+            CreateMap<Order, OrderResponseDto>();
+            CreateMap<OrderItem, OrderItemResponse>();
         }
     }
 }

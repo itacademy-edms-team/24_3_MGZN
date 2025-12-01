@@ -91,5 +91,39 @@ namespace InShop.WebAPI.Controllers
                 return BadRequest(ex.Message);
             }
         }
+        [HttpPost("checkout")]
+        public async Task<IActionResult> CreateOrder([FromBody] CreateOrderRequestDto request)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            try
+            {
+                Console.WriteLine($"Получено OrderItems: {request.OrderItems.Count}");
+                foreach (var item in request.OrderItems)
+                {
+                    Console.WriteLine($"  ProductId: {item.ProductId}, QuantityItem: {item.QuantityItem}, Price: {item.Price}");
+                }
+                var response = await _orderService.CreateOrder(request);
+                return Ok(response); // Не CreatedAtAction, т.к. мы обновляем существующий заказ
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "Ошибка при оформлении заказа.", details = ex.Message });
+            }
+        }
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetOrderById(int id)
+        {
+            var order = await _orderService.GetOrderByIdAsync(id);
+            if (order == null)
+                return NotFound();
+
+            return Ok(order);
+        }
     }
 }

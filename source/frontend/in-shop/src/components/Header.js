@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { CartContext } from '../components/CartContext';
 import './Header.css';
 
+
 const Header = () => {
     const { openCart, cart } = useContext(CartContext);
     const totalQuantity = cart.reduce((total, item) => total + item.quantity, 0);

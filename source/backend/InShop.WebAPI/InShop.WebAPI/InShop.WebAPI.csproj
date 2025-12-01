@@ -6,6 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>11e8a7d2-8aee-455a-90c0-2de79b169385</UserSecretsId>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+	<PreserveCompilationContext>true</PreserveCompilationContext>
   </PropertyGroup>
 
   <ItemGroup>
@@ -22,6 +23,17 @@
 
   <ItemGroup>
     <Folder Include="wwwroot\images\" />
+    <Folder Include="Новая папка\" />
   </ItemGroup>
-
+  <ItemGroup>
+	 <None Include="EmailTemplates\**">
+	 <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	 </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Update="EmailTemplates\OrderConfirmationTemplate.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+	
 </Project>

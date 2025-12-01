@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using InShopBLLayer.Services;
 using Contracts.Dtos;
+using InShopBLLayer.Abstractions;
 
 namespace InShop.WebAPI.Controllers
 {
@@ -8,9 +9,9 @@ namespace InShop.WebAPI.Controllers
     [Route("api/[controller]")]
     public class VerificationController : ControllerBase
     {
-        private readonly EmailVerificationService _verificationService;
+        private readonly IEmailVerificationService _verificationService;
 
-        public VerificationController(EmailVerificationService verificationService)
+        public VerificationController(IEmailVerificationService verificationService)
         {
             _verificationService = verificationService;
         }

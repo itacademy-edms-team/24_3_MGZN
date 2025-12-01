@@ -6,14 +6,10 @@ using System.Threading.Tasks;
 
 namespace Contracts.Dtos
 {
-    public class OrderItemDto
+    public class CreateOrderItemRequest
     {
-        public int OrderId { get; set; }
-
         public int ProductId { get; set; }
-
         public int QuantityItem { get; set; }
-
         public decimal Price { get; set; }
     }
 }

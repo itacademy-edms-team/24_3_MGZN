@@ -15,14 +15,20 @@ namespace InShopBLLayer.Services
 
         public EmailSender(IConfiguration config)
         {
-            _smtpServer = config["Email:SmtpServer"];
-            _port = int.Parse(config["Email:Port"]);
-            _username = config["Email:Username"];
-            _password = config["Email:Password"];
+            _smtpServer = config["Email:SmtpServer"] ?? throw new InvalidOperationException("Email:SmtpServer не задан в appsettings.json");
+            _username = config["Email:Username"] ?? throw new InvalidOperationException("Email:Username не задан в appsettings.json");
+            _password = config["Email:Password"] ?? throw new InvalidOperationException("Email:Password не задан в appsettings.json");
+
+            var portStr = config["Email:Port"];
+            if (string.IsNullOrEmpty(portStr) || !int.TryParse(portStr, out var port))
+                throw new InvalidOperationException("Email:Port не задан или не является числом в appsettings.json");
+
+            _port = port;
         }
 
         public async Task SendAsync(string to, string subject, string body)
         {
+            Console.WriteLine($"Отправка письма на {to} с темой {subject}, длина тела: {body.Length}"); // <-- Добавьте лог
             using var client = new SmtpClient(_smtpServer, _port)
             {
                 EnableSsl = true,
@@ -39,6 +45,7 @@ namespace InShopBLLayer.Services
             mail.To.Add(to);
 
             await client.SendMailAsync(mail);
+            Console.WriteLine("Письмо успешно отправлено."); // <-- Добавьте лог
         }
     }
 }

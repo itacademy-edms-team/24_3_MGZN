@@ -1,0 +1,14 @@
+{
+  "shipCompanies": [
+    {
+      "shipCompanyId": 1,
+      "shipCompanyName": "СДЭК",
+      "contact": "Контактная информация"
+    },
+    {
+      "shipCompanyId": 2,
+      "shipCompanyName": "Почта России",
+      "contact": "Контактная информация"
+    }
+  ]
+}

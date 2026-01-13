@@ -5,6 +5,7 @@
     align-items: center; /* Центрируем элементы по горизонтали */
     min-height: 100vh; /* Гарантируем, что контейнер занимает всю высоту экрана */
     padding: 20px; /* Добавляем небольшой отступ вокруг всего содержимого */
+    
 }
 
 .catalog-title {
@@ -34,12 +35,15 @@
 
 .category-card {
     background-color: #fff;
-    border-radius: 8px;
+    border-radius: 20px;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     overflow: hidden;
     text-align: center;
     transition: transform 0.3s ease;
     cursor: pointer;
+    font-family: 'Open Sans', sans-serif;
+    font-weight: bolder;
+    font-size: larger;
 
     /* Увеличиваем размер карточки */
     width: 300px; /* Увеличиваем ширину */
@@ -64,4 +68,5 @@
 
 .category-card:hover {
     transform: scale(1.05);
+    box-shadow: 0 8px 20px rgba(0, 139, 139, 0.4);
 }

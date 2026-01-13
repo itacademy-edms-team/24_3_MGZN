@@ -15,6 +15,7 @@ import CheckoutPage from './pages/CheckoutPage';
 import EmailVerificationPage from './pages/EmailVerificationPage'; // Импортируем новую страницу
 import OrderSuccessPage from './pages/OrderSuccessPage/OrderSuccessPage'; // Импортируем страницу успешного заказа
 import PaymentPage from './pages/PaymentPage';
+import PaymentConfirmationPage from './pages/PaymentConfirmationPage/PaymentConfirmationPage';
 
 function App() {
     return (
@@ -41,6 +42,7 @@ function App() {
                             <Route path="/email-verification" element={<EmailVerificationPage />} /> 
                             <Route path="/order-success" element={<OrderSuccessPage />} />
                             <Route path="/payment" element={<PaymentPage />} />
+                            <Route path="/payment-confirmation" element={<PaymentConfirmationPage />} />
                         </Routes>
                     </main>
 

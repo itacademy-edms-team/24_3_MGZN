@@ -1,0 +1,14 @@
+{
+  "categories": [
+    {
+      "categoryId": 1,
+      "categoryName": "Аудио",
+      "imageUrl": "/images/audio.jpg"
+    },
+    {
+      "categoryId": 2,
+      "categoryName": "Смартфоны",
+      "imageUrl": "/images/smartphones.jpg"
+    }
+  ]
+}

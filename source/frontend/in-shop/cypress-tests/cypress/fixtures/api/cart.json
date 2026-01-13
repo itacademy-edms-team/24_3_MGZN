@@ -1,0 +1,17 @@
+{
+  "cart": [
+    {
+      "productId": 1,
+      "productName": "AirPods 2",
+      "productPrice": 20000,
+      "quantity": 1
+    },
+    {
+      "productId": 2,
+      "productName": "IPhone 14",
+      "productPrice": 80000,
+      "quantity": 1
+    }
+  ],
+  "totalAmount": 100000
+}

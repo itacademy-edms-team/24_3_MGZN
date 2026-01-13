@@ -1,22 +1,35 @@
 .breadcrumb {
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: 10px; /* немного увеличен отступ для лучшего восприятия */
     font-size: 1em;
-    color: #333; /* Цвет текста */
-    margin-bottom: 20px; /* Отступ снизу */
+    color: #333;
+    margin-bottom: 20px;
+    flex-wrap: wrap; /* если путь длинный — элементы могут переноситься */
 }
 
 .breadcrumb a {
     text-decoration: none;
-    color: #333; /* Цвет ссылок */
-    transition: color 0.3s ease;
+    color: #000000; /* более стандартный цвет для ссылок */
+    transition: color 0.3s ease, background 0.3s ease;
+    padding: 2px 6px; /* чтобы было легче навести/кликнуть */
+    border-radius: 4px; /* лёгкий радиус для красоты */
 }
 
 .breadcrumb a:hover {
-    color: #ff4d4d; /* Цвет при наведении */
+    color: #ff4d4d; /* ваш цвет при наведении */
+    background-color: rgba(255, 77, 77, 0.1); /* лёгкий фон при наведении */
 }
 
 .breadcrumb span {
-    color: #555; /* Цвет текущего раздела */
+    color: #6c757d; /* серый цвет для текущего элемента */
+    font-weight: 500; /* сделать его чуть выразительнее */
+}
+
+/* Добавляем разделители между элементами */
+.breadcrumb a:not(:last-child)::after {
+    content: "›"; /* можно заменить на ">", "»", "/" или "•" */
+    margin-left: 10px;
+    color: #aaa; /* цвет разделителя */
+    font-size: 0.9em;
 }

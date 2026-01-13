@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InShopBLLayer", "InShopBLLa
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Contracts", "Contracts\Contracts.csproj", "{0A6FA430-2B7A-425A-BADA-C99D2D984E0B}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PaymentsAPI", "PaymentsAPI\PaymentsAPI.csproj", "{CAC35B20-2B6D-463A-B6E8-7FEB14295819}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -33,6 +35,10 @@ Global
 		{0A6FA430-2B7A-425A-BADA-C99D2D984E0B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0A6FA430-2B7A-425A-BADA-C99D2D984E0B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0A6FA430-2B7A-425A-BADA-C99D2D984E0B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CAC35B20-2B6D-463A-B6E8-7FEB14295819}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CAC35B20-2B6D-463A-B6E8-7FEB14295819}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CAC35B20-2B6D-463A-B6E8-7FEB14295819}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CAC35B20-2B6D-463A-B6E8-7FEB14295819}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

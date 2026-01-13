@@ -1,3 +1,4 @@
+using InShop.WebAPI.Services;
 using InShopBLLayer.Extensions;
 using InShopDbModels.Extensions;
 
@@ -8,6 +9,9 @@ namespace InShop.WebAPI
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+
+            // Добавляем IHttpClientFactory (это делает AddHttpClient)
+            builder.Services.AddHttpClient();
 
             //CORS
             builder.Services.AddCors(options =>
@@ -24,6 +28,8 @@ namespace InShop.WebAPI
 
             builder.Services.AddInShopRepositories(connectionString);
             builder.Services.AddInShopServices();
+
+            builder.Services.AddSingleton<PaymentProcessingService>();
 
             // Add services to the container.
 

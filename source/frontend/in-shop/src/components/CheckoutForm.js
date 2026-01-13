@@ -61,14 +61,14 @@ const CheckoutForm = ({ onSubmit }) => {
     // Функция валидации телефона
     const validatePhone = (phone) => {
         // Регулярное выражение для проверки разных форматов телефона
-        const phoneRegex = /^(\+7|8)?[\s\-]?\(?[0-9]{3}\)?[\s\-]?[0-9]{3}[\s\-]?[0-9]{2}[\s\-]?[0-9]{2}$/;
+        const phoneRegex = /^(\+7|8)?[\s-]?\(?[0-9]{3}\)?[\s-]?[0-9]{3}[\s-]?[0-9]{2}[\s-]?[0-9]{2}$/;
         return phoneRegex.test(phone);
     };
 
     // Функция валидации ФИО (гибкая)
     const validateFullName = (name) => {
         // Регулярное выражение для проверки ФИО (3 слова с возможными дефисами и пробелами)
-        const fullNameRegex = /^[А-ЯЁ][а-яё\-]+\s+[А-ЯЁ][а-яё\-]+\s+[А-ЯЁ][а-яё\-]+$/;
+        const fullNameRegex = /^[А-ЯЁ][а-яё-]+\s+[А-ЯЁ][а-яё-]+\s+[А-ЯЁ][а-яё-]+$/;
         return fullNameRegex.test(name.trim());
     };
 
@@ -78,10 +78,55 @@ const CheckoutForm = ({ onSubmit }) => {
     };
 
     const handleChange = (e) => {
-        const { name, value } = e.target;
+    const { name, value } = e.target;
+
+    if (name === 'customerPhoneNumber') {
+        // Форматирование номера телефона
+        let formattedValue = value.replace(/\D/g, ''); // Убираем все не-цифры
+
+        // Если введено больше 11 цифр, оставляем только первые 11
+        if (formattedValue.length > 11) {
+            formattedValue = formattedValue.slice(0, 11);
+        }
+
+        // Применяем формат +7 (999) 999-99-99
+        let formattedOutput = '';
+        if (formattedValue.length > 0) {
+            formattedOutput = '+7 '; // Всегда добавляем +7
+        }
+        if (formattedValue.length > 1) {
+            // Берём 3 цифры после +7
+            formattedOutput += `(${formattedValue.substring(1, 4)}`;
+            if (formattedValue.length > 4) {
+                formattedOutput += `) ${formattedValue.substring(4, 7)}`;
+                if (formattedValue.length > 7) {
+                    formattedOutput += `-${formattedValue.substring(7, 9)}`;
+                    if (formattedValue.length > 9) {
+                        formattedOutput += `-${formattedValue.substring(9, 11)}`;
+                    }
+                }
+            }
+        }
+
+        setFormData(prev => ({ ...prev, [name]: formattedOutput }));
+
+        // Валидация
+        if (formattedValue.length !== 11) {
+            setErrors(prev => ({
+                ...prev,
+                customerPhoneNumber: 'Введите корректный номер телефона (+79999999999, +7 (999) 999 99 99, 89999999999)'
+            }));
+        } else {
+            setErrors(prev => ({
+                ...prev,
+                customerPhoneNumber: ''
+            }));
+        }
+    } else {
+        // Для остальных полей
         setFormData(prev => ({ ...prev, [name]: value }));
 
-    // Валидация в реальном времени
+        // Валидация в реальном времени (для ФИО)
         if (name === 'customerFullName') {
             if (value && !validateFullName(value)) {
                 setErrors(prev => ({
@@ -100,7 +145,8 @@ const CheckoutForm = ({ onSubmit }) => {
         if (errors[name]) {
             setErrors(prev => ({ ...prev, [name]: '' }));
         }
-    };
+    }
+};
 
     const handleSubmit = (e) => {
         e.preventDefault();

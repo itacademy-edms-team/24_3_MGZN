@@ -29,6 +29,7 @@ namespace InShopBLLayer.Extensions
             services.AddAutoMapper(config => config.AddProfile<OrderProfile>());
             services.AddScoped<IEmailVerificationService, EmailVerificationService>();
             services.AddScoped<IEmailSender, EmailSender>();
+            services.AddScoped<IPaymentStatusService, PaymentStatusService>();
 
             return services;
         }

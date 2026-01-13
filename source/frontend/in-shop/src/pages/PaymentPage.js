@@ -16,7 +16,7 @@ const PaymentPage = () => {
     const [cvv, setCvv] = useState('');
     const [cardholderName, setCardholderName] = useState('');
 
-    const handlePayment = () => {
+    const handlePayment = async () => {
         // Здесь будет логика оплаты (например, вызов API)
         // Проверим, все ли поля заполнены
         if (!cardNumber || !expiryDate || !cvv || !cardholderName) {
@@ -43,18 +43,54 @@ const PaymentPage = () => {
             return;
         }
 
-        // Пример отправки данных на сервер (заглушка)
-        console.log({
-            orderData,
+        // Подготовка данных для отправки
+        const paymentData = {
+            orderId: parseInt(localStorage.unpayedOrderId),
             cardNumber: cleanCardNumber,
             expiryDate,
             cvv,
             cardholderName
-        });
+        };
 
-        alert('Платёж обрабатывается...');
-        // После оплаты можно перенаправить на страницу успеха или уведомления
-        // navigate('/payment-success');
+        console.log("Отправляемые данные:", paymentData);
+
+        
+        console.log("DEBUG: localStorage.unpayedOrderId =", localStorage.unpayedOrderId);
+        console.log("DEBUG: typeof localStorage.unpayedOrderId =", typeof localStorage.unpayedOrderId);
+        console.log("DEBUG: paymentData.orderId =", paymentData.orderId);
+        console.log("DEBUG: typeof paymentData.orderId =", typeof paymentData.orderId);
+        console.log("DEBUG: isNaN(paymentData.orderId) =", isNaN(paymentData.orderId));
+        
+
+        if (isNaN(paymentData.orderId)) {
+            alert('Ошибка: не удалось получить ID заказа для оплаты. Он равен NaN.');
+            return;
+        }
+
+        try {
+            const response = await fetch('https://localhost:7275/api/Payment/process', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(paymentData),
+            });
+
+            console.log("Ответ от API:", response);
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                console.error("Ошибка от API:", errorData);
+                alert(`Ошибка оплаты: ${errorData.message || 'Неизвестная ошибка'}`);
+                return;
+            }
+
+            console.log("Успешный ответ, перенаправляем...");
+            // Успешно отправлено, перенаправляем
+            navigate('/payment-confirmation', { state: { orderId: paymentData.orderId } });
+
+        } catch (error) {
+            console.error('Ошибка при отправке данных оплаты:', error);
+            alert('Ошибка при отправке данных оплаты. Проверьте соединение с интернетом.');
+        }
     };
 
     const handleCancel = () => {

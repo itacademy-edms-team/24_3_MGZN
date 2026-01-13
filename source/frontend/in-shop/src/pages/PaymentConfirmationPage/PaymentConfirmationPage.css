@@ -1,0 +1,111 @@
+/* PaymentConfirmationPage.css */
+
+.payment-confirmation-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #ffffff;
+  padding: 20px;
+}
+
+.confirmation-container {
+  width: 100%;
+  max-width: 600px;
+  border: 2px solid #000000;
+  padding: 48px;
+  background-color: #ffffff;
+  text-align: center;
+}
+
+.confirmation-container h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin: 0 0 32px 0;
+  color: #000000;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+
+.confirmation-container p {
+  font-size: 1rem;
+  color: #000000;
+  margin: 8px 0;
+}
+
+/* Стили для иконки успеха */
+.success-icon {
+  font-size: 4rem;
+  color: #00c853; /* Зелёный цвет */
+  margin-bottom: 24px;
+  display: block;
+}
+
+/* Стили для спиннера загрузки */
+.loading-spinner {
+  width: 60px;
+  height: 60px;
+  border: 6px solid #f3f3f3; /* Светлый фон */
+  border-top: 6px solid #000000; /* Чёрный верх */
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 24px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Стили для кнопок */
+.back-button,
+.done-button {
+  height: 56px;
+  font-size: 1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  border: 2px solid #000000;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0 24px;
+  margin-top: 24px;
+}
+
+.back-button {
+  background-color: #ffffff;
+  color: #000000;
+}
+
+.back-button:hover {
+  background-color: #f5f5f5;
+}
+
+.done-button {
+  background-color: #000000;
+  color: #ffffff;
+}
+
+.done-button:hover {
+  background-color: #333333;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .confirmation-container {
+    padding: 32px 24px;
+  }
+
+  .confirmation-container h1 {
+    font-size: 2rem;
+  }
+
+  .success-icon {
+    font-size: 3rem;
+  }
+
+  .loading-spinner {
+    width: 50px;
+    height: 50px;
+  }
+}

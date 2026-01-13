@@ -15,7 +15,14 @@ const OrderSuccessPage = () => {
         console.log('Полученные данные из localStorage:', storedOrderData);
         if (storedOrderData) {
             try {
-                setOrderData(JSON.parse(storedOrderData));
+                const parsedData = JSON.parse(storedOrderData);
+                setOrderData(parsedData);
+                // Сохраняем ID заказа в localStorage под ключом unpayedOrderId
+                const orderIdToSave = localStorage.orderId - 1;
+                if (orderIdToSave) {
+                    localStorage.setItem('unpayedOrderId', orderIdToSave.toString());
+                    console.log('unpayedOrderId сохранён в localStorage:', orderIdToSave);
+                }
                 console.log('Данные заказа успешно загружены:', JSON.parse(storedOrderData));
             } catch (error) {
                 console.error('Ошибка при парсинге данных заказа:', error);
@@ -44,8 +51,21 @@ const OrderSuccessPage = () => {
     }
 
     const handlePayNow = () => {
-        // Переход на страницу оплаты с передачей данных заказа
-        navigate('/payment', { state: { orderData } });
+        // Получаем ID заказа из localStorage
+        const unpayedOrderId = localStorage.getItem('unpayedOrderId');
+        if (!unpayedOrderId) {
+            alert('Не удалось получить ID заказа для оплаты.');
+            return;
+        }
+
+        // Подготовим данные для передачи в state
+        const orderDataToSend = {
+            ...orderData,
+            orderId: parseInt(unpayedOrderId) // Заменяем orderId на сохранённый unpayedOrderId
+        };
+
+        // Переход на страницу оплаты с передачей обновлённых данных заказа
+        navigate('/payment', { state: { orderData: orderDataToSend } });
     };
 
     // Расчет стоимости доставки

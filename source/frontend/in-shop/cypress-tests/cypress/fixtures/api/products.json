@@ -1,0 +1,22 @@
+{
+  "products": [
+    {
+      "productId": 1,
+      "productName": "AirPods 2",
+      "productPrice": 20000,
+      "productDescription": "Беспроводные наушники",
+      "productAvailability": true,
+      "productCategoryId": 1,
+      "imageUrl": "/images/airpods2.jpg"
+    },
+    {
+      "productId": 2,
+      "productName": "IPhone 14",
+      "productPrice": 80000,
+      "productDescription": "Смартфон",
+      "productAvailability": true,
+      "productCategoryId": 2,
+      "imageUrl": "/images/iphone14.jpg"
+    }
+  ]
+}

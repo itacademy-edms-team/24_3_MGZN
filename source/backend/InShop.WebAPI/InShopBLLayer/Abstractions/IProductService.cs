@@ -14,6 +14,6 @@ namespace InShopBLLayer.Abstractions
         Task CreateProduct(ProductCreateDto productDto);
         Task UpdateProduct(ProductDto productDto);
         Task DeleteProduct(int id);
-        Task<IEnumerable<ProductDto>> GetProductsByCategoryName(string categoryName);
+        Task<IEnumerable<ProductDto>> GetProductsByCategoryName(string categoryName, string sortBy = "ProductName", string sortOrder = "asc");
     }
 }

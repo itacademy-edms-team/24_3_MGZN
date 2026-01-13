@@ -5,21 +5,21 @@
 }
 
 .placeholder-svg {
-    width: 40%; /* Устанавливаем размер */
-    height: auto; /* Сохраняем пропорции */
-    margin: auto; /* Центрируем по вертикали и горизонтали */
+    width: 40%; 
+    height: auto;
+    margin: auto;
 }
 
 /* Стили для списка товаров */
 .products-list {
     display: flex;
-    flex-wrap: wrap; /* Разрешаем перенос карточек на новую строку */
-    justify-content: flex-start; /* Выравнивание карточек по левому краю */
-    gap: 30px; /* Увеличенное расстояние между карточками */
-    list-style-type: none; /* Убираем маркеры списка */
-    padding: 0; /* Убираем внутренние отступы */
-    max-width: 1400px; /* Ограничиваем максимальную ширину контейнера */
-    margin: 0 auto; /* Центрируем контейнер */
+    flex-wrap: wrap; 
+    justify-content: flex-start; 
+    gap: 30px; 
+    list-style-type: none; 
+    padding: 0; 
+    max-width: 1400px; 
+    margin: 0 auto; 
 }
 
 .product-card {
@@ -30,51 +30,194 @@
     text-align: center;
     transition: transform 0.3s ease;
     cursor: pointer;
-
-    /* Увеличенная фиксированная ширина и высота */
     width: 320px; /* Было 250px */
     height: 380px; /* Было 300px */
-
-    /* Используем Flexbox для вертикального выравнивания */
     display: flex;
     flex-direction: column;
-    justify-content: space-between; /* Текст будет прижат к низу */
+    justify-content: space-between; 
 }
 
 .product-content {
     display: flex;
     flex-direction: column;
-    height: 100%; /* Высота контейнера равна высоте карточки */
+    height: 100%; 
 }
 
 .product-info {
     display: flex;
     flex-direction: column;
-    align-items: center; /* Выравнивание текста по центру */
-    margin-top: auto; /* Прижимает текст к низу */
+    align-items: center; 
+    margin-top: auto; 
 }
 
 .product-card img {
-    width: 100%; /* Изображение занимает всю ширину карточки */
-    height: 250px; /* Увеличена высота изображения */
-    object-fit: cover; /* Обрезка изображения, если необходимо */
+    width: 100%; 
+    height: 250px; 
+    object-fit: cover; 
     margin-bottom: -20px;
 }
 
 .product-card h3 {
-    font-size: 1.4em; /* Увеличен размер заголовка */
+    font-size: 1.4em; 
     margin: 0;
-    padding: 0 20px; /* Добавляем внутренние отступы для текста */
+    padding: 0 20px; 
 }
 
 .product-card p {
-    font-size: 1.1em; /* Увеличен размер цены */
+    font-size: 1.1em; 
     font-weight: bold;
     color: #333;
     margin: 0;
-    padding: 5px 10px; /* Увеличены отступы */
+    padding: 5px 10px; 
 }
 
 .product-card:hover {
-    transform: scale(1.03); /* Немного меньшее увеличение, чтобы не перегружать */
+    transform: scale(1.03); 
+}
+
+/* Стили для меню сортировки */
+.div__sort-menu {
+    display: flex;
+    align-items: flex-start;
+    margin-left: 200px;
+}
+.sort-menu {
+    position: relative;
+    display: inline-block;
+    margin: 1rem;
+}
+
+.sort-menu-header {
+    background-color: #f0f0f0;
+    padding: 8px 16px;
+    border-radius: 7px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    font-size: 14px;
+    user-select: none;
+    gap: 8px;
+}
+
+.sort-menu-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background-color: white;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    min-width: 200px;
+    z-index: 1000;
+    padding: 8px 0;
+}
+
+.sort-menu.open .sort-menu-dropdown {
+    display: block;
+}
+
+.sort-option {
+    display: flex;
+    align-items: center;
+    padding: 8px 16px;
+    cursor: pointer;
+    font-size: 14px;
+    gap: 8px;
+}
+
+.sort-option:hover {
+    background-color: #f9f9f9;
+}
+
+/* --- Стили для радиокнопки --- */
+.sort-option input[type="radio"] {
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border: 1px solid #999;
+    border-radius: 50%;
+    position: relative;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.sort-option input[type="radio"]:checked::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 8px;
+    height: 8px;
+    background-color: black;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+}
+
+/* --- При наведении на меню --- */
+.sort-menu:hover .sort-menu-header {
+    background-color: #e0e0e0;
+}
+
+
+.sort-option {
+    display: flex;
+    padding: 8px 16px;
+    cursor: pointer;
+    font-size: 14px;
+    align-items: center;
+    
+}
+
+.sort-option input[type="radio"] {
+    margin-right: 8px;
+    appearance: none; 
+    width: 14px; 
+    height: 14px; 
+    border: 1px solid #999; 
+    border-radius: 50%; 
+    cursor: pointer;
+    flex-shrink: 0; 
+    align-items: center;
+}
+
+/* Стили для выбранной радиокнопки */
+.sort-option input[type="radio"]:checked::before {
+    content: '';
+    position: absolute; 
+    top: 50%;
+    left: 50%;
+    width: 10px; 
+    height: 10px;
+    background-color: black; 
+    border-radius: 50%;
+    transform: translate(-50%, -50%); 
+}
+
+
+.sort-option:hover {
+    background-color: #f9f9f9;
+}
+
+/* При наведении на меню, показываем выпадающее меню */
+.sort-menu:hover .sort-menu-header {
+    background-color: #e0e0e0;
+}
+
+/* --- Стили для галочки (CSS) --- */
+.sort-arrow {
+    width: 9px;
+    height: 9px;
+    border: 1px solid #333;
+    border-right: none;
+    border-top: none;
+    transition: transform 0.3s ease-in-out;
+}
+
+.sort-arrow.up {
+    transform: rotateY(135deg);
+}
+
+.sort-arrow.down {
+    transform: rotateX(0deg);
 }

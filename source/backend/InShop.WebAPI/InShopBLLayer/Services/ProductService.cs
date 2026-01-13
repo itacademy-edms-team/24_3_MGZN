@@ -51,12 +51,9 @@ namespace InShopBLLayer.Services
             var editedProduct = _mapper.Map<Product>(productDto);
             await _productRepository.UpdateProduct(editedProduct);
         }
-        public async Task<IEnumerable<ProductDto>> GetProductsByCategoryName(string categoryName)
+        public async Task<IEnumerable<ProductDto>> GetProductsByCategoryName(string categoryName, string sortBy = "ProductName", string sortOrder = "asc")
         {
-            var categoryId = await _categoryRepository.GetCategoryByName(categoryName);
-            if (categoryId == null)
-                throw new Exception("Категория не найдена");
-            var products = await _productRepository.GetProductsByCategoryId(categoryId);
+            var products = await _productRepository.GetProductsByCategoryNameAsync(categoryName, sortBy, sortOrder);
             return _mapper.Map<IEnumerable<ProductDto>>(products);
         }
     }

@@ -44,12 +44,29 @@ namespace InShop.WebAPI.Controllers
             await _productService.DeleteProduct(id);
             return Ok("Товар удалён");
         }
-        [HttpGet("products-by-category")]
-        public async Task<IActionResult> GetProductsByCategory([FromQuery] string categoryName)
+        [HttpGet("products-by-category")] // GET /api/Products/products-by-category?categoryName=...&sortBy=...&sortOrder=...
+        public async Task<IActionResult> GetProductsByCategory(
+                [FromQuery] string categoryName,
+                [FromQuery] string sortBy = "ProductName",
+                [FromQuery] string sortOrder = "asc")  
         {
             try
             {
-                var productsByCategory = await _productService.GetProductsByCategoryName(categoryName);
+                // Валидация sortBy
+                var allowedSortColumns = new[] { "ProductName", "Price" };
+                if (!allowedSortColumns.Contains(sortBy, StringComparer.OrdinalIgnoreCase))
+                {
+                    return BadRequest(new { message = "Invalid sort column. Allowed: ProductName, Price" });
+                }
+
+                // Валидация sortOrder
+                var allowedSortOrders = new[] { "asc", "desc" };
+                if (!allowedSortOrders.Contains(sortOrder, StringComparer.OrdinalIgnoreCase))
+                {
+                    return BadRequest(new { message = "Invalid sort order. Allowed: asc, desc" });
+                }
+
+                var productsByCategory = await _productService.GetProductsByCategoryName(categoryName, sortBy, sortOrder);
                 return Ok(productsByCategory);
             }
             catch (Exception ex)

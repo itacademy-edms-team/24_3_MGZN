@@ -15,6 +15,7 @@ namespace InShopDbModels.Abstractions
         Task CreateProduct(Product product);
         Task UpdateProduct(Product product);
         Task<bool> ExistsProduct(int id);
+        Task<IEnumerable<Product>> GetProductsByCategoryNameAsync(string categoryName, string sortBy, string sortOrder);
         Task<IEnumerable<Product>> GetProductsByCategoryId(int categoryId);
     }
 }

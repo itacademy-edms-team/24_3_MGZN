@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
-import Breadcrumb from '../components/Breadcrumb'; // Импортируем Breadcrumb
 import './CatalogPage.css';
 
 const CatalogPage = () => {

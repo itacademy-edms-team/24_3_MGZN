@@ -5,6 +5,7 @@ import Breadcrumb from '../components/Breadcrumb';
 import { CartContext } from '../components/CartContext';
 import './ProductPage.css';
 import ProductCard from '../components/ProductCard';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 const ProductPage = () => {
     const { productId } = useParams();
@@ -45,11 +46,7 @@ const ProductPage = () => {
     }, [productId]);
 
     if (loading) {
-        return (
-            <div className="loader-container">
-                <div className="loader"></div>
-            </div>
-        );
+        return <LoadingSpinner message="Загрузка товаров..." />;
     }
 
     if (!product) {

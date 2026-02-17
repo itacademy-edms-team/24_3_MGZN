@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useParams} from 'react-router-dom';
 import axios from 'axios';
 import Breadcrumb from '../components/Breadcrumb';
-import ProductCard from '../components/ProductCard'; // Стили теперь внутри компонента
+import ProductCard from '../components/ProductCard';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 // Удаляем CSS из файла JS, предполагаем, что он в CategoryPage.css
 import './CategoryPage.css';
@@ -69,11 +70,7 @@ const CategoryPage = () => {
     };
 
     if (loading) {
-        return (
-            <div className="loader-container">
-                <div className="loader"></div>
-            </div>
-        );
+        return <LoadingSpinner message="Загрузка товаров..." />;
     }
 
     return (

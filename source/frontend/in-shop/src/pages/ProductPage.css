@@ -10,16 +10,16 @@
 
 .product-details {
     display: flex; /* Размещаем изображение и информацию рядом */
-    align-items: center; /* Выравниваем элементы по центру по вертикали */
+    align-items: flex-start; /* Выравниваем элементы по верхнему краю */
     gap: 60px; /* Увеличиваем расстояние между изображением и информацией */
 }
 
-.product-page img {
-    width: 45%; /* Увеличиваем ширину изображения */
-    height: auto; /* Сохраняем пропорции */
-    object-fit: cover; /* Обрезка изображения, если необходимо */
-    border-radius: 12px; /* Увеличиваем скругление углов изображения */
-    align-self: center; /* Центрируем изображение по вертикали */
+.product-page__img {
+    width: 45%; 
+    height: auto;
+    object-fit: cover;
+    border-radius: 12px;
+    align-self: flex-start; 
 }
 
 .product-subinfo {
@@ -28,37 +28,37 @@
     justify-content: space-between; /* Равномерное распределение по высоте */
     gap: 20px; /* Увеличиваем расстояние между элементами */
     width: 55%; /* Увеличиваем ширину текстового блока */
-    height: 100%; /* Занимает всю доступную высоту */
+    /* height: 100%; */ /* Убираем, чтобы контент не растягивался */
 }
 
 /* Стиль для текста "Нет в наличии" */
 .out-of-stock {
-    color: #24242475; /* Красный цвет текста */
+    color: #d32f2f; /* Красный цвет текста */
     font-weight: bold; /* Жирный текст */
 }
 
 .product-page h2 {
-    margin: 20px;
+    margin: 0 0 20px 0; /* Убираем отступ сверху, оставляем снизу */
     font-size: 1.8em; /* Увеличиваем размер заголовка */
     color: #333;
 }
 
 .product-price {
-    margin: 20px;
+    margin: 0 0 20px 0; /* Убираем отступ сверху, оставляем снизу */
     font-size: 1.4em; /* Увеличиваем размер цены */
     color: #000;
     font-weight: bold;
 }
 
 .product-description {
-    margin: 20px;
+    margin: 0 0 20px 0; /* Убираем отступ сверху, оставляем снизу */
     font-size: 1.1em; /* Увеличиваем размер описания */
     color: #666;
     line-height: 1.6; /* Улучшаем читаемость */
 }
 
 .add-to-cart-button {
-    margin: 20px;
+    margin: 0; /* Убираем отступ */
     background-color: #000; /* Черный фон */
     color: #fff; /* Белый текст */
     border: none; /* Убираем границу */
@@ -73,80 +73,42 @@
     background-color: #333; /* Темно-серый фон при наведении */
 }
 
-/* Стили для раздела "Другие товары этой категории" */
+/* === Стили для раздела "Другие товары этой категории" === */
+
 .related-products {
-    margin-top: 40px; /* Отступ сверху */
+    margin-top: 60px;
 }
 
 .related-products h3 {
-    font-size: 1.5em;
+    font-size: 1.6rem;
     color: #333;
-    margin-bottom: 20px;
+    margin-bottom: 24px;
+    font-weight: 600;
 }
 
-.related-products-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 20px;
-    list-style-type: none;
+/* Используем те же стили, что и в CategoryPage для списка */
+/* Список товаров: ровно 3 в ряд на десктопе */
+.related-products ul.products-list {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); /* ← 3 колонки, равной ширины */
+    gap: 24px;
+    list-style: none;
     padding: 0;
+    max-width: 1000px; /* Ограничиваем ширину, чтобы не растягивалось на очень широких экранах */
+    margin: 0 auto;
 }
 
-/* Стили для карточки товара (related-product-card) */
-.related-product-card {
-    background-color: #fff;
-    border-radius: 8px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    overflow: hidden;
-    text-align: center;
-    transition: transform 0.3s ease, box-shadow 0.3s ease; /* Анимация трансформации и тени */
-    cursor: pointer;
-
-    /* Фиксированная ширина карточки */
-    width: calc(20% - 16px); /* 20% ширины контейнера минус отступы */
-    height: 300px; /* Фиксированная высота карточки */
-
-    /* Используем Flexbox для вертикального выравнивания */
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between; /* Текст будет прижат к низу */
+/* Для мобильных устройств: адаптация */
+@media (max-width: 768px) {
+    .related-products ul.products-list {
+        grid-template-columns: repeat(2, 1fr); /* 2 в ряд */
+    }
 }
 
-.related-product-card:hover {
-    transform: translateY(-10px); /* Поднимаем карточку на 10px */
-    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2); /* Усиливаем тень */
+@media (max-width: 480px) {
+    .related-products ul.products-list {
+        grid-template-columns: 1fr; /* 1 в ряд */
+    }
 }
 
-.related-product-card img {
-    width: 100%; /* Ширина изображения */
-    height: auto; /* Сохраняем пропорции */
-    object-fit: cover; /* Обрезка изображения, если необходимо */
-    border-radius: 8px; /* Скругляем углы изображения */
-    transition: transform 0.3s ease; /* Анимация масштабирования изображения */
-}
-
-.related-product-card:hover img {
-    transform: scale(1.05); /* Небольшое увеличение изображения */
-}
-
-.related-product-card h4 {
-    margin: 20px;
-    font-size: 1.2em;
-    color: #333;
-    transition: color 0.3s ease; /* Анимация изменения цвета текста */
-}
-
-.related-product-card:hover h4 {
-    color: #000; /* Темнеет текст при наведении */
-}
-
-.related-product-card p {
-    margin-bottom: 20px;
-    font-size: 1em;
-    color: #666;
-    transition: color 0.3s ease; /* Анимация изменения цвета текста */
-}
-
-.related-product-card:hover p {
-    color: #333; /* Темнеет текст при наведении */
-}
+/* Дублирующие стили .product-image-container, .product-image и .product-placeholder-img удалены, так как они определены в ProductCard.css */

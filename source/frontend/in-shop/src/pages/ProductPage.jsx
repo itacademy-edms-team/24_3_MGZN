@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useContext } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams} from 'react-router-dom';
 import axios from 'axios';
 import Breadcrumb from '../components/Breadcrumb'; // Импортируем Breadcrumb
 import { CartContext } from '../components/CartContext';
 import './ProductPage.css';
+import ProductCard from '../components/ProductCard'; // Стили теперь внутри компонента
 
 const ProductPage = () => {
     const { productId } = useParams();
@@ -65,7 +66,7 @@ const ProductPage = () => {
             <div className="product-page">
                 <div className="product-details">
                     {/* Изображение товара */}
-                    <img
+                    <img class="product-page__img"
                         src={`https://localhost:7275${product.imageUrl}`}
                         alt={product.productName}
                         onError={(e) => {
@@ -103,21 +104,10 @@ const ProductPage = () => {
                 {/* Другие товары этой категории */}
                 <div className="related-products">
                     <h3>Товары категории {product.productCategoryName}</h3>
-                    <ul className="related-products-list">
+                    <ul className="products-list"> {/* Используем класс из CategoryPage.css */}
                         {relatedProducts.map((relatedProduct) => (
-                            <li key={relatedProduct.productId} className="related-product-card">
-                                <Link to={`/product/${encodeURIComponent(relatedProduct.productId)}`}>
-                                    <img
-                                        src={`https://localhost:7275${relatedProduct.imageUrl}`}
-                                        alt={relatedProduct.productName}
-                                        onError={(e) => {
-                                            e.target.src = 'https://localhost:7275/images/placeholder.svg';
-                                        }}
-                                        loading="lazy"
-                                    />
-                                </Link>
-                                <h4>{relatedProduct.productName}</h4>
-                                <p>{relatedProduct.productPrice} ₽</p>
+                            <li key={relatedProduct.productId} className="product-card-wrapper"> {/* Используем класс из CategoryPage.css */}
+                                <ProductCard product={relatedProduct} />
                             </li>
                         ))}
                     </ul>

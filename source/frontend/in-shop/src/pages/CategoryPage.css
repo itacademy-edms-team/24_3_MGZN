@@ -1,11 +1,12 @@
-/* Стили для страницы категории */
+/* ===== Стили для страницы категории ===== */
+
 .category-page {
     text-align: center;
     padding: 20px;
 }
 
 .placeholder-svg {
-    width: 40%; 
+    width: 40%;
     height: auto;
     margin: auto;
 }
@@ -13,74 +14,129 @@
 /* Стили для списка товаров */
 .products-list {
     display: flex;
-    flex-wrap: wrap; 
-    justify-content: flex-start; 
-    gap: 30px; 
-    list-style-type: none; 
-    padding: 0; 
-    max-width: 1400px; 
-    margin: 0 auto; 
+    flex-wrap: wrap;
+    gap: 24px;
+    justify-content: center;
+    padding: 0;
+    list-style: none;
+    max-width: 1400px;
+    margin: 0 auto 20px;
 }
 
-.product-card {
-    background-color: #fff;
+.product-card-wrapper {
+    flex: 0 0 auto;
+}
+
+/* ===== УНИВЕРСАЛЬНАЯ КАРТОЧКА ТОВАРА ===== */
+
+/* .product-card-universal заменён на .product-card */
+/* .product-card-universal {
+    display: flex;
+    flex-direction: column;
+    width: 320px;
+    max-width: 100%;
+    background: #fff;
     border-radius: 8px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     overflow: hidden;
-    text-align: center;
-    transition: transform 0.3s ease;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
     cursor: pointer;
-    width: 320px; /* Было 250px */
-    height: 380px; /* Было 300px */
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between; 
-}
+} */
 
-.product-content {
-    display: flex;
-    flex-direction: column;
-    height: 100%; 
-}
+/* .product-card-universal:hover заменён на .product-card:hover */
+/* .product-card-universal:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+} */
 
-.product-info {
+/* Контейнер для изображения — фиксированная высота, но гибкая ширина */
+/* .product-image-container переопределён в ProductCard.css */
+/* .product-image-container {
+    height: 250px;
+    width: 100%;
+    position: relative;
+    overflow: hidden;
+    background-color: #f8f9fa;
     display: flex;
-    flex-direction: column;
-    align-items: center; 
-    margin-top: auto; 
-}
+    align-items: center;
+    justify-content: center;
+} */
 
-.product-card img {
+/* Реальное изображение (IMG) */
+/* Эти стили переопределены в ProductCard.css */
+/* .product-image,
+.product-placeholder-img {
     width: 100%; 
-    height: 250px; 
-    object-fit: cover; 
-    margin-bottom: -20px;
+    height: 100%; 
+    object-fit: contain;
+    object-position: center; 
+    display: block;
+} */
+
+/* Эти стили переопределены в ProductCard.css */
+/* .product-placeholder-img {
+    width: 100px;
+    height: 100px; 
+    object-fit: contain; 
+    object-position: center; 
+    display: block;
+    background-color: #f8f9fa;
+} */
+
+/* Информация о товаре */
+.product-info {
+    padding: 16px;
+    text-align: center;
 }
 
-.product-card h3 {
-    font-size: 1.4em; 
+.product-info h3 {
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin: 0 0 8px 0;
+    color: #222;
+    line-height: 1.4;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.product-info p.price {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #000000;
     margin: 0;
-    padding: 0 20px; 
 }
 
-.product-card p {
-    font-size: 1.1em; 
-    font-weight: bold;
-    color: #333;
-    margin: 0;
-    padding: 5px 10px; 
+/* Адаптивность */
+@media (max-width: 768px) {
+    /* .product-card-universal заменён на .product-card */
+    /* .product-card-universal {
+        width: calc(50% - 15px);
+    } */
 }
 
-.product-card:hover {
-    transform: scale(1.03); 
+@media (max-width: 480px) {
+    /* .product-card-universal заменён на .product-card */
+    /* .product-card-universal {
+        width: 100%;
+    } */
+
+    /* .product-image-container переопределён в ProductCard.css */
+    /* .product-image-container {
+        height: 220px;
+    } */
 }
 
-/* Стили для меню сортировки */
+/* ===== Стили для меню сортировки ===== */
+
 .div__sort-menu {
     display: flex;
     align-items: flex-start;
     margin-left: 200px;
+    margin-bottom: 20px;
 }
+
 .sort-menu {
     position: relative;
     display: inline-block;
@@ -159,65 +215,22 @@
     background-color: #e0e0e0;
 }
 
-
-.sort-option {
-    display: flex;
-    padding: 8px 16px;
-    cursor: pointer;
-    font-size: 14px;
-    align-items: center;
-    
-}
-
-.sort-option input[type="radio"] {
-    margin-right: 8px;
-    appearance: none; 
-    width: 14px; 
-    height: 14px; 
-    border: 1px solid #999; 
-    border-radius: 50%; 
-    cursor: pointer;
-    flex-shrink: 0; 
-    align-items: center;
-}
-
-/* Стили для выбранной радиокнопки */
-.sort-option input[type="radio"]:checked::before {
-    content: '';
-    position: absolute; 
-    top: 50%;
-    left: 50%;
-    width: 10px; 
-    height: 10px;
-    background-color: black; 
-    border-radius: 50%;
-    transform: translate(-50%, -50%); 
-}
-
-
-.sort-option:hover {
-    background-color: #f9f9f9;
-}
-
-/* При наведении на меню, показываем выпадающее меню */
-.sort-menu:hover .sort-menu-header {
-    background-color: #e0e0e0;
-}
-
-/* --- Стили для галочки (CSS) --- */
+/* --- Стили для галочки (символ ✓) --- */
 .sort-arrow {
-    width: 9px;
-    height: 9px;
-    border: 1px solid #333;
-    border-right: none;
-    border-top: none;
+    font-size: 16px;
+    color: #333;
     transition: transform 0.3s ease-in-out;
 }
 
 .sort-arrow.up {
-    transform: rotateY(135deg);
+    transform: rotate(180deg);
 }
 
 .sort-arrow.down {
-    transform: rotateX(0deg);
+    transform: rotate(0deg);
+}
+
+/* --- Стиль для скрытия элемента (если понадобится) --- */
+.hidden {
+    display: none !important;
 }

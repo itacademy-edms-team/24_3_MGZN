@@ -1,19 +1,21 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams} from 'react-router-dom';
 import axios from 'axios';
 import Breadcrumb from '../components/Breadcrumb';
+import ProductCard from '../components/ProductCard'; // Стили теперь внутри компонента
+
+// Удаляем CSS из файла JS, предполагаем, что он в CategoryPage.css
 import './CategoryPage.css';
 
 const CategoryPage = () => {
     const { categoryName } = useParams();
+
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
 
     const [sortOption, setSortOption] = useState('name-asc');
 
-    // --- ОБНОВЛЕНО: Состояние для открытия меню ---
     const [isMenuOpen, setIsMenuOpen] = useState(false);
-    // --- /ОБНОВЛЕНО ---
 
     useEffect(() => {
         let sortBy = 'ProductName';
@@ -62,11 +64,9 @@ const CategoryPage = () => {
         setSortOption(event.target.value);
     };
 
-    // --- ОБНОВЛЕНО: Обработчик клика ---
     const toggleMenu = () => {
         setIsMenuOpen(!isMenuOpen);
     };
-    // --- /ОБНОВЛЕНО ---
 
     if (loading) {
         return (
@@ -88,7 +88,7 @@ const CategoryPage = () => {
                 <div className={`sort-menu ${isMenuOpen ? 'open' : ''}`}>
                     <div
                         className="sort-menu-header"
-                        onClick={toggleMenu} // Только onClick
+                        onClick={toggleMenu}
                     >
                         Сортировка
                         <span className={`sort-arrow ${isMenuOpen ? 'up' : 'down'}`}></span>
@@ -137,28 +137,12 @@ const CategoryPage = () => {
                     </div>
                 </div>
             </div>
-            
 
             {/* Список товаров */}
             <ul className="products-list">
                 {products.map((product) => (
-                    <li key={product.productId} className="product-card">
-                        <Link to={`/product/${encodeURIComponent(product.productId)}`} className="product-link">
-                            <div className="product-content">
-                                <img
-                                    src={`https://localhost:7275${product.imageUrl}`}
-                                    alt={product.productName}
-                                    onError={(e) => {
-                                        e.target.src = 'https://localhost:7275/images/placeholder.svg';
-                                    }}
-                                    loading="lazy"
-                                />
-                            </div>
-                            <div className="product-info">
-                                <h3>{product.productName}</h3>
-                                <p>{product.productPrice} ₽</p>
-                            </div>
-                        </Link>
+                    <li key={product.productId} className="product-card-wrapper">
+                        <ProductCard product={product} />
                     </li>
                 ))}
             </ul>

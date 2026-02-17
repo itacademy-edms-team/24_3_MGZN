@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useContext } from 'react';
 import { useParams} from 'react-router-dom';
 import axios from 'axios';
-import Breadcrumb from '../components/Breadcrumb'; // Импортируем Breadcrumb
+import Breadcrumb from '../components/Breadcrumb';
 import { CartContext } from '../components/CartContext';
 import './ProductPage.css';
-import ProductCard from '../components/ProductCard'; // Стили теперь внутри компонента
+import ProductCard from '../components/ProductCard';
 
 const ProductPage = () => {
     const { productId } = useParams();

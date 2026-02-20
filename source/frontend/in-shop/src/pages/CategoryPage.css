@@ -186,6 +186,36 @@
     background-color: #f9f9f9;
 }
 
+.sort-arrow {
+    /* Определяем размер стрелки */
+    width: 0;
+    height: 0;
+    /* Используем border для создания треугольника */
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    /* Цвет стрелки */
+    border-top: 5px solid currentColor; /* Использует цвет текста родителя */
+    /* Отступы, если нужно */
+    margin-left: 5px;
+    /* Убедитесь, что она не влияет на вертикальное выравнивание */
+    display: inline-block;
+    vertical-align: middle;
+
+    /* Необязательно: плавный переход для анимации */
+    transition: transform 0.3s ease;
+}
+
+.sort-arrow.up {
+    /* Поворачиваем стрелку вверх на 180 градусов */
+    transform: rotate(180deg);
+}
+
+.sort-arrow.down {
+    /* Стрелка вниз - исходное состояние (0 градусов), ничего менять не нужно,
+       но вы можете добавить transform: rotate(0deg); для ясности или если используете transform для других целей. */
+    transform: rotate(0deg);
+}
+
 /* --- Стили для радиокнопки --- */
 .sort-option input[type="radio"] {
     appearance: none;

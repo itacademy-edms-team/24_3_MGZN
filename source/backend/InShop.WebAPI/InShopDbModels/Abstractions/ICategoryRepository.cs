@@ -16,5 +16,6 @@ namespace InShopDbModels.Abstractions
         Task UpdateCategory(Category category);
         Task<bool> ExistsCategory(int id);
         Task<int> GetCategoryByName(string name);
+        Task<string> GetCategoryNameById(int id);
     }
 }

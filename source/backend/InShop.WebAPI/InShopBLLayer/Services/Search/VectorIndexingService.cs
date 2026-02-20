@@ -1,0 +1,150 @@
+﻿using InShopBLLayer.Abstractions;        // IEmbeddingService
+using InShopDbModels.Abstractions;       // IProductRepository, ICategoryRepository
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using StackExchange.Redis;
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace InShopBLLayer.Services.Search
+{
+    public class VectorIndexingService : BackgroundService
+    {
+        private readonly IServiceScopeFactory _scopeFactory;
+        private readonly ConnectionMultiplexer _redis;
+        private readonly ILogger<VectorIndexingService> _logger;
+        private static readonly TimeSpan _defaultInterval = TimeSpan.FromHours(1);
+        private readonly TimeSpan _interval;
+
+        // ❌ Убрали IEmbeddingService, IProductRepository, ICategoryRepository из конструктора
+        public VectorIndexingService(
+            IServiceScopeFactory scopeFactory, // ← Для создания scope
+            ConnectionMultiplexer redis,
+            ILogger<VectorIndexingService> logger)
+        {
+            _scopeFactory = scopeFactory;
+            _redis = redis;
+            _logger = logger;
+            _interval = _defaultInterval;
+        }
+
+        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        {
+            _logger.LogInformation("Служба векторной индексации запущена");
+
+            // ✅ Исправлено: было while(stoppingToken.IsCancellationRequested)
+            // Это означало "делай, пока токен отменён" - бесконечный цикл или не запуск
+            while (!stoppingToken.IsCancellationRequested) // <-- Добавили НЕ (!)
+            {
+                try
+                {
+                    await IndexProductsAsync(stoppingToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Ошибка во время индексации векторов.");
+                }
+
+                _logger.LogInformation("Ожидание {Interval} до следующего запуска...", _interval);
+                await Task.Delay(_interval, stoppingToken);
+            }
+
+            _logger.LogInformation("Служба векторной индексации остановлена.");
+        }
+
+        private async Task IndexProductsAsync(CancellationToken cancellationToken)
+        {
+            // ✅ Создаём новый scope внутри метода
+            using var scope = _scopeFactory.CreateScope();
+
+            // ✅ Получаем нужные сервисы из нового scope
+            var embeddingService = scope.ServiceProvider.GetRequiredService<IEmbeddingService>();
+            var productRepository = scope.ServiceProvider.GetRequiredService<IProductRepository>();
+            var categoryRepository = scope.ServiceProvider.GetRequiredService<ICategoryRepository>();
+            var db = _redis.GetDatabase(); // Redis не зависит от scope
+
+            var products = await productRepository.GetProducts();
+            _logger.LogInformation("Найдено {Count} товаров для индексации.", products.Count());
+
+            foreach (var product in products)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                try
+                {
+                    var text = $"{product.ProductName} {product.ProductDescription?.Trim() ?? ""}".Trim();
+                    if (string.IsNullOrWhiteSpace(text))
+                    {
+                        _logger.LogWarning("Товар ID {ProductId} имеет пустое имя и описание, пропускаем.", product.ProductId);
+                        continue;
+                    }
+
+                    // ✅ Используем embeddingService из текущего scope
+                    var vector = await embeddingService.GenerateEmbeddingAsync(text, cancellationToken);
+                    var vectorBytes = new byte[vector.Length * sizeof(float)];
+                    Buffer.BlockCopy(vector, 0, vectorBytes, 0, vectorBytes.Length);
+
+                    // ✅ Используем categoryRepository из текущего scope
+                    var categoryName = await categoryRepository.GetCategoryNameById(product.ProductCategoryId);
+
+                    var availability = product.ProductAvailability == true ? "InStock" : "OutOfStock";
+
+                    var hash = new HashEntry[]
+                    {
+                        new HashEntry("name", product.ProductName ?? ""),
+                        new HashEntry("description", product.ProductDescription ?? ""),
+                        new HashEntry("embedding", vectorBytes),
+                        new HashEntry("category", categoryName),
+                        new HashEntry("price", ((double)product.ProductPrice).ToString(System.Globalization.CultureInfo.InvariantCulture)),
+                        new HashEntry("stock", product.ProductStockQuantity.ToString()),
+                        new HashEntry("availability", availability),
+                        new HashEntry("image_url", product.ImageUrl ?? "")
+                    };
+
+                    await db.HashSetAsync($"product:{product.ProductId}", hash);
+                    _logger.LogDebug("Товар ID {ProductId} сохранён в Redis.", product.ProductId);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Ошибка при индексации товара ID {ProductId}", product.ProductId);
+                }
+            }
+
+            await CreateOrUpdateIndexAsync();
+        }
+
+        private async Task CreateOrUpdateIndexAsync()
+        {
+            var server = _redis.GetServer(_redis.GetEndPoints().First());
+
+            try
+            {
+                try { await server.ExecuteAsync("FT.DROPINDEX", "idx:products"); } catch { }
+
+                await server.ExecuteAsync(
+                    "FT.CREATE", "idx:products",
+                    "ON", "HASH",
+                    "PREFIX", "1", "product:",
+                    "SCHEMA",
+                    "name", "TEXT",
+                    "description", "TEXT",
+                    "category", "TAG",
+                    "price", "NUMERIC",
+                    "stock", "NUMERIC",
+                    "availability", "TAG",
+                    "image_url", "TEXT",
+                    "embedding", "VECTOR", "FLAT", "6", "TYPE", "FLOAT32", "DIM", "384", "DISTANCE_METRIC", "COSINE"
+                );
+
+                _logger.LogInformation("Векторный индекс 'idx:products' создан.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при создании векторного индекса.");
+                throw;
+            }
+        }
+    }
+}

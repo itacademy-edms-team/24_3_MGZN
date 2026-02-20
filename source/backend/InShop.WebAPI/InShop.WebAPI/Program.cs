@@ -1,6 +1,9 @@
 using InShop.WebAPI.Services;
+using InShopBLLayer.Abstractions;
 using InShopBLLayer.Extensions;
+using InShopBLLayer.Services.Search;
 using InShopDbModels.Extensions;
+using StackExchange.Redis;
 
 namespace InShop.WebAPI
 {
@@ -10,7 +13,14 @@ namespace InShop.WebAPI
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // Добавляем IHttpClientFactory (это делает AddHttpClient)
+            builder.Services.AddSingleton(ConnectionMultiplexer.Connect("localhost:6379"));
+
+            builder.Services.AddHttpClient<IEmbeddingService, HttpEmbeddingService>(client =>
+            {
+                client.BaseAddress = new Uri("http://localhost:8000/"); // Убедитесь, что адрес совпадает с тем, на котором запущен FastAPI
+                                                                        // Можно добавить таймауты, заголовки и т.д.
+            });
+
             builder.Services.AddHttpClient();
 
             //CORS
@@ -28,7 +38,6 @@ namespace InShop.WebAPI
 
             builder.Services.AddInShopRepositories(connectionString);
             builder.Services.AddInShopServices();
-
             builder.Services.AddSingleton<PaymentProcessingService>();
 
             // Add services to the container.

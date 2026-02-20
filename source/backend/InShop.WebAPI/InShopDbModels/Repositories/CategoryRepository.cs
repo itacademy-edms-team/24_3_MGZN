@@ -57,5 +57,10 @@ namespace InShopDbModels.Repositories
                 FirstOrDefaultAsync(c => c.CategoryName == name);
             return category.CategoryId;
         }
+        public async Task<string> GetCategoryNameById(int id)
+        {
+            var category = await _appDbContext.Categories.FindAsync(id);
+            return category.CategoryName;
+        }
     }
 }

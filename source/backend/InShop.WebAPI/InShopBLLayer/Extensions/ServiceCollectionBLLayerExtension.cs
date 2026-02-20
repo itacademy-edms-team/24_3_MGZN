@@ -1,6 +1,7 @@
 ﻿using InShopBLLayer.Abstractions;
 using InShopBLLayer.MappingProfiles;
 using InShopBLLayer.Services;
+using InShopBLLayer.Services.Search;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
@@ -30,6 +31,8 @@ namespace InShopBLLayer.Extensions
             services.AddScoped<IEmailVerificationService, EmailVerificationService>();
             services.AddScoped<IEmailSender, EmailSender>();
             services.AddScoped<IPaymentStatusService, PaymentStatusService>();
+
+            services.AddHostedService<VectorIndexingService>();
 
             return services;
         }

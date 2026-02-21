@@ -24,7 +24,7 @@ app = FastAPI(
 )
 
 # --- Загрузка модели при старте сервера ---
-MODEL_NAME = "all-MiniLM-L6-v2"
+MODEL_NAME = "cointegrated/LaBSE-en-ru"
 logger.info(f"Загрузка модели '{MODEL_NAME}'...")
 model = SentenceTransformer(MODEL_NAME)
 logger.info(f"Модель '{MODEL_NAME}' загружена успешно.")

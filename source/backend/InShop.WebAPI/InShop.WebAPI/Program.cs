@@ -15,13 +15,14 @@ namespace InShop.WebAPI
 
             builder.Services.AddSingleton(ConnectionMultiplexer.Connect("localhost:6379"));
 
+            builder.Services.AddHttpClient();
+
             builder.Services.AddHttpClient<IEmbeddingService, HttpEmbeddingService>(client =>
             {
                 client.BaseAddress = new Uri("http://localhost:8000/"); // Убедитесь, что адрес совпадает с тем, на котором запущен FastAPI
                                                                         // Можно добавить таймауты, заголовки и т.д.
             });
 
-            builder.Services.AddHttpClient();
 
             //CORS
             builder.Services.AddCors(options =>

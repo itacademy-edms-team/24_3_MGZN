@@ -16,6 +16,7 @@ namespace InShopBLLayer.Services
         private readonly IProductRepository _productRepository;
         private readonly IMapper _mapper;
         private readonly ICategoryRepository _categoryRepository;
+        private readonly int _rndLimit = 12;
         public ProductService(IProductRepository productRepository, ICategoryRepository categoryRepository, IMapper mapper)
         {
             _productRepository = productRepository;
@@ -55,6 +56,13 @@ namespace InShopBLLayer.Services
         {
             var products = await _productRepository.GetProductsByCategoryNameAsync(categoryName, sortBy, sortOrder);
             return _mapper.Map<IEnumerable<ProductDto>>(products);
+        }
+        public async Task<IEnumerable<ProductDto>> GetRandomProducts()
+        {
+            var products = await _productRepository.GetProducts();
+            var random = new Random();
+            var rndProducts = products.OrderBy(x => random.Next()).Take(_rndLimit);
+            return _mapper.Map<IEnumerable<ProductDto>>(rndProducts);
         }
     }
 }

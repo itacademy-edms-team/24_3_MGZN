@@ -1,0 +1,286 @@
+/* src/components/SearchComponent/SearchComponent.css */
+
+/* --- КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: базовая ширина и transition для .search-component-wrapper --- */
+.search-component-wrapper {
+  position: relative; /* Для позиционирования .search-preview-dropdown */
+  width: 100%;
+  max-width: 20rem; /* Базовая максимальная ширина */
+  transition: max-width 0.3s ease;
+}
+
+/* --- КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: изменение ширины при фокусе на дочерний элемент (input) --- */
+.search-component-wrapper:focus-within {
+  max-width: 60rem; /* Увеличенная ширина при фокусе */
+}
+
+.search-input-container {
+  display: flex;
+  width: 100%;
+}
+
+.search-input {
+  flex-grow: 1;
+  padding: 8px 12px;
+  border: none;
+  border-right: none;
+  border-radius: 4px 0 0 4px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.search-button {
+  width: 40px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-left: none;
+  border-radius: 0 4px 4px 0;
+  background: #fff;
+  cursor: pointer;
+  transition: background-color 0.2s ease, opacity 0.2s ease;
+  text-indent: -9999px;
+  overflow: hidden;
+  color: transparent;
+  font-size: 0;
+  line-height: 0;
+}
+
+.search-button:hover {
+  background-color: #f0f0f0;
+  opacity: 0.8;
+}
+
+.search-button:focus {
+  outline: 2px solid;
+  outline-offset: 2px;
+}
+
+/* --- КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: .search-preview-dropdown отображается только при showPreview --- */
+.search-preview-dropdown {
+  /* Позиционирование остаётся */
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  /* Стили, когда отображается */
+  background-color: white;
+  border: 1px solid #ccc;
+  border-top: none;
+  border-radius: 10px;
+  padding: 15px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 999;
+  /* Стили flex */
+  display: flex; /* или block в зависимости от адаптивности */
+  overflow-x: hidden;
+  /* УБРАТЬ display: none; */
+}
+
+/* УБРАТЬ правило .search-component-wrapper:focus-within .search-preview-dropdown */
+
+/* --- Стили для левой колонки (история) --- */
+.search-history-section {
+  flex: 1;
+  min-width: 0; /* Позволяет сжиматься */
+  padding: 10px 12px 10px 0; /* Отступы: сверху/снизу/слева/справа */
+  border-right: 1px solid #eee; /* Разделитель */
+}
+
+.search-history-section h4 {
+  margin: 0 0 10px 0;
+  font-size: 13px;
+  color: #6c757d;
+  font-weight: 500;
+}
+
+.search-history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.search-history-item {
+  padding: 8px 15px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  color: #495057;
+  text-decoration: none;
+  display: block;
+}
+
+.search-history-item:hover {
+  background-color: #f8f9fa;
+}
+
+/* --- Стили для правой колонки (рандомные предложения) --- */
+.random-suggestions-section {
+  flex: 1;
+  min-width: 0; /* Позволяет сжиматься */
+  padding: 10px 0 10px 12px; /* Отступы: сверху/снизу/слева/справа */
+}
+
+.random-suggestions-section h4 {
+  margin: 0 0 10px 0;
+  font-size: 13px;
+  color: #6c757d;
+  font-weight: 500;
+}
+
+/* --- Сетка карточек внутри правой колонки --- */
+.suggestions-grid {
+  display: grid;
+  /* grid-template-columns: repeat(2, 1fr); /* 2 карточки в ряд (можно 3, но 2 лучше для узкой колонки) */
+  /* ИСПОЛЬЗУЕМ CSS CUSTOM PROPERTY */
+  grid-template-columns: var(--grid-template-columns, repeat(2, 1fr)); /* По умолчанию 2 колонки, если переменная не установлена */
+  gap: 12px;
+  /* Убираем padding, так как отступы уже заданы в .random-suggestions-section */
+}
+
+/* --- Общие стили для результатов (если они тоже будут в двух колонках) --- */
+.search-results-section {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 0;
+}
+
+.search-results-section h4 {
+  margin: 0 0 10px 0;
+  font-size: 13px;
+  color: #6c757d;
+  font-weight: 500;
+}
+
+.results-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+/* --- Стили для заголовка истории и кнопки очистки --- */
+.search-history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px; /* Отступ между заголовком и списком */
+}
+
+.search-history-header h4 {
+  margin: 0; /* Убираем стандартный отступ у h4 */
+  font-size: 13px;
+  color: #6c757d;
+  font-weight: 500;
+}
+
+.clear-history-button {
+  background: none;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  color: #6c757d;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.clear-history-button:hover {
+  background-color: #f8f9fa;
+  color: #495057;
+}
+
+/* --- Стили для элемента истории (с крестиком) --- */
+.search-history-item {
+  display: flex; /* Позволяет разместить текст и крестик в строку */
+  align-items: center;
+  padding: 8px 15px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  color: #495057;
+  text-decoration: none;
+  border-radius: 4px; /* Скругления для элемента */
+}
+
+.search-history-item:hover {
+  background-color: #f8f9fa;
+}
+
+/* --- Стили для текста элемента истории --- */
+.search-history-item span {
+  flex-grow: 1; /* Позволяет тексту занять оставшееся место */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer; /* Указываем, что текст кликабелен */
+}
+
+/* --- Стили для кнопки удаления --- */
+.remove-history-item-button {
+  background: none;
+  border: none;
+  padding: 0;
+  margin-left: 8px; /* Отступ слева от текста */
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px; /* Фиксированная ширина */
+  height: 20px; /* Фиксированная высота */
+  border-radius: 50%; /* Делаем круглой */
+  transition: background-color 0.2s;
+}
+
+.remove-history-item-button:hover {
+  background-color: #f0f0f0;
+  
+}
+
+.remove-history-item-button:focus {
+  outline: 2px solid #007bff; /* Фокус для доступности */
+  outline-offset: 2px;
+}
+
+/* --- Стили для SVG крестика --- */
+.close-icon-svg {
+  /* fill уже задан в компоненте CloseIcon */
+  /* width и height уже заданы в компоненте CloseIcon */
+  pointer-events: none; /* SVG не будет мешать клику по кнопке */
+}
+
+/* --- Адаптивность --- */
+@media (max-width: 768px) {
+  .search-input,
+  .search-button {
+    font-size: 13px;
+    padding: 6px 10px;
+  }
+
+  /* На мобильных делаем одну колонку (stacked) */
+  .search-preview-dropdown {
+    display: block; /* Используем block на мобильных */
+  }
+
+  .search-history-section,
+  .random-suggestions-section,
+  .search-results-section {
+    padding: 10px;
+    border-right: none;
+  }
+
+  /* Адаптивная сетка для карточек */
+  .suggestions-grid,
+  .results-grid {
+    /* grid-template-columns: 1fr; /* 1 карточка в ряд на мобильных */
+    /* ИСПОЛЬЗУЕМ CSS CUSTOM PROPERTY, но с адаптивом */
+    grid-template-columns: var(--grid-template-columns-mobile, repeat(1, 1fr));
+  }
+
+  /* Переопределяем переменную для мобильных, если нужно */
+  .search-component-wrapper:focus-within .suggestions-grid {
+    /* Если у вас 4 колонки на десктопе, на мобильном это может быть 2 */
+    /* Если у вас 2 колонки на десктопе, на мобильном это может быть 1 */
+    /* Пока просто 1 */
+    --grid-template-columns-mobile: repeat(1, 1fr);
+  }
+}

@@ -63,7 +63,7 @@ const ProductPage = () => {
             <div className="product-page">
                 <div className="product-details">
                     {/* Изображение товара */}
-                    <img class="product-page__img"
+                    <img className="product-page__img"
                         src={`https://localhost:7275${product.imageUrl}`}
                         alt={product.productName}
                         onError={(e) => {

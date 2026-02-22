@@ -16,6 +16,7 @@ import EmailVerificationPage from './pages/EmailVerificationPage'; // Импор
 import OrderSuccessPage from './pages/OrderSuccessPage/OrderSuccessPage'; // Импортируем страницу успешного заказа
 import PaymentPage from './pages/PaymentPage';
 import PaymentConfirmationPage from './pages/PaymentConfirmationPage/PaymentConfirmationPage';
+import SearchResultsPage from './pages/SearchResultPage/SearchResultsPage.tsx';
 
 function App() {
     return (
@@ -26,6 +27,7 @@ function App() {
                     <SessionHandler />
                     {/* Хедер с иконкой корзины */}
                     <Header />
+                    
                     <CartModal /> {/* Добавляем модальное окно корзины */}
                     {/* Основной контент */}
                     <main>
@@ -43,6 +45,7 @@ function App() {
                             <Route path="/order-success" element={<OrderSuccessPage />} />
                             <Route path="/payment" element={<PaymentPage />} />
                             <Route path="/payment-confirmation" element={<PaymentConfirmationPage />} />
+                            <Route path="/search" element={<SearchResultsPage />} />
                         </Routes>
                     </main>
 

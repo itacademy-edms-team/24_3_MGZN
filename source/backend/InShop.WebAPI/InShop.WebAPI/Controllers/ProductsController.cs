@@ -74,5 +74,11 @@ namespace InShop.WebAPI.Controllers
                 return BadRequest(ex.Message);
             }
         }
+        [HttpGet("random-products")]
+        public async Task<IActionResult> GetRandom()
+        {
+            var rndProducts = await _productService.GetRandomProducts();
+            return Ok(rndProducts);
+        }
     }
 }

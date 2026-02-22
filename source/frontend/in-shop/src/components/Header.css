@@ -1,57 +1,106 @@
-/* Стили для хедера */
+/* Стили для шапки */
 
-
+/* Блок header */
 .header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 20px;
-    background-color: #000;
-    color: #fff;
+    background-color: #000; /* Цвет фона */
+    color: #fff; /* Цвет текста */
+    width: 100%; /* Занимает всю ширину */
+    position: sticky;
+    z-index: 1000;
 }
 
-.header-content {
-    display: flex;
-    align-items: center;
+/* Контейнер внутри шапки */
+.header__container {
+    display: flex; /* Используем flexbox для расположения дочерних элементов */
+    align-items: center; /* Выравнивание по вертикали по центру */
+    justify-content: space-between; /* Распределяем пространство: логотип слева, корзина справа, поиск - по центру или между ними */
+    padding: 20px 20px; /* Внутренние отступы */
+    margin: 0 auto; /* Центрируем контейнер, если задана max-width */
+    max-width: 1200px; /* (Опционально) Ограничиваем максимальную ширину */
+    gap: 20px; /* Отступ между элементами (может использоваться вместо margin) */
 }
 
-.logo h1 {
-    margin-left: 30px;
-    font-size: 1.5em;
-    color: #fff;
-    text-decoration: none;
-    cursor: pointer;
+/* Логотип */
+.header__logo {
+    margin: 0; /* Убираем стандартные отступы заголовка */
+    font-size: 1.5em; /* Размер шрифта */
+    color: inherit; /* Наследуем цвет текста от .header */
+    text-decoration: none; /* Убираем подчеркивание ссылки */
 }
 
-.cart-icon {
+/* Ссылка логотипа */
+.header__logo-link {
+    color: inherit; /* Наследуем цвет текста */
+    text-decoration: none; /* Убираем подчеркивание */
+    display: block; /* Делаем ссылку блочной для удобства */
+}
+
+
+/* Кнопка корзины */
+.header__cart-button {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer; /* Курсор указывает на кликабельность */
     position: relative;
-    cursor: pointer;
-    margin-right: 30px;
-}
-
-.cart-icon img {
-    width: 40px;
-    height: 40px;
-}
-
-.cart-icon-animation {
-    width: 20px;
-    height: 20px;
-}
-
-.cart-count {
-    position: absolute;
-    top: -10px;
-    right: -10px;
-    background-color: #ff4d4d;
-    color: #fff;
-    font-size: 0.8em;
-    font-weight: bold;
-    border-radius: 50%;
-    width: 20px;
-    height: 20px;
     display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Иконка корзины */
+.header__cart-icon-img {
+    width: 2.5rem;
+    height: 2.5rem; 
+    display: block;
+}
+
+/* Счётчик товаров в корзине */
+.header__cart-count {
+    position: absolute; /* Абсолютное позиционирование относительно .header__cart-button */
+    top: -5px; /* Позиция сверху (можно регулировать) */
+    right: -5px; /* Позиция справа (можно регулировать) */
+    background-color: #ff4d4d; /* Цвет фона счётчика */
+    color: #fff; /* Цвет текста счётчика */
+    font-size: 0.8em; /* Размер шрифта */
+    font-weight: bold; /* Жирность шрифта */
+    border-radius: 50%; /* Делаем круглым */
+    width: 1rem; /* Ширина */
+    height: 1rem; /* Высота */
+    display: flex; /* Используем flex для центрирования текста */
     justify-content: center;
     align-items: center;
+    text-align: center; /* Выравнивание текста по центру */
+    line-height: 1; /* Высота строки для лучшего центрирования */
+    box-sizing: border-box; /* Включаем границу в размеры */
+}
+
+/* --- Адаптивность (медиа-запросы) --- */
+
+@media (max-width: 768px) {
+    .header__container {
+        padding: 8px 15px; /* Уменьшаем отступы на мобильных */
+        gap: 15px; /* Уменьшаем отступ между элементами */
+    }
+
+    .header__logo {
+        font-size: 1.3em; /* Уменьшаем размер логотипа */
+    }
+
+    .header__search-wrapper {
+        max-width: 200px;
+        flex-grow: 0; 
+    }
+
+    .header__cart-icon-img {
+        width: 35px; /* Уменьшаем иконку корзины */
+        height: 35px;
+    }
+
+    .header__cart-count {
+        width: 18px;
+        height: 18px;
+        font-size: 0.7em;
+    }
 }
 

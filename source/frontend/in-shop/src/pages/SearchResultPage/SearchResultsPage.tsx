@@ -49,7 +49,7 @@ const SearchResultsPage: React.FC = () => {
           q: query.trim(),
         });
 
-        const response = await fetch(`${API_BASE_URL}/search/vector-search?${searchParams}`, {
+        const response = await fetch(`${API_BASE_URL}/search/search?${searchParams}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',

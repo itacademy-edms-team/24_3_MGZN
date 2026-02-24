@@ -1,5 +1,5 @@
-﻿using InShopBLLayer.Abstractions;        // IEmbeddingService
-using InShopDbModels.Abstractions;       // IProductRepository, ICategoryRepository
+﻿using InShopBLLayer.Abstractions;
+using InShopDbModels.Abstractions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -18,9 +18,8 @@ namespace InShopBLLayer.Services.Search
         private static readonly TimeSpan _defaultInterval = TimeSpan.FromHours(1);
         private readonly TimeSpan _interval;
 
-        // ❌ Убрали IEmbeddingService, IProductRepository, ICategoryRepository из конструктора
         public VectorIndexingService(
-            IServiceScopeFactory scopeFactory, // ← Для создания scope
+            IServiceScopeFactory scopeFactory,
             ConnectionMultiplexer redis,
             ILogger<VectorIndexingService> logger)
         {
@@ -34,9 +33,8 @@ namespace InShopBLLayer.Services.Search
         {
             _logger.LogInformation("Служба векторной индексации запущена");
 
-            // ✅ Исправлено: было while(stoppingToken.IsCancellationRequested)
-            // Это означало "делай, пока токен отменён" - бесконечный цикл или не запуск
-            while (!stoppingToken.IsCancellationRequested) // <-- Добавили НЕ (!)
+          
+            while (!stoppingToken.IsCancellationRequested)
             {
                 try
                 {
@@ -63,32 +61,31 @@ namespace InShopBLLayer.Services.Search
             var embeddingService = scope.ServiceProvider.GetRequiredService<IEmbeddingService>();
             var productRepository = scope.ServiceProvider.GetRequiredService<IProductRepository>();
             var categoryRepository = scope.ServiceProvider.GetRequiredService<ICategoryRepository>();
-            var db = _redis.GetDatabase(); // Redis не зависит от scope
+            var db = _redis.GetDatabase();
 
             var products = await productRepository.GetProducts();
             _logger.LogInformation("Найдено {Count} товаров для индексации.", products.Count());
 
-            // Определяем ожидаемую размерность вектора (для ai-forever/sbert_large_nlu_ru это 1024)
+            
             const int ExpectedDimension = 768;
 
             foreach (var product in products)
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
+                var category = categoryRepository.GetCategoryNameById(product.ProductCategoryId);
+
                 try
                 {
-                    var text = $"{product.ProductName} {product.ProductDescription?.Trim() ?? ""}".Trim();
+                    var text = $"{category};{product.ProductName};{product.ProductDescription?.Trim() ?? ""}".Trim();
                     if (string.IsNullOrWhiteSpace(text))
                     {
                         _logger.LogWarning("Товар ID {ProductId} имеет пустое имя и описание, пропускаем.", product.ProductId);
                         continue;
                     }
 
-                    // ✅ Используем embeddingService из текущего scope
-                    // Убедитесь, что embeddingService (через FastAPI) использует ai-forever/sbert_large_nlu_ru
                     var vector = await embeddingService.GenerateEmbeddingAsync(text, cancellationToken);
 
-                    // Проверяем размерность вектора (ожидаем 1024 для sbert_large_nlu_ru)
                     if (vector.Length != ExpectedDimension)
                     {
                         _logger.LogError("Вектор для товара ID {ProductId} имеет неверную размерность: {ActualLength}. Ожидается {ExpectedLength} для модели ai-forever/sbert_large_nlu_ru.", product.ProductId, vector.Length, ExpectedDimension);
@@ -98,7 +95,6 @@ namespace InShopBLLayer.Services.Search
                     var vectorBytes = new byte[vector.Length * sizeof(float)];
                     Buffer.BlockCopy(vector, 0, vectorBytes, 0, vectorBytes.Length);
 
-                    // ✅ Используем categoryRepository из текущего scope
                     var categoryName = await categoryRepository.GetCategoryNameById(product.ProductCategoryId);
 
                     var availability = product.ProductAvailability == true ? "InStock" : "OutOfStock";
@@ -107,7 +103,7 @@ namespace InShopBLLayer.Services.Search
                     {
                         new HashEntry("name", product.ProductName ?? ""),
                         new HashEntry("description", product.ProductDescription ?? ""),
-                        new HashEntry("embedding", vectorBytes), // Вектор длиной 1024 * 4 байта = 4096 байт
+                        new HashEntry("embedding", vectorBytes),
                         new HashEntry("category", categoryName),
                         new HashEntry("price", ((double)product.ProductPrice).ToString(System.Globalization.CultureInfo.InvariantCulture)),
                         new HashEntry("stock", product.ProductStockQuantity.ToString()),
@@ -135,9 +131,8 @@ namespace InShopBLLayer.Services.Search
             {
                 try { await server.ExecuteAsync("FT.DROPINDEX", "idx:products"); } catch { /* Игнорируем ошибку, если индекс не существует */ }
 
-                const int IndexDimension = 768; // ✅ Установлено на 1024 для ai-forever/sbert_large_nlu_ru
+                const int IndexDimension = 768;
 
-                // ✅ Обновлённая команда CREATE INDEX с DIM 1024 для ai-forever/sbert_large_nlu_ru
                 await server.ExecuteAsync(
                     "FT.CREATE", "idx:products",
                     "ON", "HASH",
@@ -150,10 +145,10 @@ namespace InShopBLLayer.Services.Search
                     "stock", "NUMERIC",
                     "availability", "TAG",
                     "image_url", "TEXT",
-                    "embedding", "VECTOR", "FLAT", "6", // "6" - это количество аргументов после "FLAT"
-                    "TYPE", "FLOAT32",                 // Тип данных вектора
-                    "DIM", IndexDimension.ToString(),   // ✅ Изменено: размерность 1024 для sbert_large_nlu_ru
-                    "DISTANCE_METRIC", "COSINE"        // Метрика расстояния
+                    "embedding", "VECTOR", "FLAT", "6", 
+                    "TYPE", "FLOAT32",
+                    "DIM", IndexDimension.ToString(),  
+                    "DISTANCE_METRIC", "COSINE"    
                 );
 
                 _logger.LogInformation("Векторный индекс 'idx:products' создан с размерностью {Dimension} для модели ai-forever/sbert_large_nlu_ru.", IndexDimension);

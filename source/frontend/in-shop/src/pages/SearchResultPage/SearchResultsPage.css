@@ -1,40 +1,92 @@
-.search-results-page {
-  padding: 20px;
-  max-width: 1200px;
-  margin: 0 auto;
+/* src/pages/SearchResultsPage/SearchResultsPage.css */
+
+
+.search-results-page{
+  padding:2rem 3rem;
+}
+/* --- Стили для макета страницы поиска --- */
+.search-results-layout {
+  display: flex;
+  gap: 2rem; /* Отступ между панелью фильтров и результатами */
 }
 
-.search-results-page h2 {
+.search-filters-sidebar {
+  flex-shrink: 0; /* Фильтры не сжимаются */
+  width: 280px; /* Фиксированная ширина для фильтров */
+}
+
+.search-results-main-content {
+  flex-grow: 1; /* Основной контент занимает оставшееся место */
+  min-width: 0; /* Позволяет сжиматься */
+}
+
+.apply-filters-section-search {
+  margin-top: 10px;
+  margin-bottom: 20px; /* Отступ снизу от кнопки до результатов */
+  text-align: center; /* Центрируем кнопку */
+}
+
+.apply-filters-button-search {
+  padding: 15px;
+  margin: 2rem;
+  background-color: #000000; /* Зелёный цвет для кнопки */
+  color: white;
+  border: none;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.apply-filters-button-search:hover {
+  background-color: #0056b3;
+}
+
+
+/* Заголовок с количеством товаров */
+.search-results-main-content h3 {
   margin-bottom: 20px;
+  font-size: 18px;
   color: #333;
 }
 
+/* Стили для сетки товаров - исправлено! */
+.products-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 24px; /* Увеличил отступ между карточками */
+  margin-bottom: 30px;
+}
+
+/* Адаптивность для мобильных устройств */
+@media (max-width: 768px) {
+  .search-results-layout {
+    flex-direction: column; /* На мобильных фильтры сверху */
+  }
+  
+  .search-filters-sidebar {
+    width: 100%; /* Фильтры на всю ширину */
+  }
+  
+  .products-grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
+  }
+}
+
+/* Стили для индикатора загрузки */
 .loading-indicator {
-  text-align: center;
-  padding: 20px;
-  font-size: 18px;
-  color: #666;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 300px;
 }
 
 .error-message {
-  padding: 15px;
-  margin: 10px 0;
-  background-color: #f8d7da;
-  color: #721c24;
-  border: 1px solid #f5c6cb;
-  border-radius: 4px;
+  color: #dc3545;
   text-align: center;
-}
-
-.search-results-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); /* Пример сетки */
-  gap: 20px;
   margin-top: 20px;
-}
-
-.search-results-grid h3 {
-  grid-column: 1 / -1; /* Заголовок занимает всю ширину */
-  margin-bottom: 10px;
-  color: #555;
+  padding: 40px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  font-size: 16px;
 }

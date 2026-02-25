@@ -9,7 +9,6 @@ const LoadingSpinner = ({ message = "Загрузка..." }) => {
           <div className="spinner-ring">
             <div className="ring-spin"></div>
           </div>
-          <div className="spinner-center-dot"></div>
         </div>
         <p className="spinner-message">{message}</p>
       </div>

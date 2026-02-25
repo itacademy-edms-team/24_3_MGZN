@@ -1,0 +1,101 @@
+/* src/components/FiltersPanel/FiltersPanel.css */
+.filters-panel {
+  padding: 20px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.filters-panel h3 {
+  margin: 0 0 20px 0;
+  font-size: 20px;
+  color: #333;
+}
+
+.filter-section {
+  margin-bottom: 25px;
+}
+
+.filter-section h4 {
+  margin: 0 0 15px 0;
+  font-size: 16px;
+  color: #555;
+}
+
+.price-inputs {
+  display: flex;
+  gap: 10px;
+}
+
+.price-input {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.price-input label {
+  font-size: 14px;
+  color: #666;
+}
+
+.price-input input {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.price-input input:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
+}
+
+.category-select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  background-color: white;
+  cursor: pointer;
+}
+
+.category-select:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
+}
+
+.filter-loading {
+  color: #666;
+  font-size: 14px;
+  padding: 10px;
+  text-align: center;
+  background-color: #f1f1f1;
+  border-radius: 4px;
+}
+
+.filter-error {
+  color: #dc3545;
+  font-size: 14px;
+  padding: 10px;
+  text-align: center;
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: 4px;
+}
+
+/* Добавьте в FiltersPanel.css */
+.categories-count {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 8px;
+  padding: 4px 8px;
+  background-color: #e9ecef;
+  border-radius: 4px;
+  display: inline-block;
+}

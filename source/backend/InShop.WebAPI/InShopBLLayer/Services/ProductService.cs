@@ -52,9 +52,19 @@ namespace InShopBLLayer.Services
             var editedProduct = _mapper.Map<Product>(productDto);
             await _productRepository.UpdateProduct(editedProduct);
         }
-        public async Task<IEnumerable<ProductDto>> GetProductsByCategoryName(string categoryName, string sortBy = "ProductName", string sortOrder = "asc")
+        public async Task<IEnumerable<ProductDto>> GetProductsByCategoryName(
+            string categoryName,
+            decimal? minPrice = null,
+            decimal? maxPrice = null,
+            string sortBy = "ProductName",
+            string sortOrder = "asc")
         {
-            var products = await _productRepository.GetProductsByCategoryNameAsync(categoryName, sortBy, sortOrder);
+            var products = await _productRepository.GetProductsByCategoryNameAsync(
+                categoryName,
+                minPrice,
+                maxPrice,
+                sortBy,
+                sortOrder);
             return _mapper.Map<IEnumerable<ProductDto>>(products);
         }
         public async Task<IEnumerable<ProductDto>> GetRandomProducts()

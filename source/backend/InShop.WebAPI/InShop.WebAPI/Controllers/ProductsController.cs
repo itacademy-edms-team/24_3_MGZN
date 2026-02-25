@@ -44,11 +44,13 @@ namespace InShop.WebAPI.Controllers
             await _productService.DeleteProduct(id);
             return Ok("Товар удалён");
         }
-        [HttpGet("products-by-category")] // GET /api/Products/products-by-category?categoryName=...&sortBy=...&sortOrder=...
+        [HttpGet("products-by-category")]
         public async Task<IActionResult> GetProductsByCategory(
-                [FromQuery] string categoryName,
-                [FromQuery] string sortBy = "ProductName",
-                [FromQuery] string sortOrder = "asc")  
+        [FromQuery] string categoryName,
+        [FromQuery] decimal? minPrice = null,
+        [FromQuery] decimal? maxPrice = null,
+        [FromQuery] string sortBy = "ProductName",
+        [FromQuery] string sortOrder = "asc")
         {
             try
             {
@@ -66,7 +68,29 @@ namespace InShop.WebAPI.Controllers
                     return BadRequest(new { message = "Invalid sort order. Allowed: asc, desc" });
                 }
 
-                var productsByCategory = await _productService.GetProductsByCategoryName(categoryName, sortBy, sortOrder);
+                // Валидация цен
+                if (minPrice.HasValue && minPrice.Value < 0)
+                {
+                    return BadRequest(new { message = "Min price cannot be negative" });
+                }
+
+                if (maxPrice.HasValue && maxPrice.Value < 0)
+                {
+                    return BadRequest(new { message = "Max price cannot be negative" });
+                }
+
+                if (minPrice.HasValue && maxPrice.HasValue && minPrice.Value > maxPrice.Value)
+                {
+                    return BadRequest(new { message = "Min price cannot be greater than max price" });
+                }
+
+                var productsByCategory = await _productService.GetProductsByCategoryName(
+                    categoryName,
+                    minPrice,
+                    maxPrice,
+                    sortBy,
+                    sortOrder);
+
                 return Ok(productsByCategory);
             }
             catch (Exception ex)

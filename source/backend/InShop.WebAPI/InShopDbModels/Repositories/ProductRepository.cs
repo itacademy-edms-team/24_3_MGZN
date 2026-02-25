@@ -57,10 +57,16 @@ namespace InShopDbModels.Repositories
                 .ToListAsync();
         }
 
-        public async Task<IEnumerable<Product>> GetProductsByCategoryNameAsync(string categoryName, string sortBy, string sortOrder)
+        public async Task<IEnumerable<Product>> GetProductsByCategoryNameAsync(
+    string categoryName,
+    decimal? minPrice,
+    decimal? maxPrice,
+    string sortBy,
+    string sortOrder)
         {
             Console.WriteLine($"DEBUG REPO: Input categoryName: '{categoryName}', Type: {categoryName.GetType()}, Length: {categoryName.Length}");
-            Console.WriteLine($"DEBUG REPO: Input categoryName Bytes: [{string.Join(", ", System.Text.Encoding.UTF8.GetBytes(categoryName))}]"); // Проверим байты
+            Console.WriteLine($"DEBUG REPO: Input price filters - Min: {minPrice}, Max: {maxPrice}");
+            Console.WriteLine($"DEBUG REPO: Input categoryName Bytes: [{string.Join(", ", System.Text.Encoding.UTF8.GetBytes(categoryName))}]");
 
             // Запрос категории
             var categoryQuery = _appDbContext.Categories.Where(c => c.CategoryName == categoryName);
@@ -71,7 +77,7 @@ namespace InShopDbModels.Repositories
                 .Select(c => c.CategoryId)
                 .FirstOrDefaultAsync();
 
-            Console.WriteLine($"DEBUG REPO: Query result categoryId: {categoryId}"); // <-- Вот это значение
+            Console.WriteLine($"DEBUG REPO: Query result categoryId: {categoryId}");
 
             if (categoryId == 0)
             {
@@ -85,19 +91,41 @@ namespace InShopDbModels.Repositories
                 return Enumerable.Empty<Product>();
             }
 
-            // Запрос продуктов
+            // Запрос продуктов с фильтрацией по категории и цене
             IQueryable<Product> query = _appDbContext.Products
                 .Where(p => p.ProductCategoryId == categoryId);
 
+            // Применяем фильтр по минимальной цене
+            if (minPrice.HasValue)
+            {
+                query = query.Where(p => p.ProductPrice >= minPrice.Value);
+            }
+
+            // Применяем фильтр по максимальной цене
+            if (maxPrice.HasValue)
+            {
+                query = query.Where(p => p.ProductPrice <= maxPrice.Value);
+            }
+
+            // Логируем количество до сортировки
+            var countBeforeSort = await query.CountAsync();
+            Console.WriteLine($"DEBUG REPO: Products after price filters: {countBeforeSort}");
+
+            // Применяем сортировку
             query = sortBy.ToLower() switch
             {
-                "productname" => sortOrder.ToLower() == "desc" ? query.OrderByDescending(p => p.ProductName) : query.OrderBy(p => p.ProductName),
-                "price" => sortOrder.ToLower() == "desc" ? query.OrderByDescending(p => p.ProductPrice) : query.OrderBy(p => p.ProductPrice),
+                "productname" => sortOrder.ToLower() == "desc"
+                    ? query.OrderByDescending(p => p.ProductName)
+                    : query.OrderBy(p => p.ProductName),
+                "price" => sortOrder.ToLower() == "desc"
+                    ? query.OrderByDescending(p => p.ProductPrice)
+                    : query.OrderBy(p => p.ProductPrice),
                 _ => query.OrderBy(p => p.ProductName)
             };
 
             var products = await query.ToListAsync();
-            Console.WriteLine($"DEBUG REPO: Found {products.Count} products for categoryId {categoryId}");
+            Console.WriteLine($"DEBUG REPO: Found {products.Count} products for categoryId {categoryId} with price filters");
+
             return products;
         }
     }

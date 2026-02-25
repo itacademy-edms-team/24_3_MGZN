@@ -19,7 +19,7 @@ namespace InShop.WebAPI.Controllers
         private readonly ILogger<SearchController> _logger;
 
         // Порог для косинусного расстояния (0.0 = максимально близкие, 2.0 = максимально далекие)
-        private const double MaxCosineDistanceThreshold = 0.5; ///0.656
+        private const double MaxCosineDistanceThreshold = 0.5;
 
         // Веса для гибридного поиска
         private const double VectorWeight = 0.4; // Вес векторной оценки (1 - distance)
@@ -46,7 +46,8 @@ namespace InShop.WebAPI.Controllers
                 return BadRequest("Параметр поиска 'q' обязателен.");
             }
 
-            _logger.LogInformation("Получен гибридный поиск: '{Query}', Limit: {Limit}", q, limit);
+            _logger.LogInformation("Получен гибридный поиск: '{Query}', Limit: {Limit}, Category: '{Category}', MinPrice: {MinPrice}, MaxPrice: {MaxPrice}",
+        q, limit, category ?? "null", minPrice?.ToString() ?? "null", maxPrice?.ToString() ?? "null");
 
             try
             {
@@ -63,12 +64,12 @@ namespace InShop.WebAPI.Controllers
                 // 4. Формируем команды для векторного и лексического поиска
                 var vectorQuery = string.IsNullOrEmpty(filterClause)
                     ? $"*=>[KNN {limit} @embedding $BLOB AS vector_distance]"
-                    : $"{filterClause}=>[KNN {limit} @embedding $BLOB AS vector_distance]";
+                    : $"({filterClause})=>[KNN {limit} @embedding $BLOB AS vector_distance]"; // Добавлены скобки вокруг filterClause
 
                 var escapedQueryTerms = string.Join(" ", q.Split(' ', StringSplitOptions.RemoveEmptyEntries));
                 var lexicalQuery = string.IsNullOrEmpty(filterClause)
                     ? escapedQueryTerms
-                    : $"({filterClause}) {escapedQueryTerms}";
+                    : $"({filterClause}) {escapedQueryTerms}"; // filterClause уже в скобках
 
                 _logger.LogDebug("Формируемая строка векторного запроса для FT.SEARCH: '{Query}'", vectorQuery);
                 _logger.LogDebug("Формируемая строка лексического запроса для FT.SEARCH: '{Query}'", lexicalQuery);
@@ -93,7 +94,7 @@ namespace InShop.WebAPI.Controllers
                     lexicalQuery,
                     "SCORER", "BM25",
                     "WITHSCORES", // <<<--- Добавлено для получения оценки отдельно
-                    "RETURN", "7", "name", "description", "price", "category", "stock", "availability", "image_url", // <<<--- Убрано "__score"
+                    "RETURN", "7", "name", "description", "price", "category", "stock", "availability", "image_url",
                     "LIMIT", "0", limit.ToString(),
                     "DIALECT", "4"
                 );
@@ -365,22 +366,54 @@ namespace InShop.WebAPI.Controllers
         {
             var clauses = new List<string>();
 
+            // Для категории (TAG field)
             if (!string.IsNullOrEmpty(category))
             {
-                clauses.Add($"@category:{{{category}}}");
+                // Экранируем специальные символы в названии категории
+                var escapedCategory = EscapeTagValue(category);
+                clauses.Add($"@category:{{{escapedCategory}}}");
             }
 
-            if (minPrice.HasValue)
+            // Для цены (NUMERIC field)
+            if (minPrice.HasValue && maxPrice.HasValue)
+            {
+                clauses.Add($"@price:[{minPrice.Value} {maxPrice.Value}]");
+            }
+            else if (minPrice.HasValue)
             {
                 clauses.Add($"@price:[{minPrice.Value} +inf]");
             }
-
-            if (maxPrice.HasValue)
+            else if (maxPrice.HasValue)
             {
                 clauses.Add($"@price:[-inf {maxPrice.Value}]");
             }
 
-            return string.Join(" ", clauses);
+            // Если есть несколько условий, объединяем их через пробел
+            // RedisSearch интерпретирует это как AND
+            var result = string.Join(" ", clauses);
+
+            // Если есть хотя бы одно условие, возвращаем его
+            // Если условий несколько, они уже объединены через пробел
+            return result;
+        }
+
+        private static string EscapeTagValue(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+                return value;
+
+            var result = value;
+
+            // Экранируем специальные символы для TAG полей в RedisSearch
+            // Список символов для экранирования: , . < > { } [ ] " ' : ; ! @ # $ % ^ & * ( ) - + = ~ | / \ ? и пробел
+            var specialChars = new[] { ',', '.', '<', '>', '{', '}', '[', ']', '"', '\'', ':', ';', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '-', '+', '=', '~', '|', '/', '\\', '?', ' ' };
+
+            foreach (var c in specialChars)
+            {
+                result = result.Replace(c.ToString(), "\\" + c);
+            }
+
+            return result;
         }
 
         private static int ExtractIdFromKey(string key)

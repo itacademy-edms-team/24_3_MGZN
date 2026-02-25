@@ -6,7 +6,7 @@ import './App.css';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import CatalogPage from './pages/CatalogPage';
-import CategoryPage from './pages/CategoryPage';
+import CategoryPage from './pages/CategoryPage.tsx';
 import CartModal from './components/CartModal'; // Добавляем CartModal
 import ProductPage from './pages/ProductPage';
 import { CartProvider } from './components/CartContext'; // Импортируем CartProvider

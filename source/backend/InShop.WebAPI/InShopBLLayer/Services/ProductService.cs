@@ -56,6 +56,7 @@ namespace InShopBLLayer.Services
             string categoryName,
             decimal? minPrice = null,
             decimal? maxPrice = null,
+            bool? inStock = null,
             string sortBy = "ProductName",
             string sortOrder = "asc")
         {
@@ -63,6 +64,7 @@ namespace InShopBLLayer.Services
                 categoryName,
                 minPrice,
                 maxPrice,
+                inStock, // Передаем параметр inStock
                 sortBy,
                 sortOrder);
             return _mapper.Map<IEnumerable<ProductDto>>(products);

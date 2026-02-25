@@ -58,19 +58,21 @@ namespace InShopDbModels.Repositories
         }
 
         public async Task<IEnumerable<Product>> GetProductsByCategoryNameAsync(
-    string categoryName,
-    decimal? minPrice,
-    decimal? maxPrice,
-    string sortBy,
-    string sortOrder)
+            string categoryName,
+            decimal? minPrice,
+            decimal? maxPrice,
+            bool? inStock,
+            string sortBy,
+            string sortOrder)
         {
             Console.WriteLine($"DEBUG REPO: Input categoryName: '{categoryName}', Type: {categoryName.GetType()}, Length: {categoryName.Length}");
             Console.WriteLine($"DEBUG REPO: Input price filters - Min: {minPrice}, Max: {maxPrice}");
+            Console.WriteLine($"DEBUG REPO: Input inStock filter: {inStock}");
             Console.WriteLine($"DEBUG REPO: Input categoryName Bytes: [{string.Join(", ", System.Text.Encoding.UTF8.GetBytes(categoryName))}]");
 
             // Запрос категории
             var categoryQuery = _appDbContext.Categories.Where(c => c.CategoryName == categoryName);
-            var sql = categoryQuery.ToQueryString(); // EF Core 5+
+            var sql = categoryQuery.ToQueryString();
             Console.WriteLine($"DEBUG REPO: Category SQL Query: {sql}");
 
             var categoryId = await categoryQuery
@@ -91,7 +93,7 @@ namespace InShopDbModels.Repositories
                 return Enumerable.Empty<Product>();
             }
 
-            // Запрос продуктов с фильтрацией по категории и цене
+            // Запрос продуктов с фильтрацией по категории
             IQueryable<Product> query = _appDbContext.Products
                 .Where(p => p.ProductCategoryId == categoryId);
 
@@ -99,17 +101,36 @@ namespace InShopDbModels.Repositories
             if (minPrice.HasValue)
             {
                 query = query.Where(p => p.ProductPrice >= minPrice.Value);
+                Console.WriteLine($"DEBUG REPO: Applied min price filter: >= {minPrice.Value}");
             }
 
             // Применяем фильтр по максимальной цене
             if (maxPrice.HasValue)
             {
                 query = query.Where(p => p.ProductPrice <= maxPrice.Value);
+                Console.WriteLine($"DEBUG REPO: Applied max price filter: <= {maxPrice.Value}");
             }
 
-            // Логируем количество до сортировки
-            var countBeforeSort = await query.CountAsync();
-            Console.WriteLine($"DEBUG REPO: Products after price filters: {countBeforeSort}");
+            // Применяем фильтр по наличию
+            if (inStock.HasValue)
+            {
+                if (inStock.Value)
+                {
+                    // Только товары в наличии (stock > 0)
+                    query = query.Where(p => p.ProductStockQuantity > 0);
+                    Console.WriteLine($"DEBUG REPO: Applied in stock filter (stock > 0)");
+                }
+                else
+                {
+                    // Только товары не в наличии (stock = 0)
+                    query = query.Where(p => p.ProductStockQuantity == 0);
+                    Console.WriteLine($"DEBUG REPO: Applied out of stock filter (stock = 0)");
+                }
+            }
+
+            // Логируем количество после всех фильтров
+            var countAfterFilters = await query.CountAsync();
+            Console.WriteLine($"DEBUG REPO: Products after all filters: {countAfterFilters}");
 
             // Применяем сортировку
             query = sortBy.ToLower() switch
@@ -123,8 +144,18 @@ namespace InShopDbModels.Repositories
                 _ => query.OrderBy(p => p.ProductName)
             };
 
+            Console.WriteLine($"DEBUG REPO: Applied sorting: {sortBy} {sortOrder}");
+
             var products = await query.ToListAsync();
-            Console.WriteLine($"DEBUG REPO: Found {products.Count} products for categoryId {categoryId} with price filters");
+            Console.WriteLine($"DEBUG REPO: Found {products.Count} products for categoryId {categoryId} with all filters");
+
+            // Дополнительная информация о наличии для отладки
+            if (products.Any())
+            {
+                var inStockCount = products.Count(p => p.ProductStockQuantity > 0);
+                var outOfStockCount = products.Count(p => p.ProductStockQuantity == 0);
+                Console.WriteLine($"DEBUG REPO: In stock: {inStockCount}, Out of stock: {outOfStockCount}");
+            }
 
             return products;
         }

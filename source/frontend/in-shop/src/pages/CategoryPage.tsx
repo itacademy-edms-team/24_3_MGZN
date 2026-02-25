@@ -1,98 +1,132 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
-import Breadcrumb from '../components/Breadcrumb'; // Убедитесь в правильном пути
-import ProductCard from '../components/ProductCard'; // Убедитесь в правильном пути
-import FiltersPanel from '../components/FiltersPanel/FiltersPanel.tsx'; // Убедитесь в правильном пути
-import LoadingSpinner from '../components/LoadingSpinner'; // Убедитесь в правильном пути
-import './CategoryPage.css'; // Убедитесь в правильном пути
+import Breadcrumb from '../components/Breadcrumb';
+import ProductCard from '../components/ProductCard';
+import FiltersPanel from '../components/FiltersPanel/FiltersPanel.tsx';
+import LoadingSpinner from '../components/LoadingSpinner';
+import './CategoryPage.css';
 
-const CategoryPage = () => {
-    const { categoryName: initialCategoryNameFromUrl } = useParams(); // Получаем имя категории из URL
-    const [searchParams, setSearchParams] = useSearchParams(); // Для чтения/записи параметров
-    const navigate = useNavigate(); // Для обновления URL при применении фильтров
+// Интерфейсы для типизации
+interface ProductDto {
+    productId: number;
+    productName: string;
+    productDescription: string;
+    productPrice: number;
+    productAvailability: boolean;
+    productStockQuantity: number;
+    imageUrl: string | null;
+    productCategoryId: number;
+    productCategoryName: string | null;
+}
+
+interface FiltersState {
+    minPrice: string;
+    maxPrice: string;
+    category: string;
+    inStock: boolean | null; // null - все товары, true - только в наличии
+}
+
+const CategoryPage: React.FC = () => {
+    const { categoryName: initialCategoryNameFromUrl } = useParams<{ categoryName: string }>();
+    const [searchParams] = useSearchParams();
+    const navigate = useNavigate();
+
+    // Ref для отслеживания обновлений из URL
+    const isUpdatingFromUrl = useRef(false);
 
     // --- Состояния ---
-    const [products, setProducts] = useState([]);
+    const [products, setProducts] = useState<ProductDto[]>([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+    const [error, setError] = useState<string | null>(null);
 
     // --- Состояния для фильтров (синхронизированы с URL) ---
-    const [currentFilters, setCurrentFilters] = useState({
+    const [currentFilters, setCurrentFilters] = useState<FiltersState>({
         minPrice: searchParams.get('minPrice') || '',
         maxPrice: searchParams.get('maxPrice') || '',
-        category: initialCategoryNameFromUrl || '', // Категория фиксирована для этой страницы, но FiltersPanel может её обновлять, если hideCategory=false
+        category: initialCategoryNameFromUrl || '',
+        inStock: searchParams.get('inStock') === 'true' ? true : null,
     });
 
     // --- Состояния для сортировки ---
     const [sortOption, setSortOption] = useState(() => {
-        // Извлекаем сортировку из URL при монтировании
         const urlSort = searchParams.get('sort');
-        // Проверяем, является ли значение допустимым
-        if (['name-asc', 'name-desc', 'price-asc', 'price-desc'].includes(urlSort)) {
-            return urlSort;
+        if (['name-asc', 'name-desc', 'price-asc', 'price-desc'].includes(urlSort || '')) {
+            return urlSort as string;
         }
-        return 'name-asc'; // Значение по умолчанию
+        return 'name-asc';
     });
     const [isMenuOpen, setIsMenuOpen] = useState(false);
 
+    const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'https://localhost:7275/api';
+
     // --- Обработчик изменения фильтров (из FiltersPanel) ---
-    const handleFiltersChange = (filters) => {
+    const handleFiltersChange = useCallback((filters: {
+        minPrice: string;
+        maxPrice: string;
+        category: string;
+        inStock: boolean | null;
+    }) => {
         setCurrentFilters(prev => ({
             ...prev,
             minPrice: filters.minPrice,
             maxPrice: filters.maxPrice,
-            // Категория может измениться, если FiltersPanel позволяет (hideCategory=false)
-            // Если hideCategory=true, filters.category не изменится, и мы используем initialCategoryNameFromUrl
-            category: filters.category,
+            inStock: filters.inStock,
+            // category не обновляем, так как hideCategory=true
         }));
-    };
+    }, []);
 
     // --- Обработчик кнопки "Применить фильтры" ---
-    const handleApplyFilters = () => {
-        // Формируем новые параметры
-        const newParams = new URLSearchParams(searchParams); // Берём текущие параметры
+    const handleApplyFilters = useCallback(() => {
+        if (!initialCategoryNameFromUrl) {
+            setError('Категория не указана.');
+            return;
+        }
 
-        // Обновляем параметры фильтра
+        const newParams = new URLSearchParams();
+
+        // Добавляем фильтры по цене
         if (currentFilters.minPrice) {
             newParams.set('minPrice', currentFilters.minPrice);
-        } else {
-            newParams.delete('minPrice'); // Удаляем, если пусто
         }
         if (currentFilters.maxPrice) {
             newParams.set('maxPrice', currentFilters.maxPrice);
-        } else {
-            newParams.delete('maxPrice'); // Удаляем, если пусто
         }
-        // Категория на этой странице фиксирована в пути, но если FiltersPanel позволяет менять её (hideCategory=false),
-        // и она изменилась, можно обновить путь. Но обычно категория не меняется на странице категории.
-        // Мы не меняем 'categoryName' в URL-пути, но можем передать её в API, если нужно.
-        // В данном случае, categoryName будет передаваться как path parameter, а фильтры - как query params.
 
-        // Сортировка (остаётся без изменений, если не меняли)
-        // Если вы хотите, чтобы сортировка тоже обновлялась при нажатии "Применить", можно её тоже обновить:
-        // newParams.set('sort', sortOption); // <<<--- РАСКОММЕНТИРУЙТЕ, ЕСЛИ ХОТИТЕ СОРТИРОВКУ ТОЖЕ ЧЕРЕЗ КНОПКУ
-        // Или оставляем как есть, и сортировка обновляется через onChange селекта.
+        // Добавляем фильтр по наличию
+        if (currentFilters.inStock === true) {
+            newParams.set('inStock', 'true');
+        }
+
+        // Добавляем сортировку
+        if (sortOption !== 'name-asc') {
+            newParams.set('sort', sortOption);
+        }
+
+        // Устанавливаем флаг, чтобы не обновлять фильтры из URL при навигации
+        isUpdatingFromUrl.current = true;
 
         // Навигация с новыми параметрами
-        navigate(`?${newParams.toString()}`, { replace: true }); // replace: true, чтобы не создавать новую запись в истории
-    };
+        navigate(`/category/${encodeURIComponent(initialCategoryNameFromUrl)}?${newParams.toString()}`, { replace: true });
+    }, [currentFilters, sortOption, initialCategoryNameFromUrl, navigate]);
 
-    // --- Эффект: Загрузка товаров при изменении URL (categoryName, filters, sort) ---
+    // --- Синхронизируем currentFilters с URL при изменении searchParams ---
     useEffect(() => {
-        // Извлекаем параметры из URL *внутри* эффекта
-        const minPriceParam = searchParams.get('minPrice');
-        const maxPriceParam = searchParams.get('maxPrice');
-        const sortParam = searchParams.get('sort');
-        // Извлекаем сортировку из URL
-        let effectiveSortOption = sortParam;
-        if (!['name-asc', 'name-desc', 'price-asc', 'price-desc'].includes(effectiveSortOption)) {
-             effectiveSortOption = 'name-asc'; // Значение по умолчанию, если в URL ошибка
-        }
-        // Обновляем состояние сортировки, если она изменилась в URL
-        if (effectiveSortOption !== sortOption) {
-             setSortOption(effectiveSortOption);
+        // Если обновление происходит из handleApplyFilters, пропускаем
+        if (isUpdatingFromUrl.current) {
+            isUpdatingFromUrl.current = false;
+            return;
         }
 
+        setCurrentFilters(prev => ({
+            ...prev,
+            minPrice: searchParams.get('minPrice') || '',
+            maxPrice: searchParams.get('maxPrice') || '',
+            inStock: searchParams.get('inStock') === 'true' ? true : null,
+        }));
+    }, [searchParams]);
+
+    // --- Эффект: Загрузка товаров при изменении URL ---
+    useEffect(() => {
         const loadProducts = async () => {
             if (!initialCategoryNameFromUrl) {
                 setError('Категория не указана.');
@@ -104,14 +138,36 @@ const CategoryPage = () => {
                 setLoading(true);
                 setError(null);
 
+                // Получаем параметры из URL
+                const minPriceParam = searchParams.get('minPrice');
+                const maxPriceParam = searchParams.get('maxPrice');
+                const inStockParam = searchParams.get('inStock');
+                const sortParam = searchParams.get('sort');
+
+                // Определяем эффективную сортировку
+                let effectiveSortOption = sortParam;
+                if (!['name-asc', 'name-desc', 'price-asc', 'price-desc'].includes(effectiveSortOption || '')) {
+                    effectiveSortOption = 'name-asc';
+                }
+
+                // Обновляем состояние сортировки, если она изменилась в URL
+                if (effectiveSortOption !== sortOption) {
+                    setSortOption(effectiveSortOption || 'name-asc');
+                }
+
                 // Формируем параметры для API-запроса
                 const apiParams = new URLSearchParams({
-                    categoryName: initialCategoryNameFromUrl, // Имя категории из пути URL
+                    categoryName: initialCategoryNameFromUrl,
                 });
 
-                // Добавляем фильтры по цене из URL, если они есть
+                // Добавляем фильтры по цене
                 if (minPriceParam) apiParams.append('minPrice', minPriceParam);
                 if (maxPriceParam) apiParams.append('maxPrice', maxPriceParam);
+
+                // Добавляем фильтр по наличию
+                if (inStockParam === 'true') {
+                    apiParams.append('inStock', 'true');
+                }
 
                 // Добавляем параметры сортировки
                 let sortBy = 'ProductName';
@@ -130,7 +186,6 @@ const CategoryPage = () => {
                         sortBy = 'Price';
                         sortOrder = 'desc';
                         break;
-                    // 'name-asc' по умолчанию
                     default:
                         sortBy = 'ProductName';
                         sortOrder = 'asc';
@@ -139,8 +194,10 @@ const CategoryPage = () => {
                 apiParams.append('sortBy', sortBy);
                 apiParams.append('sortOrder', sortOrder);
 
+                console.log('Запрос к API:', `${API_BASE_URL}/Products/products-by-category?${apiParams}`);
+
                 // Выполняем запрос
-                const response = await fetch(`https://localhost:7275/api/Products/products-by-category?${apiParams}`, {
+                const response = await fetch(`${API_BASE_URL}/Products/products-by-category?${apiParams}`, {
                     method: 'GET',
                     headers: {
                         'Content-Type': 'application/json',
@@ -148,20 +205,24 @@ const CategoryPage = () => {
                 });
 
                 if (!response.ok) {
+                    if (response.status === 404) {
+                        setProducts([]);
+                        return;
+                    }
                     throw new Error(`Ошибка загрузки товаров: ${response.status} ${response.statusText}`);
                 }
 
                 if (response.status === 204) {
                     setProducts([]);
-                    setLoading(false);
                     return;
                 }
 
-                const data = await response.json();
+                const data: ProductDto[] = await response.json();
+                console.log('Получены товары:', data);
                 setProducts(data);
             } catch (err) {
                 console.error('Ошибка при загрузке товаров:', err);
-                setError(err.message || 'Произошла ошибка при загрузке товаров.');
+                setError(err instanceof Error ? err.message : 'Произошла ошибка при загрузке товаров.');
                 setProducts([]);
             } finally {
                 setLoading(false);
@@ -169,20 +230,28 @@ const CategoryPage = () => {
         };
 
         loadProducts();
-    }, [searchParams, initialCategoryNameFromUrl]); // Зависит от searchParams и начальной категории
+    }, [searchParams, initialCategoryNameFromUrl, API_BASE_URL, sortOption]);
 
-    // --- Обработчик изменения сортировки (onChange селекта) ---
-    const handleSortOptionChange = (event) => {
+    // --- Обработчик изменения сортировки ---
+    const handleSortOptionChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const newSortOption = event.target.value;
         setSortOption(newSortOption);
 
         // Обновляем URL при изменении сортировки
         const newParams = new URLSearchParams(searchParams);
-        newParams.set('sort', newSortOption);
-        // Удаляем параметр, если он равен значению по умолчанию, чтобы не засорять URL
+
+        // Сохраняем существующие фильтры
+        if (currentFilters.minPrice) newParams.set('minPrice', currentFilters.minPrice);
+        if (currentFilters.maxPrice) newParams.set('maxPrice', currentFilters.maxPrice);
+        if (currentFilters.inStock === true) newParams.set('inStock', 'true');
+
+        // Обновляем сортировку
         if (newSortOption === 'name-asc') {
-             newParams.delete('sort');
+            newParams.delete('sort');
+        } else {
+            newParams.set('sort', newSortOption);
         }
+
         navigate(`?${newParams.toString()}`, { replace: true });
     };
 
@@ -205,25 +274,26 @@ const CategoryPage = () => {
             {/* --- Контейнер для фильтров и основного контента --- */}
             <div className="category-layout">
                 {/* --- Боковая панель с фильтрами --- */}
-                    <aside className="category-filters-sidebar">
-                        <FiltersPanel
-                            initialMinPrice={currentFilters.minPrice}
-                            initialMaxPrice={currentFilters.maxPrice}
-                            initialCategory={initialCategoryNameFromUrl} // Передаём начальную категорию
-                            onFiltersChange={handleFiltersChange}
-                            hideCategory={true} // Скрываем поле категории на странице категории
-                        />
-                        {/* --- Кнопка Применить фильтры --- */}
-                        <div className="apply-filters-section-category">
-                            <button onClick={handleApplyFilters} className="apply-filters-button-category">
-                                Применить фильтры
-                            </button>
-                        </div>
-                    </aside>
+                <aside className="category-filters-sidebar">
+                    <FiltersPanel
+                        initialMinPrice={currentFilters.minPrice}
+                        initialMaxPrice={currentFilters.maxPrice}
+                        initialCategory={initialCategoryNameFromUrl}
+                        initialInStock={currentFilters.inStock}
+                        onFiltersChange={handleFiltersChange}
+                        hideCategory={true}
+                        hideInStock={false}
+                    />
+                    {/* --- Кнопка Применить фильтры --- */}
+                    <div className="apply-filters-section-category">
+                        <button onClick={handleApplyFilters} className="apply-filters-button-category">
+                            Применить фильтры
+                        </button>
+                    </div>
+                </aside>
 
                 {/* --- Основной контент --- */}
                 <main className="category-main-content">
-                    
                     {/* --- Отображение ошибки --- */}
                     {error && <div className="error-message">{error}</div>}
 
@@ -284,13 +354,23 @@ const CategoryPage = () => {
 
                     {/* --- Список товаров --- */}
                     {!error && (
-                        <ul className="products-list">
-                            {products.map((product) => (
-                                <li key={product.productId} className="product-card-wrapper">
-                                    <ProductCard product={product} />
-                                </li>
-                            ))}
-                        </ul>
+                        <>
+                            {products.length === 0 ? (
+                                <div className="no-products-message">
+                                    {currentFilters.inStock === true 
+                                        ? 'В этой категории нет товаров в наличии.'
+                                        : 'В этой категории нет товаров.'}
+                                </div>
+                            ) : (
+                                <ul className="products-list">
+                                    {products.map((product) => (
+                                        <li key={product.productId} className="product-card-wrapper">
+                                            <ProductCard product={product} />
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </>
                     )}
                 </main>
             </div>

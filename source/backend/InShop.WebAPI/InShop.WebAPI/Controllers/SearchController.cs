@@ -39,6 +39,7 @@ namespace InShop.WebAPI.Controllers
             [FromQuery] string? category = null,
             [FromQuery] decimal? minPrice = null,
             [FromQuery] decimal? maxPrice = null,
+            [FromQuery] bool? inStock = null, // Добавляем параметр inStock
             CancellationToken ct = default)
         {
             if (string.IsNullOrWhiteSpace(q))
@@ -46,8 +47,8 @@ namespace InShop.WebAPI.Controllers
                 return BadRequest("Параметр поиска 'q' обязателен.");
             }
 
-            _logger.LogInformation("Получен гибридный поиск: '{Query}', Limit: {Limit}, Category: '{Category}', MinPrice: {MinPrice}, MaxPrice: {MaxPrice}",
-        q, limit, category ?? "null", minPrice?.ToString() ?? "null", maxPrice?.ToString() ?? "null");
+            _logger.LogInformation("Получен гибридный поиск: '{Query}', Limit: {Limit}, Category: '{Category}', MinPrice: {MinPrice}, MaxPrice: {MaxPrice}, InStock: {InStock}",
+                q, limit, category ?? "null", minPrice?.ToString() ?? "null", maxPrice?.ToString() ?? "null", inStock?.ToString() ?? "null");
 
             try
             {
@@ -58,18 +59,18 @@ namespace InShop.WebAPI.Controllers
                 var queryVectorBytes = new byte[queryVector.Length * sizeof(float)];
                 Buffer.BlockCopy(queryVector, 0, queryVectorBytes, 0, queryVectorBytes.Length);
 
-                // 3. Подготовим фильтр (если есть)
-                var filterClause = BuildFilterClause(category, minPrice, maxPrice);
+                // 3. Подготовим фильтр (с учетом нового параметра inStock)
+                var filterClause = BuildFilterClause(category, minPrice, maxPrice, inStock);
 
                 // 4. Формируем команды для векторного и лексического поиска
                 var vectorQuery = string.IsNullOrEmpty(filterClause)
                     ? $"*=>[KNN {limit} @embedding $BLOB AS vector_distance]"
-                    : $"({filterClause})=>[KNN {limit} @embedding $BLOB AS vector_distance]"; // Добавлены скобки вокруг filterClause
+                    : $"({filterClause})=>[KNN {limit} @embedding $BLOB AS vector_distance]";
 
                 var escapedQueryTerms = string.Join(" ", q.Split(' ', StringSplitOptions.RemoveEmptyEntries));
                 var lexicalQuery = string.IsNullOrEmpty(filterClause)
                     ? escapedQueryTerms
-                    : $"({filterClause}) {escapedQueryTerms}"; // filterClause уже в скобках
+                    : $"({filterClause}) {escapedQueryTerms}";
 
                 _logger.LogDebug("Формируемая строка векторного запроса для FT.SEARCH: '{Query}'", vectorQuery);
                 _logger.LogDebug("Формируемая строка лексического запроса для FT.SEARCH: '{Query}'", lexicalQuery);
@@ -93,7 +94,7 @@ namespace InShop.WebAPI.Controllers
                     "idx:products",
                     lexicalQuery,
                     "SCORER", "BM25",
-                    "WITHSCORES", // <<<--- Добавлено для получения оценки отдельно
+                    "WITHSCORES",
                     "RETURN", "7", "name", "description", "price", "category", "stock", "availability", "image_url",
                     "LIMIT", "0", limit.ToString(),
                     "DIALECT", "4"
@@ -103,7 +104,6 @@ namespace InShop.WebAPI.Controllers
 
                 var vectorResult = await vectorResultTask;
                 var lexicalResult = await lexicalResultTask;
-
 
                 // --- ОБРАБАТЫВАЕМ РЕЗУЛЬТАТЫ ---
                 var hybridResults = await ProcessHybridSearch(vectorResult, lexicalResult, MaxCosineDistanceThreshold);
@@ -362,14 +362,13 @@ namespace InShop.WebAPI.Controllers
             };
         }
 
-        private static string BuildFilterClause(string? category, decimal? minPrice, decimal? maxPrice)
+        private static string BuildFilterClause(string? category, decimal? minPrice, decimal? maxPrice, bool? inStock)
         {
             var clauses = new List<string>();
 
             // Для категории (TAG field)
             if (!string.IsNullOrEmpty(category))
             {
-                // Экранируем специальные символы в названии категории
                 var escapedCategory = EscapeTagValue(category);
                 clauses.Add($"@category:{{{escapedCategory}}}");
             }
@@ -388,12 +387,16 @@ namespace InShop.WebAPI.Controllers
                 clauses.Add($"@price:[-inf {maxPrice.Value}]");
             }
 
-            // Если есть несколько условий, объединяем их через пробел
-            // RedisSearch интерпретирует это как AND
+            // Для наличия (TAG field - availability)
+            if (inStock.HasValue)
+            {
+                // В Redis availability хранится как "InStock" или "OutOfStock"
+                var availabilityValue = inStock.Value ? "InStock" : "OutOfStock";
+                clauses.Add($"@availability:{{{availabilityValue}}}");
+            }
+
             var result = string.Join(" ", clauses);
 
-            // Если есть хотя бы одно условие, возвращаем его
-            // Если условий несколько, они уже объединены через пробел
             return result;
         }
 

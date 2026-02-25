@@ -17,10 +17,11 @@ namespace InShopDbModels.Abstractions
         Task<bool> ExistsProduct(int id);
         Task<IEnumerable<Product>> GetProductsByCategoryNameAsync(
             string categoryName,
-            decimal? minPrice = null,
-            decimal? maxPrice = null,
-            string sortBy = "ProductName",
-            string sortOrder = "asc");
+            decimal? minPrice,
+            decimal? maxPrice,
+            bool? inStock,
+            string sortBy,
+            string sortOrder);
         Task<IEnumerable<Product>> GetProductsByCategoryId(int categoryId);
     }
 }

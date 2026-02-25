@@ -18,6 +18,7 @@ namespace InShopBLLayer.Abstractions
             string categoryName,
             decimal? minPrice = null,
             decimal? maxPrice = null,
+            bool? inStock = null,
             string sortBy = "ProductName",
             string sortOrder = "asc");
         Task<IEnumerable<ProductDto>> GetRandomProducts();

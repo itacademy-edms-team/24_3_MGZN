@@ -6,28 +6,37 @@ interface FiltersPanelProps {
   initialMinPrice?: string;
   initialMaxPrice?: string;
   initialCategory?: string;
-  onFiltersChange: (filters: { minPrice: string; maxPrice: string; category: string }) => void;
+  initialInStock?: boolean | null; // Добавляем проп для наличия
+  onFiltersChange: (filters: { 
+    minPrice: string; 
+    maxPrice: string; 
+    category: string;
+    inStock: boolean | null; // null - все товары, true - только в наличии
+  }) => void;
   hideCategory?: boolean;
+  hideInStock?: boolean; // Опция для скрытия фильтра наличия
 }
 
-// Интерфейс должен соответствовать тому, что приходит с сервера
+// Интерфейс для категорий с сервера
 interface CategoryDto {
   id: number;
   name: string;
-  // Добавьте другие поля, если они есть
 }
 
 const FiltersPanel: React.FC<FiltersPanelProps> = ({
   initialMinPrice = '',
   initialMaxPrice = '',
   initialCategory = '',
+  initialInStock = null, // По умолчанию показываем все товары
   onFiltersChange,
   hideCategory = false,
+  hideInStock = false, // По умолчанию показываем фильтр наличия
 }) => {
   const [minPrice, setMinPrice] = useState(initialMinPrice);
   const [maxPrice, setMaxPrice] = useState(initialMaxPrice);
   const [category, setCategory] = useState(initialCategory);
-  const [categories, setCategories] = useState<any[]>([]); // Временно используем any для отладки
+  const [inStock, setInStock] = useState<boolean | null>(initialInStock);
+  const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -116,31 +125,40 @@ const FiltersPanel: React.FC<FiltersPanelProps> = ({
     setMinPrice(initialMinPrice);
     setMaxPrice(initialMaxPrice);
     setCategory(initialCategory);
-  }, [initialMinPrice, initialMaxPrice, initialCategory]);
+    setInStock(initialInStock);
+  }, [initialMinPrice, initialMaxPrice, initialCategory, initialInStock]);
 
   const handleMinPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setMinPrice(value);
-    onFiltersChange({ minPrice: value, maxPrice, category });
+    onFiltersChange({ minPrice: value, maxPrice, category, inStock });
   };
 
   const handleMaxPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setMaxPrice(value);
-    onFiltersChange({ minPrice, maxPrice: value, category });
+    onFiltersChange({ minPrice, maxPrice: value, category, inStock });
   };
 
   const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     setCategory(value);
-    onFiltersChange({ minPrice, maxPrice, category: value });
+    onFiltersChange({ minPrice, maxPrice, category: value, inStock });
+  };
+
+  const handleInStockChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const checked = e.target.checked;
+    // Если чекбокс отмечен - показываем только в наличии (true)
+    // Если не отмечен - показываем все товары (null)
+    const newValue = checked ? true : null;
+    setInStock(newValue);
+    onFiltersChange({ minPrice, maxPrice, category, inStock: newValue });
   };
 
   // Функция для безопасного получения названия категории
   const getCategoryName = (cat: any): string => {
     if (!cat) return 'Без названия';
     
-    // Проверяем различные возможные названия полей
     if (typeof cat === 'string') return cat;
     if (cat.name) return cat.name;
     if (cat.categoryName) return cat.categoryName;
@@ -149,7 +167,6 @@ const FiltersPanel: React.FC<FiltersPanelProps> = ({
     if (cat.value) return cat.value;
     if (cat.label) return cat.label;
     
-    // Если ничего не нашли, возвращаем строковое представление
     return String(cat);
   };
 
@@ -164,7 +181,6 @@ const FiltersPanel: React.FC<FiltersPanelProps> = ({
       if (cat.key !== undefined) return cat.key;
     }
     
-    // Если это примитив, используем его как ID
     return typeof cat === 'string' || typeof cat === 'number' ? cat : Math.random();
   };
 
@@ -174,6 +190,7 @@ const FiltersPanel: React.FC<FiltersPanelProps> = ({
     <div className="filters-panel">
       <h3>Фильтры</h3>
       
+      {/* Фильтр по цене */}
       <div className="filter-section">
         <h4>Цена</h4>
         <div className="price-inputs">
@@ -183,7 +200,7 @@ const FiltersPanel: React.FC<FiltersPanelProps> = ({
               id="min-price"
               type="number"
               min="0"
-              step="1000.0"
+              step="1000"
               value={minPrice}
               onChange={handleMinPriceChange}
               placeholder="0"
@@ -195,7 +212,7 @@ const FiltersPanel: React.FC<FiltersPanelProps> = ({
               id="max-price"
               type="number"
               min="0"
-              step="1000.0"
+              step="1000"
               value={maxPrice}
               onChange={handleMaxPriceChange}
               placeholder="10000"
@@ -204,6 +221,22 @@ const FiltersPanel: React.FC<FiltersPanelProps> = ({
         </div>
       </div>
 
+      {/* Фильтр по наличию */}
+      {!hideInStock && (
+        <div className="filter-section">
+          <h4>Наличие</h4>
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              checked={inStock === true}
+              onChange={handleInStockChange}
+            />
+            <span className="checkbox-text">В наличии</span>
+          </label>
+        </div>
+      )}
+
+      {/* Фильтр по категории */}
       {!hideCategory && (
         <div className="filter-section">
           <h4>Категория</h4>
@@ -214,26 +247,23 @@ const FiltersPanel: React.FC<FiltersPanelProps> = ({
           ) : categories.length === 0 ? (
             <div className="filter-error">Нет доступных категорий</div>
           ) : (
-            <>
-              <select 
-                value={category} 
-                onChange={handleCategoryChange}
-                className="category-select"
-              >
-                <option value="">Все категории</option>
-                {categories.map((cat, index) => {
-                  const catId = getCategoryId(cat);
-                  const catName = getCategoryName(cat);
-                  console.log(`Категория ${index}:`, { cat, catId, catName });
-                  
-                  return (
-                    <option key={catId} value={catName}>
-                      {catName}
-                    </option>
-                  );
-                })}
-              </select>
-            </>
+            <select 
+              value={category} 
+              onChange={handleCategoryChange}
+              className="category-select"
+            >
+              <option value="">Все категории</option>
+              {categories.map((cat, index) => {
+                const catId = getCategoryId(cat);
+                const catName = getCategoryName(cat);
+                
+                return (
+                  <option key={catId} value={catName}>
+                    {catName}
+                  </option>
+                );
+              })}
+            </select>
           )}
         </div>
       )}

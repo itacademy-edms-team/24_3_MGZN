@@ -46,11 +46,12 @@ namespace InShop.WebAPI.Controllers
         }
         [HttpGet("products-by-category")]
         public async Task<IActionResult> GetProductsByCategory(
-        [FromQuery] string categoryName,
-        [FromQuery] decimal? minPrice = null,
-        [FromQuery] decimal? maxPrice = null,
-        [FromQuery] string sortBy = "ProductName",
-        [FromQuery] string sortOrder = "asc")
+            [FromQuery] string categoryName,
+            [FromQuery] decimal? minPrice = null,
+            [FromQuery] decimal? maxPrice = null,
+            [FromQuery] bool? inStock = null, // Добавляем параметр inStock
+            [FromQuery] string sortBy = "ProductName",
+            [FromQuery] string sortOrder = "asc")
         {
             try
             {
@@ -88,6 +89,7 @@ namespace InShop.WebAPI.Controllers
                     categoryName,
                     minPrice,
                     maxPrice,
+                    inStock,
                     sortBy,
                     sortOrder);
 

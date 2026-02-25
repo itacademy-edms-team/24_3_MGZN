@@ -23,34 +23,49 @@ interface ProductCardPropsFormat {
   imageUrl: string;
 }
 
+interface FiltersState {
+  minPrice: string;
+  maxPrice: string;
+  category: string;
+  inStock: boolean | null; // null - все товары, true - только в наличии
+}
+
 const SearchResultsPage: React.FC = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   
   // Используем ref для отслеживания первого рендера
   const isFirstRender = useRef(true);
+  const isUpdatingFromUrl = useRef(false);
 
   // Получаем параметры из URL
   const queryFromUrl = searchParams.get('q') || '';
   const minPriceFromUrl = searchParams.get('minPrice') || '';
   const maxPriceFromUrl = searchParams.get('maxPrice') || '';
   const categoryFromUrl = searchParams.get('category') || '';
+  const inStockFromUrl = searchParams.get('inStock'); // 'true' или null
 
   const [results, setResults] = useState<ProductSearchResultDto[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   // Состояние для фильтров (инициализируем из URL)
-  const [currentFilters, setCurrentFilters] = useState({
+  const [currentFilters, setCurrentFilters] = useState<FiltersState>({
     minPrice: minPriceFromUrl,
     maxPrice: maxPriceFromUrl,
     category: categoryFromUrl,
+    inStock: inStockFromUrl === 'true' ? true : null,
   });
 
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'https://localhost:7275/api';
 
   // Обработчик изменения фильтров (из FiltersPanel)
-  const handleFiltersChange = useCallback((filters: { minPrice: string; maxPrice: string; category: string }) => {
+  const handleFiltersChange = useCallback((filters: { 
+    minPrice: string; 
+    maxPrice: string; 
+    category: string;
+    inStock: boolean | null;
+  }) => {
     setCurrentFilters(filters);
   }, []);
 
@@ -77,10 +92,20 @@ const SearchResultsPage: React.FC = () => {
       newParams.delete('category');
     }
 
+    // Обновляем параметр наличия
+    if (currentFilters.inStock === true) {
+      newParams.set('inStock', 'true');
+    } else {
+      newParams.delete('inStock');
+    }
+
     // Сохраняем поисковый запрос
     if (queryFromUrl) {
       newParams.set('q', queryFromUrl);
     }
+
+    // Устанавливаем флаг, чтобы не обновлять фильтры из URL при навигации
+    isUpdatingFromUrl.current = true;
 
     // Обновляем URL (это вызовет эффект с searchParams)
     navigate(`?${newParams.toString()}`, { replace: true });
@@ -88,19 +113,26 @@ const SearchResultsPage: React.FC = () => {
 
   // Синхронизируем currentFilters с URL при изменении searchParams
   useEffect(() => {
+    // Если обновление происходит из handleApplyFilters, пропускаем
+    if (isUpdatingFromUrl.current) {
+      isUpdatingFromUrl.current = false;
+      return;
+    }
+
     setCurrentFilters({
       minPrice: minPriceFromUrl,
       maxPrice: maxPriceFromUrl,
       category: categoryFromUrl,
+      inStock: inStockFromUrl === 'true' ? true : null,
     });
-  }, [minPriceFromUrl, maxPriceFromUrl, categoryFromUrl]);
+  }, [minPriceFromUrl, maxPriceFromUrl, categoryFromUrl, inStockFromUrl]);
 
   // Эффект для поиска
   useEffect(() => {
     // Пропускаем первый рендер, если нет параметров поиска
     if (isFirstRender.current) {
       isFirstRender.current = false;
-      if (!queryFromUrl && !minPriceFromUrl && !maxPriceFromUrl && !categoryFromUrl) {
+      if (!queryFromUrl && !minPriceFromUrl && !maxPriceFromUrl && !categoryFromUrl && !inStockFromUrl) {
         setResults([]);
         setError('Введите поисковый запрос или примените фильтры.');
         return;
@@ -118,6 +150,7 @@ const SearchResultsPage: React.FC = () => {
         if (minPriceFromUrl) apiParams.set('minPrice', minPriceFromUrl);
         if (maxPriceFromUrl) apiParams.set('maxPrice', maxPriceFromUrl);
         if (categoryFromUrl) apiParams.set('category', categoryFromUrl);
+        if (inStockFromUrl === 'true') apiParams.set('inStock', 'true');
 
         // Если нет параметров, не выполняем поиск
         if (apiParams.toString() === '') {
@@ -126,6 +159,8 @@ const SearchResultsPage: React.FC = () => {
           setLoading(false);
           return;
         }
+
+        console.log('Отправка запроса к API:', `${API_BASE_URL}/search/search?${apiParams}`);
 
         const response = await fetch(`${API_BASE_URL}/search/search?${apiParams}`, {
           method: 'GET',
@@ -150,6 +185,7 @@ const SearchResultsPage: React.FC = () => {
         }
 
         const data: ProductSearchResultDto[] = await response.json();
+        console.log('Получены результаты:', data);
         setResults(data);
 
         if (data.length === 0) {
@@ -165,7 +201,7 @@ const SearchResultsPage: React.FC = () => {
     };
 
     performSearch();
-  }, [queryFromUrl, minPriceFromUrl, maxPriceFromUrl, categoryFromUrl, API_BASE_URL]);
+  }, [queryFromUrl, minPriceFromUrl, maxPriceFromUrl, categoryFromUrl, inStockFromUrl, API_BASE_URL]);
 
   const adaptApiResultToProductCardProps = (apiProduct: ProductSearchResultDto): ProductCardPropsFormat => {
     return {
@@ -189,8 +225,10 @@ const SearchResultsPage: React.FC = () => {
             initialMinPrice={currentFilters.minPrice}
             initialMaxPrice={currentFilters.maxPrice}
             initialCategory={currentFilters.category}
+            initialInStock={currentFilters.inStock}
             onFiltersChange={handleFiltersChange}
             hideCategory={false}
+            hideInStock={false}
           />
           <div className="apply-filters-section-search">
             <button onClick={handleApplyFilters} className="apply-filters-button-search">
@@ -210,7 +248,9 @@ const SearchResultsPage: React.FC = () => {
                 {results.map((apiProduct) => {
                   const adaptedProduct = adaptApiResultToProductCardProps(apiProduct);
                   return (
-                    <ProductCard key={apiProduct.id} product={adaptedProduct} />
+                    <div key={apiProduct.id} className="product-card-container">
+                      <ProductCard product={adaptedProduct} />
+                    </div>
                   );
                 })}
               </div>

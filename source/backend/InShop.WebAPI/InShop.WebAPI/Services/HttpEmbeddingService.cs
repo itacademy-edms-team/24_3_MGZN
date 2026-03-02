@@ -21,7 +21,7 @@ namespace InShop.WebAPI.Services
         {
             _logger.LogDebug("Генерация вектора для текста: {Text}", text);
 
-            var requestDto = new TextForEmbeddingDto { Text = $"{text};{text};{text}" };
+            var requestDto = new TextForEmbeddingDto { Text = $"{text};{text};{text};" };
             var jsonPayload = JsonSerializer.Serialize(requestDto);
             var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 

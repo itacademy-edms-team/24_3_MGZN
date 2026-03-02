@@ -39,16 +39,31 @@ namespace InShop.WebAPI.Controllers
             [FromQuery] string? category = null,
             [FromQuery] decimal? minPrice = null,
             [FromQuery] decimal? maxPrice = null,
-            [FromQuery] bool? inStock = null, // Добавляем параметр inStock
-            CancellationToken ct = default)
+            [FromQuery] bool? inStock = null,
+            // --- ПАРАМЕТРЫ СОРТИРОВКИ ---
+            [FromQuery] string sortBy = "relevance", // Параметр сортировки. По умолчанию "relevance" (гибридная оценка)
+            [FromQuery] string sortOrder = "desc"    // Параметр порядка. По умолчанию "desc" (по убыванию)
+                                                     // ---
+            , CancellationToken ct = default)
         {
             if (string.IsNullOrWhiteSpace(q))
             {
                 return BadRequest("Параметр поиска 'q' обязателен.");
             }
 
-            _logger.LogInformation("Получен гибридный поиск: '{Query}', Limit: {Limit}, Category: '{Category}', MinPrice: {MinPrice}, MaxPrice: {MaxPrice}, InStock: {InStock}",
-                q, limit, category ?? "null", minPrice?.ToString() ?? "null", maxPrice?.ToString() ?? "null", inStock?.ToString() ?? "null");
+            // --- ВАЛИДАЦИЯ ПАРАМЕТРОВ СОРТИРОВКИ ---
+            if (!IsValidSortParameter(sortBy, out string validatedSortBy))
+            {
+                return BadRequest($"Недопустимое значение параметра 'sortBy': '{sortBy}'. Допустимые значения: relevance, name, price.");
+            }
+
+            if (!IsValidSortOrder(sortOrder, out string validatedSortOrder))
+            {
+                return BadRequest($"Недопустимое значение параметра 'sortOrder': '{sortOrder}'. Допустимые значения: asc, desc.");
+            }
+
+            _logger.LogInformation("Получен гибридный поиск: '{Query}', Limit: {Limit}, Category: '{Category}', MinPrice: {MinPrice}, MaxPrice: {MaxPrice}, InStock: {InStock}, SortBy: {SortBy}, SortOrder: {SortOrder}",
+                q, limit, category ?? "null", minPrice?.ToString() ?? "null", maxPrice?.ToString() ?? "null", inStock?.ToString() ?? "null", validatedSortBy, validatedSortOrder);
 
             try
             {
@@ -107,8 +122,11 @@ namespace InShop.WebAPI.Controllers
 
                 // --- ОБРАБАТЫВАЕМ РЕЗУЛЬТАТЫ ---
                 var hybridResults = await ProcessHybridSearch(vectorResult, lexicalResult, MaxCosineDistanceThreshold);
-                var sortedResults = hybridResults.OrderByDescending(x => x.HybridScore).ToList();
 
+                // --- ПРИМЕНЯЕМ СОРТИРОВКУ К ГИБРИДНЫМ РЕЗУЛЬТАТАМ ---
+                var sortedResults = ApplySorting(hybridResults, validatedSortBy, validatedSortOrder);
+
+                // --- БЕРЁМ ТОП-N РЕЗУЛЬТАТОВ И ИЗВЛЕКАЕМ DTO ---
                 var finalDtoList = sortedResults.Select(r => r.Dto).Take(limit).ToList();
 
                 _logger.LogInformation("Найдено {Count} гибридных результатов для запроса: '{Query}'", finalDtoList.Count, q);
@@ -122,7 +140,47 @@ namespace InShop.WebAPI.Controllers
             }
         }
 
-        // --- НОВЫЙ МЕТОД: Обработка гибридного поиска ---
+        // --- МЕТОД: Валидация параметра сортировки ---
+        private static bool IsValidSortParameter(string input, out string validatedOutput)
+        {
+            validatedOutput = input?.ToLowerInvariant() ?? string.Empty;
+            return validatedOutput switch
+            {
+                "relevance" => true, // Сортировка по гибридной оценке
+                "name" => true,      // Сортировка по названию (алфавиту)
+                "price" => true,     // Сортировка по цене
+                _ => false           // Недопустимое значение
+            };
+        }
+
+        // --- МЕТОД: Валидация параметра порядка ---
+        private static bool IsValidSortOrder(string input, out string validatedOutput)
+        {
+            validatedOutput = input?.ToLowerInvariant() ?? string.Empty;
+            return validatedOutput switch
+            {
+                "asc" => true,  // По возрастанию
+                "desc" => true, // По убыванию
+                _ => false      // Недопустимое значение
+            };
+        }
+
+        // --- МЕТОД: Применение сортировки ---
+        private List<HybridResult> ApplySorting(List<HybridResult> results, string sortBy, string sortOrder)
+        {
+            // Выбираем, по какому свойству сортировать
+            IOrderedEnumerable<HybridResult> orderedResults = sortBy switch
+            {
+                "name" => sortOrder == "asc" ? results.OrderBy(r => r.Dto.Name, StringComparer.OrdinalIgnoreCase) : results.OrderByDescending(r => r.Dto.Name, StringComparer.OrdinalIgnoreCase), // Сортировка по имени (алфавиту) с учётом регистра
+                "price" => sortOrder == "asc" ? results.OrderBy(r => r.Dto.Price) : results.OrderByDescending(r => r.Dto.Price), // Сортировка по цене
+                // "relevance" или любой другой случай -> сортировка по гибридной оценке (по умолчанию)
+                _ => sortOrder == "asc" ? results.OrderBy(r => r.HybridScore) : results.OrderByDescending(r => r.HybridScore) // Сортировка по релевантности
+            };
+
+            return orderedResults.ToList();
+        }
+
+        // --- МЕТОД: Обработка гибридного поиска ---
         private async Task<List<HybridResult>> ProcessHybridSearch(RedisResult vectorResult, RedisResult lexicalResult, double threshold)
         {
             // Векторный результат: ожидаем, что оценка (vector_distance) внутри массива полей
@@ -346,7 +404,7 @@ namespace InShop.WebAPI.Controllers
             return dict;
         }
 
-        // --- Вспомогательный метод для создания DTO из словаря ---
+        // --- ВСПОМОГАТЕЛЬНЫЙ МЕТОД: Создание DTO из словаря ---
         private ProductSearchResultDto CreateDtoFromFields(string key, Dictionary<string, string> fieldDict)
         {
             return new ProductSearchResultDto
@@ -362,6 +420,7 @@ namespace InShop.WebAPI.Controllers
             };
         }
 
+        // --- ВСПОМОГАТЕЛЬНЫЙ МЕТОД: Построение фильтра ---
         private static string BuildFilterClause(string? category, decimal? minPrice, decimal? maxPrice, bool? inStock)
         {
             var clauses = new List<string>();
@@ -395,11 +454,10 @@ namespace InShop.WebAPI.Controllers
                 clauses.Add($"@availability:{{{availabilityValue}}}");
             }
 
-            var result = string.Join(" ", clauses);
-
-            return result;
+            return string.Join(" ", clauses);
         }
 
+        // --- ВСПОМОГАТЕЛЬНЫЙ МЕТОД: Экранирование значений для TAG ---
         private static string EscapeTagValue(string value)
         {
             if (string.IsNullOrEmpty(value))
@@ -408,7 +466,6 @@ namespace InShop.WebAPI.Controllers
             var result = value;
 
             // Экранируем специальные символы для TAG полей в RedisSearch
-            // Список символов для экранирования: , . < > { } [ ] " ' : ; ! @ # $ % ^ & * ( ) - + = ~ | / \ ? и пробел
             var specialChars = new[] { ',', '.', '<', '>', '{', '}', '[', ']', '"', '\'', ':', ';', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '-', '+', '=', '~', '|', '/', '\\', '?', ' ' };
 
             foreach (var c in specialChars)
@@ -419,6 +476,7 @@ namespace InShop.WebAPI.Controllers
             return result;
         }
 
+        // --- ВСПОМОГАТЕЛЬНЫЙ МЕТОД: Извлечение ID из ключа ---
         private static int ExtractIdFromKey(string key)
         {
             var lastColon = key.LastIndexOf(':');

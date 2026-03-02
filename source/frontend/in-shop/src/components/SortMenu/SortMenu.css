@@ -1,0 +1,104 @@
+/* src/components/SortMenu/SortMenu.css */
+
+.div__sort-menu {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start; /* Центрируем меню внутри контейнера */
+  margin-bottom: 20px; /* Отступ снизу от блока сортировки к списку товаров */
+}
+
+.sort-menu {
+  position: relative;
+  display: inline-block;
+  width: fit-content; /* Ширина по содержимому */
+}
+
+.sort-menu-header {
+  background-color: #f0f0f0;
+  padding: 8px 16px;
+  border-radius: 7px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+  user-select: none;
+  gap: 8px; /* Отступ между текстом и стрелкой */
+  transition: background-color 0.2s ease; /* Плавный переход фона при наведении */
+}
+
+.sort-menu-header:hover {
+  background-color: #e0e0e0;
+}
+
+.sort-arrow {
+  /* Определяем размер стрелки */
+  width: 0;
+  height: 0;
+  /* Используем border для создания треугольника */
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  /* Цвет стрелки */
+  border-top: 5px solid currentColor; /* Использует цвет текста родителя */
+  /* Отступы, если нужно */
+  margin-left: 5px;
+  /* Убедитесь, что она не влияет на вертикальное выравнивание */
+  display: inline-block;
+  vertical-align: middle;
+
+  /* Необязательно: плавный переход для анимации */
+  transition: transform 0.3s ease;
+}
+
+.sort-arrow.up {
+  /* Поворачиваем стрелку вверх на 180 градусов */
+  transform: rotate(180deg);
+}
+
+.sort-arrow.down {
+  /* Стрелка вниз - исходное состояние (0 градусов), ничего менять не нужно,
+     но вы можете добавить transform: rotate(0deg); для ясности или если используете transform для других целей. */
+  transform: rotate(0deg);
+}
+
+.sort-menu-dropdown {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0; /* Растягиваем по ширине родителя */
+  background-color: white;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  border: 1px solid #ddd;
+  border-radius: 0 0 4px 4px; /* Скругления только снизу */
+  z-index: 1000;
+  padding: 8px 0;
+  margin-top: 2px; /* Небольшой отступ от заголовка */
+}
+
+.sort-menu.open .sort-menu-dropdown {
+  display: block;
+}
+
+.sort-option {
+  display: flex;
+  align-items: center;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 14px;
+  gap: 8px;
+  transition: background-color 0.15s ease; /* Плавный переход фона при наведении */
+}
+
+.sort-option:hover {
+  background-color: #f9f9f9;
+}
+
+.sort-option input[type="radio"] {
+  cursor: pointer;
+  margin: 0; /* Убираем стандартные отступы у радиокнопки */
+}
+
+.sort-label {
+  cursor: pointer;
+  flex-grow: 1; /* Позволяет тексту занимать оставшееся пространство */
+}

@@ -128,3 +128,8 @@
   background-color: #28a745;
   margin-left: 5px;
 }
+
+.sort-menu__container{
+  flex-direction: row;
+  justify-content: flex-start;
+}

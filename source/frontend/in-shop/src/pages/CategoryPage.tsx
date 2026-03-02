@@ -4,6 +4,7 @@ import Breadcrumb from '../components/Breadcrumb';
 import ProductCard from '../components/ProductCard';
 import FiltersPanel from '../components/FiltersPanel/FiltersPanel.tsx';
 import LoadingSpinner from '../components/LoadingSpinner';
+import SortMenu from "../components/SortMenu/SortMenu.tsx"; // Убедитесь, что путь правильный
 import './CategoryPage.css';
 
 // Интерфейсы для типизации
@@ -47,7 +48,7 @@ const CategoryPage: React.FC = () => {
         inStock: searchParams.get('inStock') === 'true' ? true : null,
     });
 
-    // --- Состояния для сортировки ---
+    // --- Состояние для сортировки (синхронизировано с URL) ---
     const [sortOption, setSortOption] = useState(() => {
         const urlSort = searchParams.get('sort');
         if (['name-asc', 'name-desc', 'price-asc', 'price-desc'].includes(urlSort || '')) {
@@ -55,7 +56,6 @@ const CategoryPage: React.FC = () => {
         }
         return 'name-asc';
     });
-    const [isMenuOpen, setIsMenuOpen] = useState(false);
 
     const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'https://localhost:7275/api';
 
@@ -71,7 +71,7 @@ const CategoryPage: React.FC = () => {
             minPrice: filters.minPrice,
             maxPrice: filters.maxPrice,
             inStock: filters.inStock,
-            // category не обновляем, так как hideCategory=true
+            // category не обновляем, так как hideCategory=true в FiltersPanel
         }));
     }, []);
 
@@ -125,7 +125,7 @@ const CategoryPage: React.FC = () => {
         }));
     }, [searchParams]);
 
-    // --- Эффект: Загрузка товаров при изменении URL ---
+    // --- Эффект: Загрузка товаров при изменении URL (включая сортировку) ---
     useEffect(() => {
         const loadProducts = async () => {
             if (!initialCategoryNameFromUrl) {
@@ -186,7 +186,7 @@ const CategoryPage: React.FC = () => {
                         sortBy = 'Price';
                         sortOrder = 'desc';
                         break;
-                    default:
+                    default: // 'name-asc'
                         sortBy = 'ProductName';
                         sortOrder = 'asc';
                 }
@@ -230,13 +230,10 @@ const CategoryPage: React.FC = () => {
         };
 
         loadProducts();
-    }, [searchParams, initialCategoryNameFromUrl, API_BASE_URL, sortOption]);
+    }, [searchParams, initialCategoryNameFromUrl, API_BASE_URL]); // Убрали sortOption из зависимостей, так как он теперь обновляется внутри useEffect
 
     // --- Обработчик изменения сортировки ---
-    const handleSortOptionChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const newSortOption = event.target.value;
-        setSortOption(newSortOption);
-
+    const handleSortOptionChange = (newSortOption: string) => { // <<<--- ИЗМЕНЕНО: принимает строку, а не ChangeEvent
         // Обновляем URL при изменении сортировки
         const newParams = new URLSearchParams(searchParams);
 
@@ -247,17 +244,18 @@ const CategoryPage: React.FC = () => {
 
         // Обновляем сортировку
         if (newSortOption === 'name-asc') {
-            newParams.delete('sort');
+            newParams.delete('sort'); // Удаляем параметр sort, если значение по умолчанию
         } else {
             newParams.set('sort', newSortOption);
         }
 
+        // Обновляем состояние *после* обновления URL, чтобы триггерить useEffect
+        setSortOption(newSortOption);
+        // Навигация с новыми параметрами
         navigate(`?${newParams.toString()}`, { replace: true });
     };
 
-    const toggleMenu = () => {
-        setIsMenuOpen(!isMenuOpen);
-    };
+    // --- УДАЛЕНО: toggleMenu, isMenuOpen ---
 
     if (loading) {
         return <LoadingSpinner message="Загрузка товаров..." />;
@@ -297,60 +295,11 @@ const CategoryPage: React.FC = () => {
                     {/* --- Отображение ошибки --- */}
                     {error && <div className="error-message">{error}</div>}
 
-                    {/* Блок сортировки */}
-                    <div className="div__sort-menu">
-                        <div className={`sort-menu ${isMenuOpen ? 'open' : ''}`}>
-                            <div
-                                className="sort-menu-header"
-                                onClick={toggleMenu}
-                            >
-                                Сортировка
-                                <span className={`sort-arrow ${isMenuOpen ? 'up' : 'down'}`}></span>
-                            </div>
-                            <div className="sort-menu-dropdown">
-                                <label className="sort-option">
-                                    <input
-                                        type="radio"
-                                        name="sort"
-                                        value="name-asc"
-                                        checked={sortOption === 'name-asc'}
-                                        onChange={handleSortOptionChange}
-                                    />
-                                    <span className="sort-label">Название товара ↓</span>
-                                </label>
-                                <label className="sort-option">
-                                    <input
-                                        type="radio"
-                                        name="sort"
-                                        value="name-desc"
-                                        checked={sortOption === 'name-desc'}
-                                        onChange={handleSortOptionChange}
-                                    />
-                                    <span className="sort-label">Название товара ↑</span>
-                                </label>
-                                <label className="sort-option">
-                                    <input
-                                        type="radio"
-                                        name="sort"
-                                        value="price-asc"
-                                        checked={sortOption === 'price-asc'}
-                                        onChange={handleSortOptionChange}
-                                    />
-                                    <span className="sort-label">Цена ↑</span>
-                                </label>
-                                <label className="sort-option">
-                                    <input
-                                        type="radio"
-                                        name="sort"
-                                        value="price-desc"
-                                        checked={sortOption === 'price-desc'}
-                                        onChange={handleSortOptionChange}
-                                    />
-                                    <span className="sort-label">Цена ↓</span>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
+                    {/* --- Блок сортировки (компонент) --- */}
+                    <SortMenu
+                        currentSortOption={sortOption}
+                        onSortOptionChange={handleSortOptionChange} // <<<--- ПЕРЕДАЁМ НОВУЮ ФУНКЦИЮ
+                    />
 
                     {/* --- Список товаров --- */}
                     {!error && (

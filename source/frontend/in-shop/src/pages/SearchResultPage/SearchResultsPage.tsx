@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import ProductCard from '../../components/ProductCard.jsx';
 import FiltersPanel from '../../components/FiltersPanel/FiltersPanel.tsx';
+import SortMenu from "../../components/SortMenu/SortMenu.tsx"; // <<<--- Добавлен импорт
 import './SearchResultsPage.css';
 import LoadingSpinner from '../../components/LoadingSpinner.js';
 
@@ -30,10 +31,15 @@ interface FiltersState {
   inStock: boolean | null; // null - все товары, true - только в наличии
 }
 
+// --- НОВОЕ: Интерфейс для состояния сортировки ---
+interface SortState {
+  option: string; // Например, 'name-asc', 'price-desc', 'relevance'
+}
+
 const SearchResultsPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  
+
   // Используем ref для отслеживания первого рендера
   const isFirstRender = useRef(true);
   const isUpdatingFromUrl = useRef(false);
@@ -44,6 +50,8 @@ const SearchResultsPage: React.FC = () => {
   const maxPriceFromUrl = searchParams.get('maxPrice') || '';
   const categoryFromUrl = searchParams.get('category') || '';
   const inStockFromUrl = searchParams.get('inStock'); // 'true' или null
+  // --- НОВОЕ: Получаем параметр сортировки из URL ---
+  const sortFromUrl = searchParams.get('sort') || 'relevance'; // Значение по умолчанию для поисковой страницы
 
   const [results, setResults] = useState<ProductSearchResultDto[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
@@ -57,12 +65,40 @@ const SearchResultsPage: React.FC = () => {
     inStock: inStockFromUrl === 'true' ? true : null,
   });
 
+  // --- НОВОЕ: Состояние для сортировки (инициализируем из URL) ---
+  const [currentSort, setCurrentSort] = useState<SortState>({
+    option: sortFromUrl,
+  });
+
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'https://localhost:7275/api';
 
+  // --- НОВОЕ: Обработчик изменения сортировки ---
+  const handleSortOptionChange = useCallback((newSortOption: string) => {
+    setCurrentSort({ option: newSortOption });
+
+    // Обновляем URL при изменении сортировки
+    const newParams = new URLSearchParams(searchParams);
+
+    // Обновляем параметр сортировки
+    if (newSortOption === 'relevance') {
+        // Если выбрана "релевантность", удаляем параметр sort из URL (значение по умолчанию)
+        newParams.delete('sort');
+    } else {
+        // Иначе устанавливаем новое значение
+        newParams.set('sort', newSortOption);
+    }
+
+    // Устанавливаем флаг, чтобы не обновлять сортировку из URL при навигации
+    isUpdatingFromUrl.current = true;
+
+    // Обновляем URL (это вызовет эффект с searchParams)
+    navigate(`?${newParams.toString()}`, { replace: true });
+  }, [navigate, searchParams]);
+
   // Обработчик изменения фильтров (из FiltersPanel)
-  const handleFiltersChange = useCallback((filters: { 
-    minPrice: string; 
-    maxPrice: string; 
+  const handleFiltersChange = useCallback((filters: {
+    minPrice: string;
+    maxPrice: string;
     category: string;
     inStock: boolean | null;
   }) => {
@@ -72,20 +108,20 @@ const SearchResultsPage: React.FC = () => {
   // Обработчик кнопки "Применить фильтры"
   const handleApplyFilters = useCallback(() => {
     const newParams = new URLSearchParams(searchParams);
-    
+
     // Обновляем параметры фильтров
     if (currentFilters.minPrice) {
       newParams.set('minPrice', currentFilters.minPrice);
     } else {
       newParams.delete('minPrice');
     }
-    
+
     if (currentFilters.maxPrice) {
       newParams.set('maxPrice', currentFilters.maxPrice);
     } else {
       newParams.delete('maxPrice');
     }
-    
+
     if (currentFilters.category) {
       newParams.set('category', currentFilters.category);
     } else {
@@ -99,6 +135,13 @@ const SearchResultsPage: React.FC = () => {
       newParams.delete('inStock');
     }
 
+    // --- СОРТИРОВКА: Сохраняем текущую сортировку ---
+    if (currentSort.option !== 'relevance') { // Не сохраняем 'relevance', если это значение по умолчанию
+        newParams.set('sort', currentSort.option);
+    } else {
+        newParams.delete('sort'); // Удаляем, если 'relevance'
+    }
+
     // Сохраняем поисковый запрос
     if (queryFromUrl) {
       newParams.set('q', queryFromUrl);
@@ -109,7 +152,24 @@ const SearchResultsPage: React.FC = () => {
 
     // Обновляем URL (это вызовет эффект с searchParams)
     navigate(`?${newParams.toString()}`, { replace: true });
-  }, [currentFilters, queryFromUrl, navigate, searchParams]);
+  }, [currentFilters, currentSort, queryFromUrl, navigate, searchParams]);
+
+  // --- НОВОЕ: Синхронизируем currentSort с URL при изменении searchParams ---
+  useEffect(() => {
+    // Если обновление происходит из handleApplyFilters или handleSortOptionChange, пропускаем
+    if (isUpdatingFromUrl.current) {
+      isUpdatingFromUrl.current = false;
+      return;
+    }
+
+    // Извлекаем сортировку из URL
+    const urlSort = searchParams.get('sort') || 'relevance';
+
+    // Обновляем состояние сортировки, только если она изменилась
+    if (urlSort !== currentSort.option) {
+        setCurrentSort({ option: urlSort });
+    }
+  }, [searchParams, currentSort.option]); // Зависит от searchParams и текущего состояния сортировки
 
   // Синхронизируем currentFilters с URL при изменении searchParams
   useEffect(() => {
@@ -132,7 +192,7 @@ const SearchResultsPage: React.FC = () => {
     // Пропускаем первый рендер, если нет параметров поиска
     if (isFirstRender.current) {
       isFirstRender.current = false;
-      if (!queryFromUrl && !minPriceFromUrl && !maxPriceFromUrl && !categoryFromUrl && !inStockFromUrl) {
+      if (!queryFromUrl && !minPriceFromUrl && !maxPriceFromUrl && !categoryFromUrl && !inStockFromUrl && currentSort.option === 'relevance') { // <<<--- ДОБАВЛЕНО currentSort.option
         setResults([]);
         setError('Введите поисковый запрос или примените фильтры.');
         return;
@@ -151,6 +211,42 @@ const SearchResultsPage: React.FC = () => {
         if (maxPriceFromUrl) apiParams.set('maxPrice', maxPriceFromUrl);
         if (categoryFromUrl) apiParams.set('category', categoryFromUrl);
         if (inStockFromUrl === 'true') apiParams.set('inStock', 'true');
+
+        // --- ИСПРАВЛЕНО: Отправляем параметры сортировки в формате, ожидаемом бэкендом ---
+        if (currentSort.option && currentSort.option !== 'relevance') {
+            let apiSortBy = 'relevance';
+            let apiSortOrder = 'desc';
+
+            switch (currentSort.option) {
+                case 'name-asc':
+                    apiSortBy = 'name';
+                    apiSortOrder = 'asc';
+                    break;
+                case 'name-desc':
+                    apiSortBy = 'name';
+                    apiSortOrder = 'desc';
+                    break;
+                case 'price-asc':
+                    apiSortBy = 'price';
+                    apiSortOrder = 'asc';
+                    break;
+                case 'price-desc':
+                    apiSortBy = 'price';
+                    apiSortOrder = 'desc';
+                    break;
+                default:
+                    // 'relevance' или любое другое значение -> по умолчанию relevance, desc
+                    apiSortBy = 'relevance';
+                    apiSortOrder = 'desc';
+            }
+
+            // Отправляем параметры сортировки только если sortBy не 'relevance'
+            if (apiSortBy !== 'relevance') {
+                apiParams.set('sortBy', apiSortBy);
+                apiParams.set('sortOrder', apiSortOrder);
+            }
+        }
+        // ---
 
         // Если нет параметров, не выполняем поиск
         if (apiParams.toString() === '') {
@@ -201,7 +297,7 @@ const SearchResultsPage: React.FC = () => {
     };
 
     performSearch();
-  }, [queryFromUrl, minPriceFromUrl, maxPriceFromUrl, categoryFromUrl, inStockFromUrl, API_BASE_URL]);
+  }, [queryFromUrl, minPriceFromUrl, maxPriceFromUrl, categoryFromUrl, inStockFromUrl, currentSort.option, API_BASE_URL]); // <<<--- ДОБАВЛЕНО currentSort.option
 
   const adaptApiResultToProductCardProps = (apiProduct: ProductSearchResultDto): ProductCardPropsFormat => {
     return {
@@ -238,6 +334,15 @@ const SearchResultsPage: React.FC = () => {
         </aside>
 
         <main className="search-results-main-content">
+          {/* --- ДОБАВЛЕНО: Компонент сортировки --- */}
+          <div className="sort-menu__container">
+            <SortMenu
+              currentSortOption={currentSort.option} // Передаём текущую опцию сортировки
+              onSortOptionChange={handleSortOptionChange} // Передаём обработчик изменения сортировки
+            />
+          </div>
+          {/* --- КОНЕЦ: Компонент сортировки --- */}
+
           {loading && <div className="loading-indicator"><LoadingSpinner /></div>}
           {error && <div className="error-message">{error}</div>}
 

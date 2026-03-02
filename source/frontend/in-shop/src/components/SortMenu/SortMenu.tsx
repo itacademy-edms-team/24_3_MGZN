@@ -46,7 +46,8 @@ const SortMenu: React.FC<SortMenuProps> = ({ currentSortOption, onSortOptionChan
           onClick={toggleMenu}
         >
           {/* Отображаем текст, соответствующий текущей опции */}
-          {getDisplayText(currentSortOption)}
+          {/* {getDisplayText(currentSortOption)} */}
+          Сортировка
           <span className={`sort-arrow ${isMenuOpen ? 'up' : 'down'}`}></span>
         </div>
         <div className="sort-menu-dropdown">

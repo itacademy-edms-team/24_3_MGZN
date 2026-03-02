@@ -16,8 +16,9 @@
 }
 
 .search-results-main-content {
-  flex-grow: 1; /* Основной контент занимает оставшееся место */
-  min-width: 0; /* Позволяет сжиматься */
+  flex-grow: 1;
+  min-width: 0;
+  justify-content: space-between;
 }
 
 .apply-filters-section-search {
@@ -127,9 +128,4 @@
   border-radius: 50%;
   background-color: #28a745;
   margin-left: 5px;
-}
-
-.sort-menu__container{
-  flex-direction: row;
-  justify-content: flex-start;
 }

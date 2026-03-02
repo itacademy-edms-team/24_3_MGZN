@@ -298,7 +298,7 @@ const CategoryPage: React.FC = () => {
                     {/* --- Блок сортировки (компонент) --- */}
                     <SortMenu
                         currentSortOption={sortOption}
-                        onSortOptionChange={handleSortOptionChange} // <<<--- ПЕРЕДАЁМ НОВУЮ ФУНКЦИЮ
+                        onSortOptionChange={handleSortOptionChange}
                     />
 
                     {/* --- Список товаров --- */}

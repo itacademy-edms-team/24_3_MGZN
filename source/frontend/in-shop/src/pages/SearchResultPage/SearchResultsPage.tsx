@@ -334,14 +334,12 @@ const SearchResultsPage: React.FC = () => {
         </aside>
 
         <main className="search-results-main-content">
-          {/* --- ДОБАВЛЕНО: Компонент сортировки --- */}
           <div className="sort-menu__container">
             <SortMenu
               currentSortOption={currentSort.option} // Передаём текущую опцию сортировки
               onSortOptionChange={handleSortOptionChange} // Передаём обработчик изменения сортировки
             />
           </div>
-          {/* --- КОНЕЦ: Компонент сортировки --- */}
 
           {loading && <div className="loading-indicator"><LoadingSpinner /></div>}
           {error && <div className="error-message">{error}</div>}

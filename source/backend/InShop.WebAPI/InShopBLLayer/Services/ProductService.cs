@@ -64,7 +64,7 @@ namespace InShopBLLayer.Services
                 categoryName,
                 minPrice,
                 maxPrice,
-                inStock, // Передаем параметр inStock
+                inStock,
                 sortBy,
                 sortOrder);
             return _mapper.Map<IEnumerable<ProductDto>>(products);
@@ -75,6 +75,17 @@ namespace InShopBLLayer.Services
             var random = new Random();
             var rndProducts = products.OrderBy(x => random.Next()).Take(_rndLimit);
             return _mapper.Map<IEnumerable<ProductDto>>(rndProducts);
+        }
+        public async Task<List<ProductSpecDto>?> GetProductSpecificationsAsync(int id)
+        {
+            var rawSpecs = await _productRepository.GetProductSpecificationsAsync(id);
+
+            if (rawSpecs == null)
+                return null;
+
+            var specsDtoList = _mapper.Map<List<ProductSpecDto>>(rawSpecs);
+
+            return specsDtoList;
         }
     }
 }

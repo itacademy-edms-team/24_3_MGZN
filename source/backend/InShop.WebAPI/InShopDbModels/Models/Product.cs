@@ -24,4 +24,6 @@ public partial class Product
     public virtual ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
 
     public virtual Category ProductCategory { get; set; } = null!;
+
+    public virtual ICollection<ProductSpecLink> ProductSpecLinks { get; set; } = new List<ProductSpecLink>();
 }

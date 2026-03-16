@@ -159,5 +159,36 @@ namespace InShopDbModels.Repositories
 
             return products;
         }
+
+        public async Task<List<(int SpecId, string Name, string DisplayName, string DataType, string? TextValue, decimal? NumberValue)>?> GetProductSpecificationsAsync(int id)
+        {
+            var exists = await ExistsProduct(id);
+            if (!exists)
+                return null;
+
+            var productWithSpecs = await _appDbContext.Products
+                .Include(p => p.ProductSpecLinks)
+                    .ThenInclude(link => link.Spec)
+                    .ThenInclude(spec => spec.ProductSpecValues)
+                .Include(p => p.ProductSpecLinks)
+                    .ThenInclude(link => link.Value)
+                .FirstOrDefaultAsync(p => p.ProductId == id);
+
+            if (productWithSpecs == null || productWithSpecs.ProductSpecLinks == null)
+                return new List<(int, string, string, string, string?, decimal?)>();
+
+            var specs = productWithSpecs.ProductSpecLinks
+                .Select(link => (
+                    SpecId: link.Spec.SpecId,
+                    Name: link.Spec.Name,
+                    DisplayName: link.Spec.DisplayName,
+                    DataType: link.Spec.DataType,
+                    TextValue: link.Value.TextValue,
+                    NumberValue: link.Value.NumberValue
+                ))
+                .ToList();
+
+            return specs;
+        }
     }
 }

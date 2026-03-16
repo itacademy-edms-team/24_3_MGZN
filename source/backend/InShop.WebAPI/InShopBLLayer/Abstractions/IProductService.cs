@@ -22,5 +22,6 @@ namespace InShopBLLayer.Abstractions
             string sortBy = "ProductName",
             string sortOrder = "asc");
         Task<IEnumerable<ProductDto>> GetRandomProducts();
+        Task<List<ProductSpecDto>?> GetProductSpecificationsAsync(int id);
     }
 }

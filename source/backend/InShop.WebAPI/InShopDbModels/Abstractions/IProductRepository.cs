@@ -23,5 +23,6 @@ namespace InShopDbModels.Abstractions
             string sortBy,
             string sortOrder);
         Task<IEnumerable<Product>> GetProductsByCategoryId(int categoryId);
+        Task<List<(int SpecId, string Name, string DisplayName, string DataType, string? TextValue, decimal? NumberValue)>?> GetProductSpecificationsAsync(int id);
     }
 }

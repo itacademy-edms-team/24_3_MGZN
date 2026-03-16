@@ -106,5 +106,17 @@ namespace InShop.WebAPI.Controllers
             var rndProducts = await _productService.GetRandomProducts();
             return Ok(rndProducts);
         }
+        [HttpGet("{id}/specifications")]
+        public async Task<IActionResult> GetProductSpecifications(int id)
+        {
+            var specs = await _productService.GetProductSpecificationsAsync(id);
+
+            if (specs == null)
+            {
+                return NotFound(new { message = "Товар не найден или не имеет характеристик." });
+            }
+
+            return Ok(specs);
+        }
     }
 }

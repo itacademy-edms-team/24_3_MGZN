@@ -26,6 +26,14 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<Product> Products { get; set; }
 
+    public virtual DbSet<ProductSpecGroup> ProductSpecGroups { get; set; }
+
+    public virtual DbSet<ProductSpecLink> ProductSpecLinks { get; set; }
+
+    public virtual DbSet<ProductSpecValue> ProductSpecValues { get; set; }
+
+    public virtual DbSet<ProductSpecification> ProductSpecifications { get; set; }
+
     public virtual DbSet<ShipCompany> ShipCompanies { get; set; }
 
     public virtual DbSet<UserSession> UserSessions { get; set; }
@@ -84,10 +92,10 @@ public partial class AppDbContext : DbContext
         modelBuilder.Entity<OrderItem>(entity =>
         {
             entity.ToTable("Order_Items", tb =>
-                {
-                    tb.HasTrigger("SetInitialProductPrice");
-                    tb.HasTrigger("trg_UpdateOrderTotal");
-                });
+            {
+                tb.HasTrigger("SetInitialProductPrice");
+                tb.HasTrigger("trg_UpdateOrderTotal");
+            });
 
             entity.Property(e => e.Price).HasColumnType("money");
             entity.Property(e => e.TotalPrice)
@@ -116,6 +124,71 @@ public partial class AppDbContext : DbContext
                 .HasConstraintName("FK_Products_Categories1");
         });
 
+        modelBuilder.Entity<ProductSpecGroup>(entity =>
+        {
+            entity.HasKey(e => e.GroupId).HasName("PK__ProductS__149AF36A6FC5BCBD");
+
+            entity.HasIndex(e => e.CategoryName, "UK_ProductSpecGroups_CategoryName").IsUnique();
+
+            entity.HasIndex(e => e.CategoryName, "UQ__ProductS__8517B2E0A84B6E0F").IsUnique();
+
+            entity.Property(e => e.CategoryName).HasMaxLength(50);
+            entity.Property(e => e.SortOrder).HasDefaultValue(0);
+        });
+
+        modelBuilder.Entity<ProductSpecLink>(entity =>
+        {
+            entity.HasKey(e => new { e.ProductId, e.SpecId });
+
+            entity.HasIndex(e => e.ProductId, "IX_ProductSpecLinks_ProductId");
+
+            entity.HasOne(d => d.Product).WithMany(p => p.ProductSpecLinks)
+                .HasForeignKey(d => d.ProductId)
+                .HasConstraintName("FK_ProductSpecLinks_Products");
+
+            entity.HasOne(d => d.Spec).WithMany(p => p.ProductSpecLinks)
+                .HasForeignKey(d => d.SpecId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_ProductSpecLinks_Specifications");
+
+            entity.HasOne(d => d.Value).WithMany(p => p.ProductSpecLinks)
+                .HasForeignKey(d => d.ValueId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_ProductSpecLinks_Values");
+        });
+
+        modelBuilder.Entity<ProductSpecValue>(entity =>
+        {
+            entity.HasKey(e => e.ValueId).HasName("PK__ProductS__93364E482325D161");
+
+            entity.HasIndex(e => e.NumberValue, "IX_ProductSpecValues_NumberValue");
+
+            entity.HasIndex(e => e.TextValue, "IX_ProductSpecValues_TextValue");
+
+            entity.Property(e => e.NumberValue).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.TextValue).HasMaxLength(255);
+
+            entity.HasOne(d => d.Spec).WithMany(p => p.ProductSpecValues)
+                .HasForeignKey(d => d.SpecId)
+                .HasConstraintName("FK_ProductSpecValues_Specifications");
+        });
+
+        modelBuilder.Entity<ProductSpecification>(entity =>
+        {
+            entity.HasKey(e => e.SpecId).HasName("PK__ProductS__883D567B66614627");
+
+            entity.HasIndex(e => new { e.GroupId, e.Name }, "UK_ProductSpecifications_NameInGroup").IsUnique();
+
+            entity.Property(e => e.DataType).HasMaxLength(20);
+            entity.Property(e => e.DisplayName).HasMaxLength(100);
+            entity.Property(e => e.IsFilterable).HasDefaultValue(true);
+            entity.Property(e => e.Name).HasMaxLength(50);
+
+            entity.HasOne(d => d.Group).WithMany(p => p.ProductSpecifications)
+                .HasForeignKey(d => d.GroupId)
+                .HasConstraintName("FK_ProductSpecifications_Groups");
+        });
+
         modelBuilder.Entity<ShipCompany>(entity =>
         {
             entity.ToTable("Ship_Companies");
@@ -126,9 +199,7 @@ public partial class AppDbContext : DbContext
 
         modelBuilder.Entity<UserSession>(entity =>
         {
-            entity.HasKey(e => e.SessionId);
-
-            entity.ToTable("UserSessions");
+            entity.HasKey(e => e.SessionId).HasName("PK_UserSession");
 
             entity.Property(e => e.CreatedAt).HasColumnType("datetime");
             entity.Property(e => e.UserIpaddress)

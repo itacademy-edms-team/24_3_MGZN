@@ -8,7 +8,7 @@ import Footer from './components/Footer';
 import CatalogPage from './pages/CatalogPage';
 import CategoryPage from './pages/CategoryPage.tsx';
 import CartModal from './components/CartModal'; // Добавляем CartModal
-import ProductPage from './pages/ProductPage';
+import ProductPage from './pages/ProductPage.tsx';
 import { CartProvider } from './components/CartContext'; // Импортируем CartProvider
 import SessionHandler from './components/SessionHandler.tsx';
 import CheckoutPage from './pages/CheckoutPage';

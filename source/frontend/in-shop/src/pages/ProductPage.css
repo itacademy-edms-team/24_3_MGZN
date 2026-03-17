@@ -111,4 +111,88 @@
     }
 }
 
-/* Дублирующие стили .product-image-container, .product-image и .product-placeholder-img удалены, так как они определены в ProductCard.css */
+/* === Стили для блока характеристик (Обновленные) === */
+.product-specifications-section {
+    margin-top: 40px;
+    margin-bottom: 40px;
+    
+    /* Добавляем визуальную рамку и фон */
+    background-color: #f9f9f9; /* Очень светлый серый фон */
+    border: 1px solid #e0e0e0; /* Тонкая серая рамка */
+    border-radius: 8px; /* Скругление углов */
+    padding: 24px; /* Внутренние отступы внутри рамки */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03); /* Едва заметная тень для объема */
+}
+
+.specs-title {
+    font-size: 1.5rem;
+    color: #333;
+    font-weight: 700; /* Жирнее */
+    margin-bottom: 24px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid #ddd; /* Линия под заголовком */
+    padding-bottom: 10px;
+    display: inline-block; /* Чтобы линия была только под текстом */
+}
+
+.specs-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px 30px; /* Увеличили горизонтальный отступ */
+}
+
+.spec-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px dashed #dcdcdc;
+    transition: background-color 0.2s ease;
+}
+
+.spec-item:last-child {
+    border-bottom: none;
+}
+
+.spec-name {
+    font-weight: 600;
+    color: #555;
+    margin-right: 15px;
+    flex-shrink: 0;
+}
+
+.spec-value {
+    font-weight: 600;
+    color: #000;
+    text-align: right;
+    word-break: break-word;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .product-specifications-section {
+        padding: 16px;
+    }
+
+    .specs-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    
+    .spec-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+        border-bottom: 1px solid #eee;
+    }
+    
+    .spec-item:hover {
+        background-color: transparent;
+    }
+    
+    .spec-value {
+        text-align: left;
+        color: #333;
+    }
+}

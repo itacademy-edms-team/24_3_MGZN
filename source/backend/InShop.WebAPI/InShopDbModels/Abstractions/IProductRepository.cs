@@ -24,5 +24,9 @@ namespace InShopDbModels.Abstractions
             string sortOrder);
         Task<IEnumerable<Product>> GetProductsByCategoryId(int categoryId);
         Task<List<(int SpecId, string Name, string DisplayName, string DataType, string? TextValue, decimal? NumberValue)>?> GetProductSpecificationsAsync(int id);
+        Task<List<ProductSpecification>> GetSpecificationsByGroupNameAsync(string groupName);
+        Task<(List<string>? TextValues, (decimal? Min, decimal? Max)? NumberRange)> GetPossibleValuesForSpecAsync(int specId);
+        Task<List<(int ProductId, string Name, string DisplayName, string? ValueText, decimal? ValueNumber)>> GetAllProductSpecificationsRawAsync(CancellationToken ct);
+
     }
 }

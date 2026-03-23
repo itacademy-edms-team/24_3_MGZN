@@ -190,5 +190,71 @@ namespace InShopDbModels.Repositories
 
             return specs;
         }
+        public async Task<List<ProductSpecification>> GetSpecificationsByGroupNameAsync(string groupName)
+        {
+            // 1. Найти GroupId по имени группы
+            var groupId = await _appDbContext.ProductSpecGroups
+                .Where(g => g.CategoryName == groupName)
+                .Select(g => g.GroupId)
+                .FirstOrDefaultAsync();
+
+            if (groupId == 0) return new List<ProductSpecification>(); // Группа не найдена
+
+            // 2. Найти все характеристики для этой группы
+            return await _appDbContext.ProductSpecifications
+                .Where(s => s.GroupId == groupId && s.IsFilterable == true) // Только фильтруемые
+                .ToListAsync();
+        }
+        public async Task<(List<string>? TextValues, (decimal? Min, decimal? Max)? NumberRange)> GetPossibleValuesForSpecAsync(int specId)
+        {
+            // 1. Определить тип характеристики
+            var dataType = await _appDbContext.ProductSpecifications
+                .Where(s => s.SpecId == specId)
+                .Select(s => s.DataType) // "Text" или "Number"
+                .FirstOrDefaultAsync();
+
+            if (dataType == "Text")
+            {
+                // 2. Получить уникальные текстовые значения для этой характеристики
+                var values = await _appDbContext.ProductSpecValues
+                    .Where(v => v.SpecId == specId && v.TextValue != null) // Исключить null
+                    .Select(v => v.TextValue)
+                    .Distinct()
+                    .ToListAsync();
+
+                return (values, null); // Возвращаем список значений, NumberRange = null
+            }
+            else if (dataType == "Number")
+            {
+                // 3. Получить Min/Max для числовой характеристики
+                var query = _appDbContext.ProductSpecValues
+                    .Where(v => v.SpecId == specId && v.NumberValue != null) // Исключить null
+                    .Select(v => v.NumberValue.Value); // Выбираем значение, уже зная, что оно не null
+
+                var min = await query.MinAsync();
+                var max = await query.MaxAsync();
+
+                return (null, (min, max)); // Возвращаем null для TextValues, кортеж Min/Max для NumberRange
+            }
+
+            // Неизвестный тип или характеристика не найдена
+            return (null, null);
+        }
+
+        public async Task<List<(int ProductId, string Name, string DisplayName, string? ValueText, decimal? ValueNumber)>> GetAllProductSpecificationsRawAsync(CancellationToken ct)
+        {
+            var links = await _appDbContext.ProductSpecLinks
+                .Include(l => l.Spec)
+                .Include(l => l.Value)
+                .ToListAsync(ct);
+
+            return links.Select(link => (
+                ProductId: link.ProductId,
+                Name: link.Spec.Name,
+                DisplayName: link.Spec.DisplayName,
+                ValueText: link.Value.TextValue,
+                ValueNumber: link.Value.NumberValue
+            )).ToList();
+        }
     }
 }

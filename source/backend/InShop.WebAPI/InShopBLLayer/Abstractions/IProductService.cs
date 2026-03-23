@@ -1,4 +1,5 @@
 ﻿using Contracts.Dtos;
+using InShopDbModels.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -23,5 +24,7 @@ namespace InShopBLLayer.Abstractions
             string sortOrder = "asc");
         Task<IEnumerable<ProductDto>> GetRandomProducts();
         Task<List<ProductSpecDto>?> GetProductSpecificationsAsync(int id);
+        Task<CategorySpecificationFiltersDto?> GetSpecificationFiltersForCategoryAsync(string categoryName);
+        Task<Dictionary<string, object>?> ValidateSpecFiltersAsync(Dictionary<string, object> specFilters, string category);
     }
 }

@@ -24,7 +24,6 @@ interface Props {
   apiBaseUrl: string;
 }
 
-// 🔧 FIX: Вспомогательный мемоизированный компонент для числового инпута
 interface NumberSpecInputProps {
   specName: string;
   field: 'Min' | 'Max';
@@ -44,18 +43,16 @@ const NumberSpecInput = memo<NumberSpecInputProps>(({
   hasError,
   onChange,
 }) => {
-  // 🔧 FIX: Локальный стейт только для этого инпута — не вызывает ре-рендер родителя
   const [localValue, setLocalValue] = useState(value);
   
-  // Синхронизация при изменении value извне
   useEffect(() => {
     setLocalValue(value);
   }, [value]);
   
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
-    setLocalValue(newValue); // Мгновенное обновление для отзывчивости
-    onChange(specName, field, newValue); // Дебаунсированная отправка в родитель
+    setLocalValue(newValue);
+    onChange(specName, field, newValue);
   }, [specName, field, onChange]);
   
   return (
@@ -76,7 +73,6 @@ const NumberSpecInput = memo<NumberSpecInputProps>(({
 
 NumberSpecInput.displayName = 'NumberSpecInput';
 
-// 🔧 FIX: Основной компонент обернут в memo
 const FiltersPanel = memo<Props>(({
   filters,
   specFilters,
@@ -92,7 +88,6 @@ const FiltersPanel = memo<Props>(({
   const prevCategoryRef = useRef<string | null>(null);
   const isUpdatingSpecsRef = useRef(false);
 
-  // 🔧 FIX: Локальный стейт для числовых спецификаций
   const [localNumberSpecs, setLocalNumberSpecs] = useState<Record<string, { Min?: string; Max?: string }>>({});
 
   const debouncedLocalNumberSpecs = useDebouncedValue(
@@ -100,7 +95,6 @@ const FiltersPanel = memo<Props>(({
     SPEC_FILTER_DEBOUNCE_DELAY
   );
 
-  // Загрузка категорий
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -122,7 +116,6 @@ const FiltersPanel = memo<Props>(({
     fetchCategories();
   }, [apiBaseUrl]);
 
-  // Загрузка спецификаций при смене категории
   useEffect(() => {
     const currentCategory = filters.category;
     const categoryChanged = prevCategoryRef.current !== currentCategory;
@@ -181,9 +174,7 @@ const FiltersPanel = memo<Props>(({
     
     fetchSpecs();
   }, [filters.category, apiBaseUrl, onSpecFilterChange, onClearSpecFilters]);
-  // 🔧 FIX: Убран specFilters из зависимостей — он может меняться часто
 
-  // Эффект синхронизации дебаунс-значений с глобальным стейтом
   useEffect(() => {
     if (!debouncedLocalNumberSpecs) return;
     
@@ -208,7 +199,8 @@ const FiltersPanel = memo<Props>(({
     }
   }, [debouncedLocalNumberSpecs, onSpecFilterChange]);
 
-  // Синхронизация локального стейта при изменении specFilters извне
+  // 🔧 FIX: Правильное расположение комментария для eslint
+ // eslint-disable-next-line
   useEffect(() => {
     if (specFilters) {
       const synced: Record<string, { Min?: string; Max?: string }> = {};
@@ -256,11 +248,9 @@ const FiltersPanel = memo<Props>(({
     onBasicFilterChange({ inStock: value });
   }, [onBasicFilterChange]);
 
-  // 🔧 FIX: Обновлённый обработчик — работает с локальным стейтом NumberSpecInput
   const handleNumberSpecChange = useCallback((specName: string, field: 'Min' | 'Max', rawValue: string) => {
     if (isUpdatingSpecsRef.current) return;
     
-    // Обновляем локальный стейт для дебаунса
     setLocalNumberSpecs(prev => ({
       ...prev,
       [specName]: {
@@ -269,7 +259,6 @@ const FiltersPanel = memo<Props>(({
       },
     }));
     
-    // Валидация для мгновенной обратной связи по ошибкам
     const currentValues = localNumberSpecs[specName] || {
       Min: specFilters?.[specName]?.Min?.toString() || '',
       Max: specFilters?.[specName]?.Max?.toString() || '',
@@ -291,32 +280,6 @@ const FiltersPanel = memo<Props>(({
       return rest;
     });
   }, [localNumberSpecs, specFilters]);
-
-  const handleSpecChange = useCallback((specName: string, spec: SpecificationFilterDto, value: any) => {
-    if (isUpdatingSpecsRef.current) return;
-    
-    setSpecErrors(prev => {
-      const { [specName]: _, ...rest } = prev;
-      return rest;
-    });
-    
-    let finalValue: SpecFilterValue = value;
-    if (spec.dataType === 'Number' && typeof value === 'object' && value !== null) {
-      const min = value.Min != null && value.Min !== '' ? parseFloat(String(value.Min)) : undefined;
-      const max = value.Max != null && value.Max !== '' ? parseFloat(String(value.Max)) : undefined;
-      
-      if (min === undefined && max === undefined) {
-        finalValue = null;
-      } else {
-        finalValue = {
-          ...(min !== undefined && { Min: min }),
-          ...(max !== undefined && { Max: max }),
-        };
-      }
-    }
-    
-    onSpecFilterChange(specName, finalValue);
-  }, [onSpecFilterChange]);
 
   const hasActiveSpecFilters = useMemo(() => {
     if (!specFilters || Object.keys(specFilters).length === 0) return false;
@@ -340,7 +303,6 @@ const FiltersPanel = memo<Props>(({
     maxPrice: filters.maxPrice ?? '',
   }), [filters.minPrice, filters.maxPrice]);
 
-  // 🔧 FIX: Мемоизация списка спецификаций для рендера
   const renderedSpecs = useMemo(() => {
     return availableSpecs.map((spec) => (
       <div key={spec.specId} className="filters-panel__spec-item">

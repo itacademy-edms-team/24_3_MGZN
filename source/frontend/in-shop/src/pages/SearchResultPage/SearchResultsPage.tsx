@@ -24,7 +24,6 @@ const DEFAULT_LIMIT = 50;
 const DEBOUNCE_DELAY = 400;
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'https://localhost:7275/api';
 
-// 🔧 FIX: Мемоизированный компонент страницы для стабильности
 const SearchResultsPage = memo<SearchResultsPageProps>(({
   forcedCategory,
   hideSearchQuery = false,
@@ -64,7 +63,6 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
     inStock: urlFilters.inStock !== undefined ? urlFilters.inStock : null,
   }));
 
-  // 🔧 FIX: Мемоизация specFilters для стабильной ссылки
   const [specFiltersState, setSpecFiltersState] = useState<Record<string, SpecFilterValue> | null>(urlSpecFilters);
   const specFilters = useMemo(() => specFiltersState, [specFiltersState]);
   
@@ -194,6 +192,7 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
     }
   }, [debouncedFilters, debouncedSort, debouncedSpecFilters, forcedCategory, setSearchParams, searchParams]);
 
+  // 🔧 FIX: Добавлен results.length в зависимости для соответствия правилам eslint
   useEffect(() => {
     const hasSearchCriteria =
       debouncedFilters.query?.trim() ||
@@ -248,9 +247,8 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
     };
 
     search(request);
-  }, [debouncedFilters, debouncedSort, debouncedSpecFilters, search, clear]);
+  }, [debouncedFilters, debouncedSort, debouncedSpecFilters, search, clear, results.length]);
 
-  // 🔧 FIX: Все колбэки мемоизированы с правильными зависимостями
   const handleBasicFilterChange = useCallback((changes: Partial<FiltersState>) => {
     setFilters(prev => ({ ...prev, ...changes }));
   }, []);
@@ -397,11 +395,6 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
     <div className="search-results-page">
       <div className="search-results-header">
         <h2>{getPageTitle()}</h2>
-        {activeFiltersCount > 0 && (
-          <span className="active-filters-badge">
-            Активных фильтров: {activeFiltersCount}
-          </span>
-        )}
       </div>
 
       <ActiveFiltersBar
@@ -434,7 +427,6 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
           {loading && (
             <div className="loading-container">
               <LoadingSpinner />
-              <p>Загрузка товаров...</p>
             </div>
           )}
 

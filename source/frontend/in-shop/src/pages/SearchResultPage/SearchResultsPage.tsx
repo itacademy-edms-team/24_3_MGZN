@@ -8,7 +8,7 @@ import { FiltersState, SearchRequestDto } from '../../types/search.ts';
 import FiltersPanel from '../../components/FiltersPanel/FiltersPanel.tsx';
 import ActiveFiltersBar from '../../components/ActiveFiltersBar.tsx';
 import ProductCard from '../../components/ProductCard.jsx';
-import LoadingSpinner from '../../components/LoadingSpinner.js';
+import LoadingSpinner from '../../components/LoadingSpinner.tsx';
 import SortMenu, { SortOption } from '../../components/SortMenu/SortMenu.tsx';
 import './SearchResultsPage.css';
 

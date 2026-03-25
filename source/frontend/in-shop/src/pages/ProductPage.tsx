@@ -5,7 +5,7 @@ import Breadcrumb from '../components/Breadcrumb';
 import { CartContext } from '../components/CartContext';
 import './ProductPage.css';
 import ProductCard from '../components/ProductCard';
-import LoadingSpinner from '../components/LoadingSpinner';
+import LoadingSpinner from '../components/LoadingSpinner.tsx';
 
 // Интерфейс для характеристики (если файл .tsx)
 interface ProductSpecificationDto {

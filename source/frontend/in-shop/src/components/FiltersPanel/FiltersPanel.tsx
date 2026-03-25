@@ -1,273 +1,468 @@
 // src/components/FiltersPanel/FiltersPanel.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { SpecificationFilterDto, FiltersState } from '../../types/search.ts';
+import { validateNumberRange } from '../../utils/filters.ts';
+// 🔧 FIX: Импортируем новый хук для дебаунса примитивов
+import { useDebouncedValue } from '../../hooks/useDebounce.ts';
 import './FiltersPanel.css';
 
-interface FiltersPanelProps {
-  initialMinPrice?: string;
-  initialMaxPrice?: string;
-  initialCategory?: string;
-  initialInStock?: boolean | null; // Добавляем проп для наличия
-  onFiltersChange: (filters: { 
-    minPrice: string; 
-    maxPrice: string; 
-    category: string;
-    inStock: boolean | null; // null - все товары, true - только в наличии
-  }) => void;
-  hideCategory?: boolean;
-  hideInStock?: boolean; // Опция для скрытия фильтра наличия
-}
-
-// Интерфейс для категорий с сервера
 interface CategoryDto {
-  id: number;
-  name: string;
+  categoryId: number;
+  categoryName: string;
+  imageURL?: string;
 }
 
-const FiltersPanel: React.FC<FiltersPanelProps> = ({
-  initialMinPrice = '',
-  initialMaxPrice = '',
-  initialCategory = '',
-  initialInStock = null, // По умолчанию показываем все товары
-  onFiltersChange,
-  hideCategory = false,
-  hideInStock = false, // По умолчанию показываем фильтр наличия
+type SpecFilterValue = string | number | { Min?: number; Max?: number } | null;
+
+// 🔧 FIX: Константа задержки для единообразия с основным поиском
+const SPEC_FILTER_DEBOUNCE_DELAY = 400;
+
+interface Props {
+  filters: FiltersState;
+  specFilters: Record<string, SpecFilterValue> | null;
+  onBasicFilterChange: (changes: Partial<FiltersState>) => void;
+  onSpecFilterChange: (specName: string, value: SpecFilterValue) => void;
+  onClearSpecFilters: () => void;
+  apiBaseUrl: string;
+}
+
+const FiltersPanel: React.FC<Props> = ({
+  filters,
+  specFilters,
+  onBasicFilterChange,
+  onSpecFilterChange,
+  onClearSpecFilters,
+  apiBaseUrl,
 }) => {
-  const [minPrice, setMinPrice] = useState(initialMinPrice);
-  const [maxPrice, setMaxPrice] = useState(initialMaxPrice);
-  const [category, setCategory] = useState(initialCategory);
-  const [inStock, setInStock] = useState<boolean | null>(initialInStock);
-  const [categories, setCategories] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [specErrors, setSpecErrors] = useState<Record<string, string>>({});
+  const [categories, setCategories] = useState<CategoryDto[]>([]);
+  const [availableSpecs, setAvailableSpecs] = useState<SpecificationFilterDto[]>([]);
+  const [loadingSpecs, setLoadingSpecs] = useState(false);
+  const prevCategoryRef = useRef<string | null>(null);
+  const isUpdatingSpecsRef = useRef(false);
 
-  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'https://localhost:7275/api';
+  // 🔧 FIX: Локальный стейт для мгновенного отображения ввода в числовых полях
+  const [localNumberSpecs, setLocalNumberSpecs] = useState<Record<string, { Min?: string; Max?: string }>>({});
 
-  // Загрузка категорий при монтировании компонента
+  // 🔧 FIX: Дебаунс-версия локального стейта — именно это значение отправляется в глобальный стейт
+  const debouncedLocalNumberSpecs = useDebouncedValue(
+    JSON.stringify(localNumberSpecs),
+    SPEC_FILTER_DEBOUNCE_DELAY
+  );
+
+  // Загрузка категорий
   useEffect(() => {
     const fetchCategories = async () => {
-      if (hideCategory) return;
-      
-      setLoading(true);
-      setError(null);
-      
       try {
-        console.log('Запрос категорий...');
-        const response = await fetch(`${API_BASE_URL}/Category`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-
-        console.log('Статус ответа:', response.status);
-
-        if (!response.ok) {
-          throw new Error(`Ошибка загрузки категорий: ${response.status}`);
+        const res = await fetch(`${apiBaseUrl}/Category`);
+        if (res.ok) {
+          const data = await res.json();
+          const normalized = Array.isArray(data)
+            ? data.map((cat: any) => ({
+                categoryId: cat?.categoryId ?? cat?.id ?? Math.random(),
+                categoryName: cat?.categoryName ?? cat?.name ?? String(cat),
+              }))
+            : [];
+          setCategories(normalized);
         }
-
-        const data = await response.json();
-        console.log('Полученные данные (сырые):', data);
-        
-        // Обрабатываем данные в зависимости от их структуры
-        let processedCategories = [];
-        
-        if (Array.isArray(data)) {
-          processedCategories = data;
-          console.log('Это массив, длина:', data.length);
-          if (data.length > 0) {
-            console.log('Первый элемент массива:', data[0]);
-            console.log('Тип первого элемента:', typeof data[0]);
-            console.log('Ключи первого элемента:', Object.keys(data[0]));
-          }
-        } else if (data && typeof data === 'object') {
-          console.log('Это объект, ключи:', Object.keys(data));
-          
-          // Проверяем разные возможные форматы
-          if (data.$values && Array.isArray(data.$values)) {
-            console.log('Найдены $values');
-            processedCategories = data.$values;
-          } else if (data.data && Array.isArray(data.data)) {
-            console.log('Найдены data');
-            processedCategories = data.data;
-          } else if (data.categories && Array.isArray(data.categories)) {
-            console.log('Найдены categories');
-            processedCategories = data.categories;
-          } else if (data.items && Array.isArray(data.items)) {
-            console.log('Найдены items');
-            processedCategories = data.items;
-          } else {
-            // Если это одиночный объект, преобразуем в массив
-            processedCategories = [data];
-          }
-        }
-        
-        console.log('Обработанные категории:', processedCategories);
-        setCategories(processedCategories);
-        
-        if (processedCategories.length === 0) {
-          setError('Нет доступных категорий');
-        }
-        
-      } catch (err) {
-        console.error('Ошибка при загрузке категорий:', err);
-        setError(err instanceof Error ? err.message : 'Не удалось загрузить категории');
-        setCategories([]);
-      } finally {
-        setLoading(false);
+      } catch (e) {
+        console.error('Ошибка загрузки категорий:', e);
       }
     };
-
     fetchCategories();
-  }, [API_BASE_URL, hideCategory]);
+  }, [apiBaseUrl]);
 
-  // Обновление локального состояния при изменении пропсов
+  // Загрузка спецификаций при смене категории
   useEffect(() => {
-    setMinPrice(initialMinPrice);
-    setMaxPrice(initialMaxPrice);
-    setCategory(initialCategory);
-    setInStock(initialInStock);
-  }, [initialMinPrice, initialMaxPrice, initialCategory, initialInStock]);
+    const currentCategory = filters.category;
+    const categoryChanged = prevCategoryRef.current !== currentCategory;
+    prevCategoryRef.current = currentCategory;
 
-  const handleMinPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setMinPrice(value);
-    onFiltersChange({ minPrice: value, maxPrice, category, inStock });
-  };
+    if (!currentCategory) {
+      setAvailableSpecs([]);
+      return;
+    }
 
-  const handleMaxPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setMaxPrice(value);
-    onFiltersChange({ minPrice, maxPrice: value, category, inStock });
-  };
-
-  const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const value = e.target.value;
-    setCategory(value);
-    onFiltersChange({ minPrice, maxPrice, category: value, inStock });
-  };
-
-  const handleInStockChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const checked = e.target.checked;
-    // Если чекбокс отмечен - показываем только в наличии (true)
-    // Если не отмечен - показываем все товары (null)
-    const newValue = checked ? true : null;
-    setInStock(newValue);
-    onFiltersChange({ minPrice, maxPrice, category, inStock: newValue });
-  };
-
-  // Функция для безопасного получения названия категории
-  const getCategoryName = (cat: any): string => {
-    if (!cat) return 'Без названия';
+    const fetchSpecs = async () => {
+      setLoadingSpecs(true);
+      try {
+        const res = await fetch(
+          `${apiBaseUrl}/search/specifications/filters?categoryName=${encodeURIComponent(currentCategory)}`
+        );
+        if (res.ok) {
+          const data = await res.json();
+          const newAvailableSpecs = data.filters || [];
+          setAvailableSpecs(newAvailableSpecs);
+          
+          if (categoryChanged && specFilters && Object.keys(specFilters).length > 0) {
+            isUpdatingSpecsRef.current = true;
+            
+            const validFilters = Object.fromEntries(
+              Object.entries(specFilters).filter(([key]) => 
+                newAvailableSpecs.some((spec: any) => spec.name === key)
+              )
+            );
+            
+            if (Object.keys(validFilters).length > 0) {
+              Object.entries(validFilters).forEach(([key, value]) => {
+                onSpecFilterChange(key, value);
+              });
+            } else {
+              onClearSpecFilters();
+            }
+            
+            setTimeout(() => {
+              isUpdatingSpecsRef.current = false;
+            }, 0);
+          }
+        } else if (res.status === 404) {
+          setAvailableSpecs([]);
+          if (categoryChanged) {
+            onClearSpecFilters();
+          }
+        }
+      } catch (e) {
+        console.error('Ошибка загрузки спецификаций:', e);
+        setAvailableSpecs([]);
+      } finally {
+        setLoadingSpecs(false);
+      }
+    };
     
-    if (typeof cat === 'string') return cat;
-    if (cat.name) return cat.name;
-    if (cat.categoryName) return cat.categoryName;
-    if (cat.title) return cat.title;
-    if (cat.category) return cat.category;
-    if (cat.value) return cat.value;
-    if (cat.label) return cat.label;
-    
-    return String(cat);
-  };
+    fetchSpecs();
+  }, [filters.category, apiBaseUrl, specFilters, onSpecFilterChange, onClearSpecFilters]);
 
-  // Функция для безопасного получения ID категории
-  const getCategoryId = (cat: any): number | string => {
-    if (!cat) return Math.random();
+  // 🔧 FIX: Эффект синхронизации дебаунс-значений с глобальным стейтом
+  useEffect(() => {
+    if (!debouncedLocalNumberSpecs) return;
     
-    if (typeof cat === 'object') {
-      if (cat.id !== undefined) return cat.id;
-      if (cat.categoryId !== undefined) return cat.categoryId;
-      if (cat.value !== undefined) return cat.value;
-      if (cat.key !== undefined) return cat.key;
+    try {
+      const parsed = JSON.parse(debouncedLocalNumberSpecs as string) as Record<string, { Min?: string; Max?: string }>;
+      
+      Object.entries(parsed).forEach(([specName, values]) => {
+        const min = values.Min && values.Min !== '' ? parseFloat(values.Min) : undefined;
+        const max = values.Max && values.Max !== '' ? parseFloat(values.Max) : undefined;
+        
+        // Если оба значения пустые — сбрасываем фильтр в null
+        if (min === undefined && max === undefined) {
+          onSpecFilterChange(specName, null);
+        } else {
+          onSpecFilterChange(specName, {
+            ...(min !== undefined && { Min: min }),
+            ...(max !== undefined && { Max: max }),
+          });
+        }
+      });
+    } catch (e) {
+      console.error('Ошибка парсинга дебаунс-значений:', e);
+    }
+  }, [debouncedLocalNumberSpecs, onSpecFilterChange]);
+
+  // 🔧 FIX: Синхронизация локального стейта при изменении specFilters извне (например, из URL)
+  useEffect(() => {
+    if (specFilters) {
+      const synced: Record<string, { Min?: string; Max?: string }> = {};
+      Object.entries(specFilters).forEach(([name, value]) => {
+        if (typeof value === 'object' && value !== null && 'Min' in value && 'Max' in value) {
+          synced[name] = {
+            Min: value.Min?.toString() || '',
+            Max: value.Max?.toString() || '',
+          };
+        }
+      });
+      setLocalNumberSpecs(synced);
+    }
+  }, [specFilters]);
+
+  // Обработчики базовых фильтров
+  const handlePriceChange = useCallback((field: 'minPrice' | 'maxPrice', value: string) => {
+    const newMin = field === 'minPrice' ? value : filters.minPrice;
+    const newMax = field === 'maxPrice' ? value : filters.maxPrice;
+    
+    const validation = validateNumberRange(
+      newMin || null,
+      newMax || null
+    );
+    
+    if (!validation.valid) {
+      setSpecErrors(prev => ({ ...prev, [field]: validation.error! }));
+      return;
     }
     
-    return typeof cat === 'string' || typeof cat === 'number' ? cat : Math.random();
-  };
+    setSpecErrors(prev => {
+      const { [field]: _, ...rest } = prev;
+      return rest;
+    });
+    
+    onBasicFilterChange({ [field]: value });
+  }, [filters.minPrice, filters.maxPrice, onBasicFilterChange]);
 
-  console.log('Рендер компонента, категории:', categories);
+  const handleCategoryChange = useCallback((value: string) => {
+    setSpecErrors({});
+    onBasicFilterChange({ category: value });
+  }, [onBasicFilterChange]);
+
+  const handleInStockChange = useCallback((checked: boolean) => {
+    const value = checked ? true : null;
+    onBasicFilterChange({ inStock: value });
+  }, [onBasicFilterChange]);
+
+  // 🔧 FIX: Обновлённый обработчик для числовых инпутов с локальным стейтом
+  const handleNumberSpecChange = useCallback((specName: string, spec: SpecificationFilterDto, field: 'Min' | 'Max', rawValue: string) => {
+    if (isUpdatingSpecsRef.current) return;
+    
+    // 1. Мгновенно обновляем локальный стейт для отзывчивости UI
+    setLocalNumberSpecs(prev => ({
+      ...prev,
+      [specName]: {
+        ...(prev[specName] || {}),
+        [field]: rawValue,
+      },
+    }));
+    
+    // 2. Валидация диапазона (опционально, для мгновенной обратной связи)
+    if (spec.dataType === 'Number') {
+      const currentValues = localNumberSpecs[specName] || {
+        Min: specFilters?.[specName]?.Min?.toString() || '',
+        Max: specFilters?.[specName]?.Max?.toString() || '',
+      };
+      const testMin = field === 'Min' ? rawValue : currentValues.Min;
+      const testMax = field === 'Max' ? rawValue : currentValues.Max;
+      
+      if (testMin && testMax && testMin !== '' && testMax !== '') {
+        const minNum = parseFloat(testMin);
+        const maxNum = parseFloat(testMax);
+        if (!isNaN(minNum) && !isNaN(maxNum) && minNum > maxNum) {
+          setSpecErrors(prev => ({ ...prev, [specName]: 'Мин. значение не может превышать макс.' }));
+          return;
+        }
+      }
+    }
+    
+    // 3. Очищаем ошибку при вводе
+    setSpecErrors(prev => {
+      const { [specName]: _, ...rest } = prev;
+      return rest;
+    });
+  }, [localNumberSpecs, specFilters, isUpdatingSpecsRef]);
+
+  // Обработчик для текстовых фильтров (без изменений, но оставим для полноты)
+  const handleSpecChange = useCallback((specName: string, spec: SpecificationFilterDto, value: any) => {
+    if (isUpdatingSpecsRef.current) return;
+    
+    if (spec.dataType === 'Number' && value?.Min != null && value?.Max != null) {
+      const min = parseFloat(String(value.Min));
+      const max = parseFloat(String(value.Max));
+      if (!isNaN(min) && !isNaN(max) && min > max) {
+        setSpecErrors(prev => ({ ...prev, [specName]: 'Мин. значение не может превышать макс.' }));
+        return;
+      }
+    }
+    
+    setSpecErrors(prev => {
+      const { [specName]: _, ...rest } = prev;
+      return rest;
+    });
+    
+    let finalValue: SpecFilterValue = value;
+    if (spec.dataType === 'Number' && typeof value === 'object' && value !== null) {
+      const min = value.Min != null && value.Min !== '' ? parseFloat(String(value.Min)) : undefined;
+      const max = value.Max != null && value.Max !== '' ? parseFloat(String(value.Max)) : undefined;
+      
+      if (min === undefined && max === undefined) {
+        finalValue = null;
+      } else {
+        finalValue = {
+          ...(min !== undefined && { Min: min }),
+          ...(max !== undefined && { Max: max }),
+        };
+      }
+    }
+    
+    onSpecFilterChange(specName, finalValue);
+  }, [onSpecFilterChange]);
+
+  const hasActiveSpecFilters = useMemo(() => {
+    if (!specFilters || Object.keys(specFilters).length === 0) return false;
+    return Object.values(specFilters).some(v => {
+      if (v == null || v === '') return false;
+      if (typeof v === 'object' && v !== null) {
+        return Object.values(v).some(x => x != null && x !== '');
+      }
+      return true;
+    });
+  }, [specFilters]);
+
+  const handleClearSpecs = useCallback(() => {
+    setSpecErrors({});
+    setLocalNumberSpecs({}); // 🔧 FIX: Очищаем и локальный стейт
+    onClearSpecFilters();
+  }, [onClearSpecFilters]);
+
+  const currentPriceValues = useMemo(() => ({
+    minPrice: filters.minPrice ?? '',
+    maxPrice: filters.maxPrice ?? '',
+  }), [filters.minPrice, filters.maxPrice]);
 
   return (
-    <div className="filters-panel">
-      <h3>Фильтры</h3>
-      
-      {/* Фильтр по цене */}
-      <div className="filter-section">
-        <h4>Цена</h4>
-        <div className="price-inputs">
-          <div className="price-input">
-            <label htmlFor="min-price">От:</label>
+    <aside className="filters-panel">
+      <h3 className="filters-panel__title">Фильтры</h3>
+
+      <div className="filters-panel__section">
+        <h4 className="filters-panel__section-title">Цена, ₽</h4>
+        <div className="filters-panel__price-inputs">
+          <div className="filters-panel__price-input-wrapper">
+            <label className="filters-panel__input-label">От</label>
             <input
-              id="min-price"
               type="number"
               min="0"
-              step="1000"
-              value={minPrice}
-              onChange={handleMinPriceChange}
+              step="any"
               placeholder="0"
+              value={currentPriceValues.minPrice}
+              onChange={(e) => handlePriceChange('minPrice', e.target.value)}
+              className={`filters-panel__input ${specErrors.minPrice ? 'filters-panel__input--error' : ''}`}
             />
           </div>
-          <div className="price-input">
-            <label htmlFor="max-price">До:</label>
+          <div className="filters-panel__price-input-wrapper">
+            <label className="filters-panel__input-label">До</label>
             <input
-              id="max-price"
               type="number"
               min="0"
-              step="1000"
-              value={maxPrice}
-              onChange={handleMaxPriceChange}
-              placeholder="10000"
+              step="any"
+              placeholder="100 000"
+              value={currentPriceValues.maxPrice}
+              onChange={(e) => handlePriceChange('maxPrice', e.target.value)}
+              className={`filters-panel__input ${specErrors.maxPrice ? 'filters-panel__input--error' : ''}`}
             />
           </div>
         </div>
+        {(specErrors.minPrice || specErrors.maxPrice) && (
+          <span className="filters-panel__status filters-panel__status--error">
+            {specErrors.minPrice || specErrors.maxPrice}
+          </span>
+        )}
       </div>
 
-      {/* Фильтр по наличию */}
-      {!hideInStock && (
-        <div className="filter-section">
-          <h4>Наличие</h4>
-          <label className="checkbox-label">
-            <input
-              type="checkbox"
-              checked={inStock === true}
-              onChange={handleInStockChange}
-            />
-            <span className="checkbox-text">В наличии</span>
-          </label>
-        </div>
-      )}
+      <div className="filters-panel__section">
+        <label className="filters-panel__checkbox-label">
+          <input
+            type="checkbox"
+            className="filters-panel__checkbox"
+            checked={filters.inStock === true}
+            onChange={(e) => handleInStockChange(e.target.checked)}
+          />
+          <span className="filters-panel__checkbox-text">Только в наличии</span>
+        </label>
+      </div>
 
-      {/* Фильтр по категории */}
-      {!hideCategory && (
-        <div className="filter-section">
-          <h4>Категория</h4>
-          {loading ? (
-            <div className="filter-loading">Загрузка категорий...</div>
-          ) : error ? (
-            <div className="filter-error">{error}</div>
-          ) : categories.length === 0 ? (
-            <div className="filter-error">Нет доступных категорий</div>
+      <div className="filters-panel__section">
+        <h4 className="filters-panel__section-title">Категория</h4>
+        <select
+          className="filters-panel__category-select"
+          value={filters.category ?? ''}
+          onChange={(e) => handleCategoryChange(e.target.value)}
+        >
+          <option value="">Все категории</option>
+          {categories.map((cat) => (
+            <option key={cat.categoryId} value={cat.categoryName}>
+              {cat.categoryName}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {filters.category && (
+        <div className="filters-panel__section">
+          <div className="filters-panel__specs-header">
+            <h4 className="filters-panel__specs-title">Характеристики</h4>
+            {hasActiveSpecFilters && (
+              <button
+                type="button"
+                className="filters-panel__specs-clear-btn"
+                onClick={handleClearSpecs}
+              >
+                Сбросить
+              </button>
+            )}
+          </div>
+          
+          {loadingSpecs ? (
+            <div className="filters-panel__status filters-panel__status--loading">
+              Загрузка...
+            </div>
+          ) : availableSpecs.length === 0 ? (
+            <p className="filters-panel__status filters-panel__status--info">
+              Нет фильтров для этой категории
+            </p>
           ) : (
-            <select 
-              value={category} 
-              onChange={handleCategoryChange}
-              className="category-select"
-            >
-              <option value="">Все категории</option>
-              {categories.map((cat, index) => {
-                const catId = getCategoryId(cat);
-                const catName = getCategoryName(cat);
-                
-                return (
-                  <option key={catId} value={catName}>
-                    {catName}
-                  </option>
-                );
-              })}
-            </select>
+            <div className="filters-panel__specs-list">
+              {availableSpecs.map((spec) => (
+                <div key={spec.specId} className="filters-panel__spec-item">
+                  <label className="filters-panel__spec-label">
+                    {spec.displayName}
+                  </label>
+
+                  {spec.dataType === 'Text' && (
+                    <select
+                      className="filters-panel__spec-select"
+                      value={specFilters?.[spec.name] ?? ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        onSpecFilterChange(spec.name, val === '' ? null : val);
+                      }}
+                    >
+                      <option value="">Любое</option>
+                      {spec.possibleValues?.map((val, idx) => (
+                        <option key={`${spec.name}-${idx}`} value={val}>
+                          {val}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+
+                  {spec.dataType === 'Number' && (
+                    <div className="filters-panel__price-inputs">
+                      <div className="filters-panel__price-input-wrapper">
+                        <label className="filters-panel__input-label">От</label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="any"
+                          placeholder="0"
+                          // 🔧 FIX: Читаем из локального стейта, иначе из глобального
+                          value={localNumberSpecs[spec.name]?.Min ?? specFilters?.[spec.name]?.Min?.toString() ?? ''}
+                          // 🔧 FIX: Используем новый обработчик с локальным стейтом
+                          onChange={(e) => handleNumberSpecChange(spec.name, spec, 'Min', e.target.value)}
+                          className={`filters-panel__input ${specErrors[spec.name] ? 'filters-panel__input--error' : ''}`}
+                        />
+                      </div>
+                      <div className="filters-panel__price-input-wrapper">
+                        <label className="filters-panel__input-label">До</label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="any"
+                          placeholder="100 000"
+                          value={localNumberSpecs[spec.name]?.Max ?? specFilters?.[spec.name]?.Max?.toString() ?? ''}
+                          onChange={(e) => handleNumberSpecChange(spec.name, spec, 'Max', e.target.value)}
+                          className={`filters-panel__input ${specErrors[spec.name] ? 'filters-panel__input--error' : ''}`}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {specErrors[spec.name] && (
+                    <span className="filters-panel__status filters-panel__status--error">
+                      {specErrors[spec.name]}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
           )}
         </div>
       )}
-    </div>
+    </aside>
   );
 };
 

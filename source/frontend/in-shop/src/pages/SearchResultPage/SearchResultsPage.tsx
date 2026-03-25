@@ -1,363 +1,489 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
-import ProductCard from '../../components/ProductCard.jsx';
+// src/components/SearchResultsPage/SearchResultsPage.tsx
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { useDebounce } from '../../hooks/useDebounce.ts';
+import { useProductSearch } from '../../hooks/useProductSearch.ts';
+import { parseFiltersFromUrl } from '../../utils/filters.ts';
+import { FiltersState, SearchRequestDto } from '../../types/search.ts';
 import FiltersPanel from '../../components/FiltersPanel/FiltersPanel.tsx';
-import SortMenu from "../../components/SortMenu/SortMenu.tsx"; // <<<--- Добавлен импорт
-import './SearchResultsPage.css';
+import ActiveFiltersBar from '../../components/ActiveFiltersBar.tsx';
+import ProductCard from '../../components/ProductCard.jsx';
 import LoadingSpinner from '../../components/LoadingSpinner.js';
+import SortMenu, { SortOption } from '../../components/SortMenu/SortMenu.tsx';
+import './SearchResultsPage.css';
 
-interface ProductSearchResultDto {
-  id: number;
-  name: string;
-  price: number;
-  category: string;
-  description: string;
-  stockQuantity: number;
-  isAvailable: boolean;
-  imageUrl: string;
+interface SearchResultsPageProps {
+  forcedCategory?: string;
+  hideSearchQuery?: boolean;
+  pageTitleOverride?: string;
 }
 
-interface ProductCardPropsFormat {
-  productId: number;
-  productName: string;
-  productPrice: number;
-  imageUrl: string;
-}
+type SpecFilterValue = string | number | { Min?: number; Max?: number } | null;
 
-interface FiltersState {
-  minPrice: string;
-  maxPrice: string;
-  category: string;
-  inStock: boolean | null; // null - все товары, true - только в наличии
-}
+const DEFAULT_LIMIT = 50;
+const DEBOUNCE_DELAY = 400;
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'https://localhost:7275/api';
 
-// --- НОВОЕ: Интерфейс для состояния сортировки ---
-interface SortState {
-  option: string; // Например, 'name-asc', 'price-desc', 'relevance'
-}
-
-const SearchResultsPage: React.FC = () => {
-  const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
-
-  // Используем ref для отслеживания первого рендера
-  const isFirstRender = useRef(true);
+const SearchResultsPage: React.FC<SearchResultsPageProps> = ({
+  forcedCategory,
+  hideSearchQuery = false,
+  pageTitleOverride,
+}) => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { results, loading, error, search, clear } = useProductSearch(API_BASE_URL);
+  
+  const isInitialMount = useRef(true);
+  const prevForcedCategory = useRef(forcedCategory);
   const isUpdatingFromUrl = useRef(false);
+  const lastSearchKeyRef = useRef<string>('');
+  const lastAppliedSpecsParamRef = useRef<string | null>(null);
+  
+  // 🔧 FIX: Ref для отслеживания предыдущего query для детектирования смены поиска
+  const prevUrlQueryRef = useRef<string>('');
 
-  // Получаем параметры из URL
-  const queryFromUrl = searchParams.get('q') || '';
-  const minPriceFromUrl = searchParams.get('minPrice') || '';
-  const maxPriceFromUrl = searchParams.get('maxPrice') || '';
-  const categoryFromUrl = searchParams.get('category') || '';
-  const inStockFromUrl = searchParams.get('inStock'); // 'true' или null
-  // --- НОВОЕ: Получаем параметр сортировки из URL ---
-  const sortFromUrl = searchParams.get('sort') || 'relevance'; // Значение по умолчанию для поисковой страницы
+  const urlFilters = useMemo(() => parseFiltersFromUrl(searchParams), [searchParams]);
+  const urlQuery = searchParams.get('q') || '';
+  
+  const urlSpecFilters = useMemo(() => {
+    const specsParam = searchParams.get('specs');
+    if (specsParam) {
+      try {
+        return JSON.parse(specsParam);
+      } catch (e) {
+        console.error('Ошибка парсинга specFilters из URL:', e);
+        return null;
+      }
+    }
+    return null;
+  }, [searchParams]);
 
-  const [results, setResults] = useState<ProductSearchResultDto[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
+  const [filters, setFilters] = useState<FiltersState>(() => ({
+    query: urlQuery,
+    minPrice: urlFilters.minPrice || '',
+    maxPrice: urlFilters.maxPrice || '',
+    category: forcedCategory !== undefined ? forcedCategory : (urlFilters.category || ''),
+    inStock: urlFilters.inStock !== undefined ? urlFilters.inStock : null,
+  }));
 
-  // Состояние для фильтров (инициализируем из URL)
-  const [currentFilters, setCurrentFilters] = useState<FiltersState>({
-    minPrice: minPriceFromUrl,
-    maxPrice: maxPriceFromUrl,
-    category: categoryFromUrl,
-    inStock: inStockFromUrl === 'true' ? true : null,
-  });
+  const [specFilters, setSpecFilters] = useState<Record<string, SpecFilterValue> | null>(urlSpecFilters);
+  
+  const [sort, setSort] = useState<{ option: string; order: 'asc' | 'desc' }>(() => ({
+    option: searchParams.get('sort') || 'relevance',
+    order: (searchParams.get('order') as 'asc' | 'desc') || 'desc',
+  }));
 
-  // --- НОВОЕ: Состояние для сортировки (инициализируем из URL) ---
-  const [currentSort, setCurrentSort] = useState<SortState>({
-    option: sortFromUrl,
-  });
+  const debouncedFilters = useDebounce(filters, DEBOUNCE_DELAY);
+  const debouncedSort = useDebounce(sort, DEBOUNCE_DELAY);
+  const debouncedSpecFilters = useDebounce(specFilters, DEBOUNCE_DELAY);
 
-  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'https://localhost:7275/api';
-
-  // --- НОВОЕ: Обработчик изменения сортировки ---
-  const handleSortOptionChange = useCallback((newSortOption: string) => {
-    setCurrentSort({ option: newSortOption });
-
-    // Обновляем URL при изменении сортировки
-    const newParams = new URLSearchParams(searchParams);
-
-    // Обновляем параметр сортировки
-    if (newSortOption === 'relevance') {
-        // Если выбрана "релевантность", удаляем параметр sort из URL (значение по умолчанию)
-        newParams.delete('sort');
-    } else {
-        // Иначе устанавливаем новое значение
-        newParams.set('sort', newSortOption);
+  useEffect(() => {
+    if (isUpdatingFromUrl.current) {
+      isUpdatingFromUrl.current = false;
+      return;
     }
 
-    // Устанавливаем флаг, чтобы не обновлять сортировку из URL при навигации
-    isUpdatingFromUrl.current = true;
+    const newFilters: FiltersState = {
+      query: urlQuery,
+      minPrice: urlFilters.minPrice || '',
+      maxPrice: urlFilters.maxPrice || '',
+      category: forcedCategory !== undefined ? forcedCategory : (urlFilters.category || ''),
+      inStock: urlFilters.inStock !== undefined ? urlFilters.inStock : null,
+    };
+    
+    let hasFilterChanges = false;
+    setFilters(prev => {
+      const hasChanges = Object.keys(newFilters).some(
+        key => prev[key as keyof FiltersState] !== newFilters[key as keyof FiltersState]
+      );
+      hasFilterChanges = hasChanges;
+      return hasChanges ? newFilters : prev;
+    });
+    
+    const newSort = {
+      option: searchParams.get('sort') || 'relevance',
+      order: (searchParams.get('order') as 'asc' | 'desc') || 'desc',
+    };
+    
+    let hasSortChanges = false;
+    setSort(prev => {
+      if (prev.option !== newSort.option || prev.order !== newSort.order) {
+        hasSortChanges = true;
+        return newSort;
+      }
+      return prev;
+    });
+    
+    const currentSpecsParam = searchParams.get('specs');
+    if (currentSpecsParam !== lastAppliedSpecsParamRef.current) {
+      lastAppliedSpecsParamRef.current = currentSpecsParam;
+      if (urlSpecFilters !== undefined) {
+        setSpecFilters(urlSpecFilters);
+      }
+    }
+    
+    if (hasFilterChanges || hasSortChanges || urlSpecFilters) {
+      clear();
+    }
+  }, [urlQuery, urlFilters, forcedCategory, searchParams, urlSpecFilters, clear]);
 
-    // Обновляем URL (это вызовет эффект с searchParams)
-    navigate(`?${newParams.toString()}`, { replace: true });
-  }, [navigate, searchParams]);
+  // 🔧 FIX: НОВЫЙ эффект — сброс specFilters при изменении query (новый поиск)
+  useEffect(() => {
+    // Пропускаем первичную инициализацию
+    if (isInitialMount.current) {
+      return;
+    }
+    
+    // Пропускаем, если обновление инициировано из URL (синхронизация)
+    if (isUpdatingFromUrl.current) {
+      return;
+    }
+    
+    // Проверяем, изменился ли query
+    const queryChanged = prevUrlQueryRef.current !== urlQuery;
+    
+    if (queryChanged && urlQuery !== '') {
+      // 🔧 FIX: Сбрасываем specFilters при новом поиске, если категория не форсирована
+      // Это предотвращает "перетекание" фильтров характеристик из прошлого поиска
+      if (forcedCategory === undefined) {
+        setSpecFilters(null);
+      }
+    }
+    
+    // Обновляем ref для следующего сравнения
+    prevUrlQueryRef.current = urlQuery;
+  }, [urlQuery, forcedCategory]);
 
-  // Обработчик изменения фильтров (из FiltersPanel)
-  const handleFiltersChange = useCallback((filters: {
-    minPrice: string;
-    maxPrice: string;
-    category: string;
-    inStock: boolean | null;
-  }) => {
-    setCurrentFilters(filters);
+  useEffect(() => {
+    if (prevForcedCategory.current !== forcedCategory) {
+      prevForcedCategory.current = forcedCategory;
+      
+      if (forcedCategory !== undefined && filters.category !== forcedCategory) {
+        isUpdatingFromUrl.current = true;
+        setFilters(prev => ({ ...prev, category: forcedCategory }));
+        setSpecFilters(null);
+        clear();
+      }
+    }
+  }, [forcedCategory, filters.category, clear]);
+
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
+    const params = new URLSearchParams();
+
+    if (debouncedFilters.query) params.set('q', debouncedFilters.query);
+    if (debouncedFilters.minPrice) params.set('minPrice', debouncedFilters.minPrice);
+    if (debouncedFilters.maxPrice) params.set('maxPrice', debouncedFilters.maxPrice);
+    if (debouncedFilters.category && !forcedCategory) params.set('category', debouncedFilters.category);
+    if (debouncedFilters.inStock === true) params.set('inStock', 'true');
+    if (debouncedFilters.inStock === false) params.set('inStock', 'false');
+    if (debouncedSort.option !== 'relevance') params.set('sort', debouncedSort.option);
+    if (debouncedSort.order !== 'desc') params.set('order', debouncedSort.order);
+    
+    if (debouncedSpecFilters && Object.keys(debouncedSpecFilters).length > 0) {
+      try {
+        params.set('specs', JSON.stringify(debouncedSpecFilters));
+      } catch (e) {
+        console.error('Ошибка сериализации спецификаций:', e);
+      }
+    }
+
+    const newParamsString = params.toString();
+    const currentParamsString = searchParams.toString();
+    
+    if (currentParamsString !== newParamsString) {
+      isUpdatingFromUrl.current = true;
+      setSearchParams(params, { replace: true });
+    }
+  }, [debouncedFilters, debouncedSort, debouncedSpecFilters, forcedCategory, setSearchParams, searchParams]);
+
+  useEffect(() => {
+    const hasSearchCriteria =
+      debouncedFilters.query?.trim() ||
+      debouncedFilters.category ||
+      debouncedFilters.minPrice ||
+      debouncedFilters.maxPrice ||
+      debouncedFilters.inStock != null ||
+      (debouncedSpecFilters && Object.keys(debouncedSpecFilters).length > 0);
+
+    if (!hasSearchCriteria) {
+      if (results.length > 0) {
+        clear();
+      }
+      lastSearchKeyRef.current = '';
+      return;
+    }
+
+    const searchKey = JSON.stringify({
+      query: debouncedFilters.query?.trim() ?? '',
+      category: debouncedFilters.category,
+      minPrice: debouncedFilters.minPrice,
+      maxPrice: debouncedFilters.maxPrice,
+      inStock: debouncedFilters.inStock,
+      specFilters: debouncedSpecFilters,
+      sortBy: debouncedSort.option,
+      sortOrder: debouncedSort.order,
+    });
+
+    if (searchKey === lastSearchKeyRef.current) {
+      return;
+    }
+    lastSearchKeyRef.current = searchKey;
+
+    const minPrice = debouncedFilters.minPrice ? parseFloat(debouncedFilters.minPrice) : null;
+    const maxPrice = debouncedFilters.maxPrice ? parseFloat(debouncedFilters.maxPrice) : null;
+    
+    if (minPrice !== null && maxPrice !== null && minPrice > maxPrice) {
+      console.warn('Min price больше Max price');
+      return;
+    }
+
+    const request: SearchRequestDto = {
+      query: debouncedFilters.query?.trim() ?? '',
+      limit: DEFAULT_LIMIT,
+      category: debouncedFilters.category || null,
+      minPrice: minPrice,
+      maxPrice: maxPrice,
+      inStock: debouncedFilters.inStock,
+      specFilters: debouncedSpecFilters,
+      sortBy: debouncedSort.option,
+      sortOrder: debouncedSort.order,
+    };
+
+    search(request);
+  }, [debouncedFilters, debouncedSort, debouncedSpecFilters, search, clear]);
+
+  const handleBasicFilterChange = useCallback((changes: Partial<FiltersState>) => {
+    setFilters(prev => ({ ...prev, ...changes }));
   }, []);
 
-  // Обработчик кнопки "Применить фильтры"
-  const handleApplyFilters = useCallback(() => {
-    const newParams = new URLSearchParams(searchParams);
-
-    // Обновляем параметры фильтров
-    if (currentFilters.minPrice) {
-      newParams.set('minPrice', currentFilters.minPrice);
-    } else {
-      newParams.delete('minPrice');
-    }
-
-    if (currentFilters.maxPrice) {
-      newParams.set('maxPrice', currentFilters.maxPrice);
-    } else {
-      newParams.delete('maxPrice');
-    }
-
-    if (currentFilters.category) {
-      newParams.set('category', currentFilters.category);
-    } else {
-      newParams.delete('category');
-    }
-
-    // Обновляем параметр наличия
-    if (currentFilters.inStock === true) {
-      newParams.set('inStock', 'true');
-    } else {
-      newParams.delete('inStock');
-    }
-
-    // --- СОРТИРОВКА: Сохраняем текущую сортировку ---
-    if (currentSort.option !== 'relevance') { // Не сохраняем 'relevance', если это значение по умолчанию
-        newParams.set('sort', currentSort.option);
-    } else {
-        newParams.delete('sort'); // Удаляем, если 'relevance'
-    }
-
-    // Сохраняем поисковый запрос
-    if (queryFromUrl) {
-      newParams.set('q', queryFromUrl);
-    }
-
-    // Устанавливаем флаг, чтобы не обновлять фильтры из URL при навигации
-    isUpdatingFromUrl.current = true;
-
-    // Обновляем URL (это вызовет эффект с searchParams)
-    navigate(`?${newParams.toString()}`, { replace: true });
-  }, [currentFilters, currentSort, queryFromUrl, navigate, searchParams]);
-
-  // --- НОВОЕ: Синхронизируем currentSort с URL при изменении searchParams ---
-  useEffect(() => {
-    // Если обновление происходит из handleApplyFilters или handleSortOptionChange, пропускаем
-    if (isUpdatingFromUrl.current) {
-      isUpdatingFromUrl.current = false;
-      return;
-    }
-
-    // Извлекаем сортировку из URL
-    const urlSort = searchParams.get('sort') || 'relevance';
-
-    // Обновляем состояние сортировки, только если она изменилась
-    if (urlSort !== currentSort.option) {
-        setCurrentSort({ option: urlSort });
-    }
-  }, [searchParams, currentSort.option]); // Зависит от searchParams и текущего состояния сортировки
-
-  // Синхронизируем currentFilters с URL при изменении searchParams
-  useEffect(() => {
-    // Если обновление происходит из handleApplyFilters, пропускаем
-    if (isUpdatingFromUrl.current) {
-      isUpdatingFromUrl.current = false;
-      return;
-    }
-
-    setCurrentFilters({
-      minPrice: minPriceFromUrl,
-      maxPrice: maxPriceFromUrl,
-      category: categoryFromUrl,
-      inStock: inStockFromUrl === 'true' ? true : null,
+  const handleSpecFilterChange = useCallback((specName: string, value: SpecFilterValue) => {
+    setSpecFilters(prev => {
+      if (value == null) {
+        if (!prev) return null;
+        const { [specName]: _, ...rest } = prev;
+        return Object.keys(rest).length > 0 ? rest : null;
+      }
+      
+      const next = prev ? { ...prev } : {};
+      
+      const isEmpty = (val: SpecFilterValue): boolean => {
+        if (val == null || val === '') return true;
+        if (typeof val === 'object') {
+          const hasValue = Object.values(val).some(v => v != null && v !== '');
+          return !hasValue;
+        }
+        return false;
+      };
+      
+      if (isEmpty(value)) {
+        delete next[specName];
+      } else {
+        next[specName] = value;
+      }
+      
+      return Object.keys(next).length > 0 ? next : null;
     });
-  }, [minPriceFromUrl, maxPriceFromUrl, categoryFromUrl, inStockFromUrl]);
+  }, []);
 
-  // Эффект для поиска
-  useEffect(() => {
-    // Пропускаем первый рендер, если нет параметров поиска
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      if (!queryFromUrl && !minPriceFromUrl && !maxPriceFromUrl && !categoryFromUrl && !inStockFromUrl && currentSort.option === 'relevance') { // <<<--- ДОБАВЛЕНО currentSort.option
-        setResults([]);
-        setError('Введите поисковый запрос или примените фильтры.');
-        return;
-      }
+  const handleClearSpecFilters = useCallback(() => {
+    setSpecFilters(null);
+  }, []);
+
+  const handleRemoveBasicFilter = useCallback((key: keyof FiltersState) => {
+    if (key === 'category' && forcedCategory !== undefined) return;
+    setFilters(prev => ({ ...prev, [key]: key === 'inStock' ? null : '' }));
+  }, [forcedCategory]);
+
+  const handleRemoveSpecFilter = useCallback((specName: string) => {
+    setSpecFilters(prev => {
+      if (!prev) return null;
+      const next = { ...prev };
+      delete next[specName];
+      return Object.keys(next).length > 0 ? next : null;
+    });
+  }, []);
+
+  const handleClearAllFilters = useCallback(() => {
+    setFilters({
+      query: '',
+      minPrice: '',
+      maxPrice: '',
+      category: forcedCategory !== undefined ? forcedCategory : '',
+      inStock: null,
+    });
+    setSpecFilters(null);
+    setSort({ option: 'relevance', order: 'desc' });
+
+    const params = new URLSearchParams();
+    if (forcedCategory !== undefined) params.set('category', forcedCategory);
+    setSearchParams(params, { replace: true });
+    clear();
+    lastSearchKeyRef.current = '';
+  }, [forcedCategory, setSearchParams, clear]);
+
+  const handleSortMenuChange = useCallback((newSortOption: SortOption) => {
+    let newOption = 'relevance';
+    let newOrder: 'asc' | 'desc' = 'desc';
+
+    switch (newSortOption) {
+      case 'name-asc':
+        newOption = 'name';
+        newOrder = 'asc';
+        break;
+      case 'name-desc':
+        newOption = 'name';
+        newOrder = 'desc';
+        break;
+      case 'price-asc':
+        newOption = 'price';
+        newOrder = 'asc';
+        break;
+      case 'price-desc':
+        newOption = 'price';
+        newOrder = 'desc';
+        break;
+      case 'relevance':
+        newOption = 'relevance';
+        newOrder = 'desc';
+        break;
     }
 
-    const performSearch = async () => {
-      setLoading(true);
-      setError(null);
-      setResults([]);
+    setSort({ option: newOption, order: newOrder });
+  }, []);
 
-      try {
-        const apiParams = new URLSearchParams();
-        if (queryFromUrl) apiParams.set('q', queryFromUrl);
-        if (minPriceFromUrl) apiParams.set('minPrice', minPriceFromUrl);
-        if (maxPriceFromUrl) apiParams.set('maxPrice', maxPriceFromUrl);
-        if (categoryFromUrl) apiParams.set('category', categoryFromUrl);
-        if (inStockFromUrl === 'true') apiParams.set('inStock', 'true');
+  const getCurrentSortOptionForMenu = useCallback((): SortOption => {
+    if (sort.option === 'relevance') return 'relevance';
+    return `${sort.option}-${sort.order}` as SortOption;
+  }, [sort.option, sort.order]);
 
-        // --- ИСПРАВЛЕНО: Отправляем параметры сортировки в формате, ожидаемом бэкендом ---
-        if (currentSort.option && currentSort.option !== 'relevance') {
-            let apiSortBy = 'relevance';
-            let apiSortOrder = 'desc';
+  const adaptedProducts = useMemo(() => {
+    return results.map(p => ({
+      productId: p.id,
+      productName: p.name,
+      productPrice: p.price,
+      imageUrl: p.imageUrl,
+    }));
+  }, [results]);
 
-            switch (currentSort.option) {
-                case 'name-asc':
-                    apiSortBy = 'name';
-                    apiSortOrder = 'asc';
-                    break;
-                case 'name-desc':
-                    apiSortBy = 'name';
-                    apiSortOrder = 'desc';
-                    break;
-                case 'price-asc':
-                    apiSortBy = 'price';
-                    apiSortOrder = 'asc';
-                    break;
-                case 'price-desc':
-                    apiSortBy = 'price';
-                    apiSortOrder = 'desc';
-                    break;
-                default:
-                    // 'relevance' или любое другое значение -> по умолчанию relevance, desc
-                    apiSortBy = 'relevance';
-                    apiSortOrder = 'desc';
-            }
+  const getPageTitle = useCallback(() => {
+    if (pageTitleOverride) return pageTitleOverride;
+    if (forcedCategory !== undefined) return `Категория: ${forcedCategory}`;
+    if (filters.query) return `Поиск: "${filters.query}"`;
+    if (filters.category) return `Категория: ${filters.category}`;
+    return 'Все товары';
+  }, [pageTitleOverride, forcedCategory, filters.query, filters.category]);
 
-            // Отправляем параметры сортировки только если sortBy не 'relevance'
-            if (apiSortBy !== 'relevance') {
-                apiParams.set('sortBy', apiSortBy);
-                apiParams.set('sortOrder', apiSortOrder);
-            }
-        }
-        // ---
+  const getEmptyStateMessage = useCallback(() => {
+    if (forcedCategory !== undefined) {
+      return 'В этой категории нет товаров по выбранным фильтрам';
+    }
+    if (filters.query && !filters.category && !filters.minPrice && !filters.maxPrice && !specFilters) {
+      return `По запросу "${filters.query}" ничего не найдено`;
+    }
+    return 'По выбранным фильтрам ничего не найдено';
+  }, [forcedCategory, filters.query, filters.category, filters.minPrice, filters.maxPrice, specFilters]);
 
-        // Если нет параметров, не выполняем поиск
-        if (apiParams.toString() === '') {
-          setResults([]);
-          setError('Введите поисковый запрос или примените фильтры.');
-          setLoading(false);
-          return;
-        }
-
-        console.log('Отправка запроса к API:', `${API_BASE_URL}/search/search?${apiParams}`);
-
-        const response = await fetch(`${API_BASE_URL}/search/search?${apiParams}`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (!response.ok) {
-          let errorMessage = `Ошибка поиска: ${response.status} ${response.statusText}`;
-          try {
-            const errorData = await response.json();
-            if (errorData && typeof errorData === 'object' && errorData.detail) {
-              errorMessage = `Ошибка поиска: ${errorData.detail}`;
-            } else if (typeof errorData === 'string') {
-              errorMessage = `Ошибка поиска: ${errorData}`;
-            }
-          } catch (e) {
-            console.error('Не удалось распарсить ошибку:', e);
-          }
-          throw new Error(errorMessage);
-        }
-
-        const data: ProductSearchResultDto[] = await response.json();
-        console.log('Получены результаты:', data);
-        setResults(data);
-
-        if (data.length === 0) {
-          setError('По вашему запросу и фильтрам ничего не найдено.');
-        }
-      } catch (err) {
-        console.error('Ошибка при выполнении поиска:', err);
-        setError(err instanceof Error ? err.message : 'Произошла неизвестная ошибка при поиске.');
-        setResults([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    performSearch();
-  }, [queryFromUrl, minPriceFromUrl, maxPriceFromUrl, categoryFromUrl, inStockFromUrl, currentSort.option, API_BASE_URL]); // <<<--- ДОБАВЛЕНО currentSort.option
-
-  const adaptApiResultToProductCardProps = (apiProduct: ProductSearchResultDto): ProductCardPropsFormat => {
-    return {
-      productId: apiProduct.id,
-      productName: apiProduct.name,
-      productPrice: apiProduct.price,
-      imageUrl: apiProduct.imageUrl,
-    };
-  };
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (filters.query) count++;
+    if (filters.minPrice) count++;
+    if (filters.maxPrice) count++;
+    if (filters.category && forcedCategory === undefined) count++;
+    if (filters.inStock !== null) count++;
+    if (specFilters) count += Object.keys(specFilters).length;
+    return count;
+  }, [filters, specFilters, forcedCategory]);
 
   return (
     <div className="search-results-page">
-      <h2>
-        Результаты поиска по запросу: "{queryFromUrl}"
-        {!queryFromUrl && <span> (все товары)</span>}
-      </h2>
+      <div className="search-results-header">
+        <h2>{getPageTitle()}</h2>
+        {activeFiltersCount > 0 && (
+          <span className="active-filters-badge">
+            Активных фильтров: {activeFiltersCount}
+          </span>
+        )}
+      </div>
+
+      <ActiveFiltersBar
+        filters={filters}
+        specFilters={specFilters}
+        onRemoveBasic={handleRemoveBasicFilter}
+        onRemoveSpec={handleRemoveSpecFilter}
+        onClearAll={handleClearAllFilters}
+      />
 
       <div className="search-results-layout">
-        <aside className="search-filters-sidebar">
-          <FiltersPanel
-            initialMinPrice={currentFilters.minPrice}
-            initialMaxPrice={currentFilters.maxPrice}
-            initialCategory={currentFilters.category}
-            initialInStock={currentFilters.inStock}
-            onFiltersChange={handleFiltersChange}
-            hideCategory={false}
-            hideInStock={false}
-          />
-          <div className="apply-filters-section-search">
-            <button onClick={handleApplyFilters} className="apply-filters-button-search">
-              Применить фильтры
-            </button>
-          </div>
-        </aside>
+        <FiltersPanel
+          filters={filters}
+          specFilters={specFilters}
+          onBasicFilterChange={handleBasicFilterChange}
+          onSpecFilterChange={handleSpecFilterChange}
+          onClearSpecFilters={handleClearSpecFilters}
+          apiBaseUrl={API_BASE_URL}
+        />
 
-        <main className="search-results-main-content">
+        <main className="search-results-main">
           <div className="sort-menu__container">
             <SortMenu
-              currentSortOption={currentSort.option} // Передаём текущую опцию сортировки
-              onSortOptionChange={handleSortOptionChange} // Передаём обработчик изменения сортировки
+              currentSortOption={getCurrentSortOptionForMenu()}
+              onSortOptionChange={handleSortMenuChange}
+              className="search-results__sort"
             />
           </div>
 
-          {loading && <div className="loading-indicator"><LoadingSpinner /></div>}
-          {error && <div className="error-message">{error}</div>}
-
-          {!loading && !error && results.length > 0 && (
-            <div className="search-results-grid">
-              <h3>Найдено {results.length} товаров:</h3>
-              <div className="products-grid">
-                {results.map((apiProduct) => {
-                  const adaptedProduct = adaptApiResultToProductCardProps(apiProduct);
-                  return (
-                    <div key={apiProduct.id} className="product-card-container">
-                      <ProductCard product={adaptedProduct} />
-                    </div>
-                  );
-                })}
-              </div>
+          {loading && (
+            <div className="loading-container">
+              <LoadingSpinner />
+              <p>Загрузка товаров...</p>
             </div>
+          )}
+
+          {error && (
+            <div className="error-message">
+              <span>⚠️</span>
+              <p>{error}</p>
+              <button onClick={() => window.location.reload()}>Повторить</button>
+            </div>
+          )}
+
+          {!loading && !error && adaptedProducts.length === 0 && (
+            <div className="empty-state">
+              <p>{getEmptyStateMessage()}</p>
+              <button 
+                onClick={handleClearAllFilters}
+                className="clear-filters-button"
+              >
+                Сбросить фильтры
+              </button>
+            </div>
+          )}
+
+          {!loading && !error && adaptedProducts.length > 0 && (
+            <>
+              <div className="results-header">
+                <p className="results-count">
+                  Найдено товаров: <strong>{adaptedProducts.length}</strong>
+                </p>
+                {adaptedProducts.length === DEFAULT_LIMIT && (
+                  <p className="results-limit-warning">
+                    Показаны первые {DEFAULT_LIMIT} результатов
+                  </p>
+                )}
+              </div>
+              <div className="products-grid">
+                {adaptedProducts.map(product => (
+                  <ProductCard 
+                    key={product.productId} 
+                    product={product}
+                  />
+                ))}
+              </div>
+            </>
           )}
         </main>
       </div>

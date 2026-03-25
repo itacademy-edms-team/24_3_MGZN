@@ -2,8 +2,8 @@
 
 /* Блок header */
 .header {
-    background-color: #000; /* Цвет фона */
-    color: #fff; /* Цвет текста */
+    background-color: #000000; /* Цвет фона */
+    color: #ffffff; /* Цвет текста */
     width: 100%; /* Занимает всю ширину */
     position: sticky;
     z-index: 1000;

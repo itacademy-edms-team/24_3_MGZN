@@ -1,98 +1,100 @@
 // src/components/SortMenu/SortMenu.tsx
-import React, { useState } from 'react';
-import './SortMenu.css'; // Импортируем стили
+import React, { useState, useEffect, useRef } from 'react';
+import './SortMenu.css';
+
+export type SortOption = 'name-asc' | 'name-desc' | 'price-asc' | 'price-desc';
 
 interface SortMenuProps {
-  currentSortOption: string; // Значение текущей сортировки (например, 'name-asc'), передаётся из родителя
-  onSortOptionChange: (newSortOption: string) => void; // Функция для обновления сортировки в родителе, передаётся из родителя
+  currentSortOption: SortOption;
+  onSortOptionChange: (newSortOption: SortOption) => void;
+  className?: string; // ✅ Для гибкого позиционирования
 }
 
-const SortMenu: React.FC<SortMenuProps> = ({ currentSortOption, onSortOptionChange }) => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false); // Состояние открытия/закрытия меню всё ещё нужно внутри компонента
+const SORT_OPTIONS: Array<{ value: SortOption; label: string }> = [
+  { value: 'name-asc', label: 'Название товара ↓' },
+  { value: 'name-desc', label: 'Название товара ↑' },
+  { value: 'price-asc', label: 'Цена ↑' },
+  { value: 'price-desc', label: 'Цена ↓' },
+];
 
-  const toggleMenu = () => {
-    setIsMenuOpen(!isMenuOpen);
-  };
+const SortMenu: React.FC<SortMenuProps> = ({
+  currentSortOption,
+  onSortOptionChange,
+  className = '',
+}) => {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
-  const handleOptionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedValue = e.target.value;
-    // Вызываем функцию из пропсов, передавая выбранное значение
-    onSortOptionChange(selectedValue);
-    // Опционально: закрыть меню после выбора
-    // setIsMenuOpen(false);
-  };
+  // ✅ Закрытие меню при клике вне
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    };
 
-  // Функция для получения отображаемого текста для опции
-  const getDisplayText = (value: string): string => {
-    switch (value) {
-      case 'name-asc':
-        return 'Название товара ↓';
-      case 'name-desc':
-        return 'Название товара ↑';
-      case 'price-asc':
-        return 'Цена ↑';
-      case 'price-desc':
-        return 'Цена ↓';
-      default:
-        return 'Сортировка';
+    if (isMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
     }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isMenuOpen]);
+
+  // ✅ Закрытие по Escape
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsMenuOpen(false);
+    };
+    if (isMenuOpen) {
+      document.addEventListener('keydown', handleEscape);
+    }
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [isMenuOpen]);
+
+  const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
+
+  const handleOptionChange = (value: SortOption) => {
+    onSortOptionChange(value);
+    setIsMenuOpen(false); // ✅ Закрываем после выбора
   };
+
+  const currentLabel = SORT_OPTIONS.find(opt => opt.value === currentSortOption)?.label || 'Сортировка';
 
   return (
-    <div className="div__sort-menu">
-      <div className={`sort-menu ${isMenuOpen ? 'open' : ''}`}>
-        <div
-          className="sort-menu-header"
-          onClick={toggleMenu}
-        >
-          {/* Отображаем текст, соответствующий текущей опции */}
-          {/* {getDisplayText(currentSortOption)} */}
-          Сортировка
-          <span className={`sort-arrow ${isMenuOpen ? 'up' : 'down'}`}></span>
+    <div className={`sort-menu ${className}`} ref={menuRef}>
+      <button
+        type="button"
+        className="sort-menu__trigger"
+        onClick={toggleMenu}
+        aria-haspopup="listbox"
+        aria-expanded={isMenuOpen}
+        aria-label="Выберите сортировку"
+      >
+        <span className="sort-menu__trigger-text">{currentLabel}</span>
+        <span className={`sort-menu__arrow ${isMenuOpen ? 'sort-menu__arrow--up' : 'sort-menu__arrow--down'}`}></span>
+      </button>
+
+      {isMenuOpen && (
+        <div className="sort-menu__dropdown" role="listbox">
+          {SORT_OPTIONS.map((option) => (
+            <label
+              key={option.value}
+              className={`sort-menu__option ${currentSortOption === option.value ? 'sort-menu__option--active' : ''}`}
+              role="option"
+              aria-selected={currentSortOption === option.value}
+            >
+              <input
+                type="radio"
+                name="sort"
+                value={option.value}
+                checked={currentSortOption === option.value}
+                onChange={() => handleOptionChange(option.value)}
+                className="sort-menu__radio"
+              />
+              <span className="sort-menu__label">{option.label}</span>
+            </label>
+          ))}
         </div>
-        <div className="sort-menu-dropdown">
-          <label className="sort-option">
-            <input
-              type="radio"
-              name="sort"
-              value="name-asc"
-              checked={currentSortOption === 'name-asc'} // checked теперь зависит от пропса
-              onChange={handleOptionChange} // handleChange теперь использует пропс
-            />
-            <span className="sort-label">Название товара ↓</span>
-          </label>
-          <label className="sort-option">
-            <input
-              type="radio"
-              name="sort"
-              value="name-desc"
-              checked={currentSortOption === 'name-desc'} // checked теперь зависит от пропса
-              onChange={handleOptionChange} // handleChange теперь использует пропс
-            />
-            <span className="sort-label">Название товара ↑</span>
-          </label>
-          <label className="sort-option">
-            <input
-              type="radio"
-              name="sort"
-              value="price-asc"
-              checked={currentSortOption === 'price-asc'} // checked теперь зависит от пропса
-              onChange={handleOptionChange} // handleChange теперь использует пропс
-            />
-            <span className="sort-label">Цена ↑</span>
-          </label>
-          <label className="sort-option">
-            <input
-              type="radio"
-              name="sort"
-              value="price-desc"
-              checked={currentSortOption === 'price-desc'} // checked теперь зависит от пропса
-              onChange={handleOptionChange} // handleChange теперь использует пропс
-            />
-            <span className="sort-label">Цена ↓</span>
-          </label>
-        </div>
-      </div>
+      )}
     </div>
   );
 };

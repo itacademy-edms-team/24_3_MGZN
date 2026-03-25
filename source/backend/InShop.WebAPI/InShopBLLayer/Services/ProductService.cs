@@ -152,25 +152,23 @@ namespace InShopBLLayer.Services
         }
 
 
-        public async Task<Dictionary<string, object>?> ValidateSpecFiltersAsync(Dictionary<string, object> specFilters, string category)
+        public async Task<Dictionary<string, object>?> ValidateSpecFiltersAsync(
+    Dictionary<string, object> specFilters,
+    string category)
         {
             // 1. Получить допустимые характеристики для категории
             var validSpecs = await _productRepository.GetSpecificationsByGroupNameAsync(category);
 
             if (!validSpecs.Any())
             {
-                // Логгируем, что группа не найдена или нет фильтров
                 _logger.LogWarning("Для категории '{Category}' не найдено допустимых характеристик для фильтрации.", category);
-                return null; // Категория не найдена или нет характеристик
+                return null;
             }
 
-            // Логгируем найденные имена характеристик
             var validSpecNames = validSpecs.Select(s => s.Name).ToList();
             _logger.LogDebug("Найдены характеристики для категории '{Category}': {@ValidSpecNames}", category, validSpecNames);
 
-            // 2. Создать словарь для быстрого поиска типа характеристики
             var validSpecTypes = validSpecs.ToDictionary(s => s.Name, s => s.DataType);
-
             var validatedFilters = new Dictionary<string, object>();
 
             foreach (var filter in specFilters)
@@ -178,47 +176,36 @@ namespace InShopBLLayer.Services
                 var specName = filter.Key;
                 var specValue = filter.Value;
 
-                // 3. Проверить, является ли имя характеристики допустимым
                 if (!validSpecTypes.TryGetValue(specName, out var expectedType))
                 {
-                    // Логгируем, какая характеристика не найдена
                     _logger.LogWarning("Характеристика '{SpecName}' не найдена или не является фильтруемой для категории '{Category}'.", specName, category);
-                    return null; // Характеристика не найдена для категории
+                    return null;
                 }
 
-                // ... остальная логика проверки типа ...
-                // (оставлю как есть, но можно добавить логи и тут)
                 if (expectedType == "Number")
                 {
-                    // Проверить, является ли значение числом или объектом с Min/Max
                     if (specValue is JsonElement element)
                     {
                         if (element.ValueKind == JsonValueKind.Object)
                         {
                             decimal? min = null, max = null;
                             bool isValidObject = true;
+
                             if (element.TryGetProperty("Min", out var minProp))
                             {
                                 if (minProp.ValueKind == JsonValueKind.Number)
-                                {
                                     min = minProp.GetDecimal();
-                                }
-                                else
-                                {
+                                else if (minProp.ValueKind != JsonValueKind.Null)
                                     isValidObject = false;
-                                }
                             }
                             if (element.TryGetProperty("Max", out var maxProp))
                             {
                                 if (maxProp.ValueKind == JsonValueKind.Number)
-                                {
                                     max = maxProp.GetDecimal();
-                                }
-                                else
-                                {
+                                else if (maxProp.ValueKind != JsonValueKind.Null)
                                     isValidObject = false;
-                                }
                             }
+
                             if (isValidObject && (min.HasValue || max.HasValue))
                             {
                                 validatedFilters[specName] = new { Min = min, Max = max };
@@ -227,7 +214,6 @@ namespace InShopBLLayer.Services
                         }
                         else if (element.ValueKind == JsonValueKind.Number)
                         {
-                            // Простое числовое значение
                             validatedFilters[specName] = element.GetDecimal();
                             continue;
                         }
@@ -243,30 +229,46 @@ namespace InShopBLLayer.Services
                         continue;
                     }
 
-                    // Если дошли сюда, тип не подходит
-                    _logger.LogWarning("Значение фильтра '{SpecName}' для категории '{Category}' ожидается числовым, получено: {Type} ({Value})", specName, category, specValue.GetType().Name, specValue);
+                    _logger.LogWarning("Значение фильтра '{SpecName}' для категории '{Category}' ожидается числовым, получено: {Type} ({Value})", specName, category, specValue?.GetType().Name ?? "null", specValue);
                     return null;
                 }
+                // ✅ ИСПРАВЛЕНО: Обработка текстовых значений с учётом JsonElement
                 else if (expectedType == "Text")
                 {
-                    if (specValue is string strVal)
+                    string? strVal = null;
+
+                    // ← Обработка JsonElement со строковым значением
+                    if (specValue is JsonElement textElement && textElement.ValueKind == JsonValueKind.String)
+                    {
+                        strVal = textElement.GetString();
+                    }
+                    // ← Обработка обычной строки
+                    else if (specValue is string directString)
+                    {
+                        strVal = directString;
+                    }
+
+                    // Если удалось извлечь строку и она не пустая — принимаем
+                    if (!string.IsNullOrEmpty(strVal))
                     {
                         validatedFilters[specName] = strVal;
                         continue;
                     }
-                    // Можно добавить проверку на массив строк для множественного выбора
-                    // if (specValue is JsonElement arrEl && arrEl.ValueKind == JsonValueKind.Array) { ... }
-                    _logger.LogWarning("Значение фильтра '{SpecName}' для категории '{Category}' ожидается текстовым (string), получено: {Type} ({Value})", specName, category, specValue.GetType().Name, specValue);
-                    return null; // Тип не подходит
+
+                    // Логирование ошибки с безопасным получением типа
+                    var actualType = specValue?.GetType().Name ?? "null";
+                    var actualValue = specValue is JsonElement je ? je.ToString() : specValue?.ToString() ?? "null";
+
+                    _logger.LogWarning("Значение фильтра '{SpecName}' для категории '{Category}' ожидается текстовым (string), получено: {Type} ({Value})", specName, category, actualType, actualValue);
+                    return null;
                 }
                 else
                 {
                     _logger.LogError("Неизвестный тип данных '{DataType}' для характеристики '{SpecName}' в категории '{Category}'.", expectedType, specName, category);
-                    return null; // Неизвестный тип
+                    return null;
                 }
             }
 
-            // 5. Все фильтры валидны
             return validatedFilters;
         }
     }

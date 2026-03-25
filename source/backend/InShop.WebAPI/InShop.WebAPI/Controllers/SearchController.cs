@@ -38,19 +38,43 @@ namespace InShop.WebAPI.Controllers
             _productService = productService; // <-- Присвоено
         }
 
-        // ... остальные методы, например, GetSpecificationFiltersForCategory ...
+        [HttpGet("specifications/filters")] // <-- Новый эндпоинт
+        public async Task<IActionResult> GetSpecificationFiltersForCategory([FromQuery] string categoryName)
+        {
+            if (string.IsNullOrWhiteSpace(categoryName))
+            {
+                return BadRequest("Параметр 'categoryName' обязателен.");
+            }
 
-        [HttpPost("search")] // <-- Изменили на POST и принимаем DTO в теле
+            var filtersDto = await _productService.GetSpecificationFiltersForCategoryAsync(categoryName);
+
+            if (filtersDto == null)
+            {
+                return NotFound($"Фильтры для категории '{categoryName}' не найдены.");
+            }
+
+            return Ok(filtersDto);
+        }
+
+
+        [HttpPost("search")]
         public async Task<IActionResult> SearchVectorPost(
             [FromBody] SearchRequestDto request, // <-- Принимаем DTO из тела запроса
             CancellationToken ct = default)
         {
-            if (string.IsNullOrWhiteSpace(request.Query))
+            // ✅ НОВОЕ: Разрешаем пустой Query, если есть другие фильтры
+            bool hasCategory = !string.IsNullOrWhiteSpace(request.Category);
+            bool hasPriceFilter = request.MinPrice.HasValue || request.MaxPrice.HasValue;
+            bool hasStockFilter = request.InStock.HasValue;
+            bool hasSpecFilters = request.SpecFilters != null && request.SpecFilters.Any();
+            bool hasQuery = !string.IsNullOrWhiteSpace(request.Query);
+
+            if (!hasQuery && !hasCategory && !hasPriceFilter && !hasStockFilter && !hasSpecFilters)
             {
-                return BadRequest("Параметр поиска 'q' обязателен.");
+                return BadRequest("Необходимо указать хотя бы один параметр поиска: запрос (q), категорию, цену, наличие или характеристики.");
             }
 
-            // Валидация параметров сортировки
+            // Валидация параметров сортировки (остаётся без изменений)
             if (!IsValidSortParameter(request.SortBy, out string validatedSortBy))
             {
                 return BadRequest($"Недопустимое значение параметра 'sortBy': '{request.SortBy}'. Допустимые значения: relevance, name, price.");
@@ -61,7 +85,7 @@ namespace InShop.WebAPI.Controllers
                 return BadRequest($"Недопустимое значение параметра 'sortOrder': '{request.SortOrder}'. Допустимые значения: asc, desc.");
             }
 
-            // ВАЖНО: Валидация фильтров по характеристикам
+            // ВАЖНО: Валидация фильтров по характеристикам (остаётся без изменений)
             Dictionary<string, object>? validatedSpecFilters = null;
             if (request.SpecFilters != null && !string.IsNullOrEmpty(request.Category))
             {
@@ -78,9 +102,8 @@ namespace InShop.WebAPI.Controllers
                 validatedSpecFilters = null;
             }
 
-
             _logger.LogInformation("Получен гибридный поиск: '{Query}', Limit: {Limit}, Category: '{Category}', MinPrice: {MinPrice}, MaxPrice: {MaxPrice}, InStock: {InStock}, SortBy: {SortBy}, SortOrder: {SortOrder}",
-                request.Query, request.Limit, request.Category ?? "null", request.MinPrice?.ToString() ?? "null", request.MaxPrice?.ToString() ?? "null", request.InStock?.ToString() ?? "null", validatedSortBy, validatedSortOrder);
+                request.Query ?? "(пустой)", request.Limit, request.Category ?? "null", request.MinPrice?.ToString() ?? "null", request.MaxPrice?.ToString() ?? "null", request.InStock?.ToString() ?? "null", validatedSortBy, validatedSortOrder);
 
 
             try

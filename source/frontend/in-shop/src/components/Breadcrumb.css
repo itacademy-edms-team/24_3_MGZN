@@ -3,7 +3,7 @@
     align-items: center;
     gap: 10px; /* немного увеличен отступ для лучшего восприятия */
     font-size: 1em;
-    color: #333;
+    color: #000000;
     margin-bottom: 20px;
     flex-wrap: wrap; /* если путь длинный — элементы могут переноситься */
 }
@@ -17,7 +17,7 @@
 }
 
 .breadcrumb a:hover {
-    color: #ff4d4d; /* ваш цвет при наведении */
+    color: #005977; /* ваш цвет при наведении */
     background-color: rgba(255, 77, 77, 0.1); /* лёгкий фон при наведении */
 }
 
@@ -30,6 +30,6 @@
 .breadcrumb a:not(:last-child)::after {
     content: "›"; /* можно заменить на ">", "»", "/" или "•" */
     margin-left: 10px;
-    color: #aaa; /* цвет разделителя */
+    color: #000000; /* цвет разделителя */
     font-size: 0.9em;
 }

@@ -1,72 +1,173 @@
-/* Стили для каталога товаров */
+/* src/pages/CatalogPage/CatalogPage.css */
+
+/* ===== Блок: catalog-page ===== */
 .catalog-page {
-    display: flex;
-    flex-direction: column; /* Вертикальное расположение элементов */
-    align-items: center; /* Центрируем элементы по горизонтали */
-    min-height: 100vh; /* Гарантируем, что контейнер занимает всю высоту экрана */
-    padding: 20px; /* Добавляем небольшой отступ вокруг всего содержимого */
-    
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  padding: 40px 20px;
 }
 
+/* Элемент: заголовок каталога */
 .catalog-title {
-    font-size: 24px; /* Размер шрифта */
-    font-weight: bold; /* Жирный текст */
-    margin-bottom: 20px; /* Отступ снизу (перед списком категорий) */
-    text-align: center; /* Выравнивание текста по центру */
+  font-size: 32px;
+  font-weight: 700;
+  color: #000000;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 40px;
+  text-align: center;
+  border-bottom: 2px solid #000000;
+  padding-bottom: 16px;
 }
 
+/* Контейнер для списка категорий */
 .categories-container {
-    display: flex;
-    justify-content: center; /* Центрируем список по горизонтали */
-    align-items: center; /* Центрируем список по вертикали */
-    flex-grow: 1; /* Занимаем оставшееся пространство */
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  flex-grow: 1;
+  width: 100%;
 }
 
+/* Список категорий */
 .categories-list {
-    display: flex;
-    flex-wrap: wrap; /* Разрешаем перенос карточек на новую строку */
-    justify-content: center; /* Центрируем карточки по горизонтали */
-    gap: 50px; /* Расстояние между карточками */
-    list-style-type: none;
-    padding: 0;
-    max-width: 1200px; /* Ограничиваем максимальную ширину списка */
-    margin: 0 auto; /* Выравниваем по центру */
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 32px;
+  list-style-type: none;
+  padding: 0;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
+/* ===== Карточка категории ===== */
 .category-card {
-    background-color: #fff;
-    border-radius: 20px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    overflow: hidden;
-    text-align: center;
-    transition: transform 0.3s ease;
-    cursor: pointer;
-    font-family: 'Open Sans', sans-serif;
-    font-weight: bolder;
-    font-size: larger;
-
-    /* Увеличиваем размер карточки */
-    width: 300px; /* Увеличиваем ширину */
-    height: 300px; /* Увеличиваем высоту */
-}
-
-.category-card img {
-    width: 65%;
-    height: auto;
-    object-fit: cover;
-    margin-bottom: 10px;
-    margin-top: 20px; /* Добавляем отступ сверху */
-}
-
-.category-card p {
-    font-size: 1em;
-    color: #333;
-    margin: 20px;
-    text-align: center; /* Выравнивание текста по центру */
-    padding: 0 10px; /* Добавляем внутренние отступы для текста */
+  background-color: #ffffff;
+  border: 2px solid #000000;
+  border-radius: 0;
+  box-shadow: 4px 4px 0 #000000;
+  overflow: hidden;
+  text-align: center;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+  width: 280px;
+  height: 280px;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
 }
 
 .category-card:hover {
-    transform: scale(1.05);
-    box-shadow: 0 8px 20px rgba(0, 139, 139, 0.4);
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 #000000;
+}
+
+/* Изображение категории */
+.category-card img {
+  width: 70%;
+  height: auto;
+  object-fit: contain;
+  margin: 24px auto 16px;
+  filter: grayscale(100%); /* Ч/б изображение */
+  transition: filter 0.2s ease, transform 0.2s ease;
+}
+
+.category-card:hover img {
+  filter: grayscale(0%); /* Цвет при ховере */
+  transform: scale(1.05);
+}
+
+/* Название категории */
+.category-card p {
+  font-size: 14px;
+  font-weight: 700;
+  color: #000000;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: auto 20px 20px;
+  text-align: center;
+  padding: 12px;
+  border-top: 2px solid #000000;
+  line-height: 1.4;
+}
+
+/* ===== Адаптивность ===== */
+@media (max-width: 768px) {
+  .catalog-page {
+    padding: 24px 16px;
+  }
+
+  .catalog-title {
+    font-size: 26px;
+    margin-bottom: 32px;
+    padding-bottom: 12px;
+  }
+
+  .categories-list {
+    gap: 24px;
+  }
+
+  .category-card {
+    width: 240px;
+    height: 240px;
+    box-shadow: 2px 2px 0 #000000;
+  }
+
+  .category-card:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px 0 #000000;
+  }
+
+  .category-card img {
+    width: 60%;
+    margin: 16px auto 12px;
+  }
+
+  .category-card p {
+    font-size: 13px;
+    margin: auto 16px 16px;
+    padding: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .catalog-page {
+    padding: 16px 12px;
+  }
+
+  .catalog-title {
+    font-size: 22px;
+    margin-bottom: 24px;
+    padding-bottom: 10px;
+  }
+
+  .categories-list {
+    gap: 20px;
+  }
+
+  .category-card {
+    width: 100%;
+    max-width: 280px;
+    height: 260px;
+    box-shadow: 2px 2px 0 #000000;
+  }
+
+  .category-card:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px 0 #000000;
+  }
+
+  .category-card img {
+    width: 50%;
+    margin: 12px auto 10px;
+  }
+
+  .category-card p {
+    font-size: 12px;
+    margin: auto 12px 12px;
+    padding: 8px;
+  }
 }

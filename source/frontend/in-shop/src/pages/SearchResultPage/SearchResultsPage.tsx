@@ -1,5 +1,5 @@
 // src/components/SearchResultsPage/SearchResultsPage.tsx
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useDebounce } from '../../hooks/useDebounce.ts';
 import { useProductSearch } from '../../hooks/useProductSearch.ts';
@@ -24,7 +24,8 @@ const DEFAULT_LIMIT = 50;
 const DEBOUNCE_DELAY = 400;
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'https://localhost:7275/api';
 
-const SearchResultsPage: React.FC<SearchResultsPageProps> = ({
+// 🔧 FIX: Мемоизированный компонент страницы для стабильности
+const SearchResultsPage = memo<SearchResultsPageProps>(({
   forcedCategory,
   hideSearchQuery = false,
   pageTitleOverride,
@@ -37,8 +38,6 @@ const SearchResultsPage: React.FC<SearchResultsPageProps> = ({
   const isUpdatingFromUrl = useRef(false);
   const lastSearchKeyRef = useRef<string>('');
   const lastAppliedSpecsParamRef = useRef<string | null>(null);
-  
-  // 🔧 FIX: Ref для отслеживания предыдущего query для детектирования смены поиска
   const prevUrlQueryRef = useRef<string>('');
 
   const urlFilters = useMemo(() => parseFiltersFromUrl(searchParams), [searchParams]);
@@ -65,7 +64,9 @@ const SearchResultsPage: React.FC<SearchResultsPageProps> = ({
     inStock: urlFilters.inStock !== undefined ? urlFilters.inStock : null,
   }));
 
-  const [specFilters, setSpecFilters] = useState<Record<string, SpecFilterValue> | null>(urlSpecFilters);
+  // 🔧 FIX: Мемоизация specFilters для стабильной ссылки
+  const [specFiltersState, setSpecFiltersState] = useState<Record<string, SpecFilterValue> | null>(urlSpecFilters);
+  const specFilters = useMemo(() => specFiltersState, [specFiltersState]);
   
   const [sort, setSort] = useState<{ option: string; order: 'asc' | 'desc' }>(() => ({
     option: searchParams.get('sort') || 'relevance',
@@ -117,7 +118,7 @@ const SearchResultsPage: React.FC<SearchResultsPageProps> = ({
     if (currentSpecsParam !== lastAppliedSpecsParamRef.current) {
       lastAppliedSpecsParamRef.current = currentSpecsParam;
       if (urlSpecFilters !== undefined) {
-        setSpecFilters(urlSpecFilters);
+        setSpecFiltersState(urlSpecFilters);
       }
     }
     
@@ -126,30 +127,23 @@ const SearchResultsPage: React.FC<SearchResultsPageProps> = ({
     }
   }, [urlQuery, urlFilters, forcedCategory, searchParams, urlSpecFilters, clear]);
 
-  // 🔧 FIX: НОВЫЙ эффект — сброс specFilters при изменении query (новый поиск)
   useEffect(() => {
-    // Пропускаем первичную инициализацию
     if (isInitialMount.current) {
       return;
     }
     
-    // Пропускаем, если обновление инициировано из URL (синхронизация)
     if (isUpdatingFromUrl.current) {
       return;
     }
     
-    // Проверяем, изменился ли query
     const queryChanged = prevUrlQueryRef.current !== urlQuery;
     
     if (queryChanged && urlQuery !== '') {
-      // 🔧 FIX: Сбрасываем specFilters при новом поиске, если категория не форсирована
-      // Это предотвращает "перетекание" фильтров характеристик из прошлого поиска
       if (forcedCategory === undefined) {
-        setSpecFilters(null);
+        setSpecFiltersState(null);
       }
     }
     
-    // Обновляем ref для следующего сравнения
     prevUrlQueryRef.current = urlQuery;
   }, [urlQuery, forcedCategory]);
 
@@ -160,7 +154,7 @@ const SearchResultsPage: React.FC<SearchResultsPageProps> = ({
       if (forcedCategory !== undefined && filters.category !== forcedCategory) {
         isUpdatingFromUrl.current = true;
         setFilters(prev => ({ ...prev, category: forcedCategory }));
-        setSpecFilters(null);
+        setSpecFiltersState(null);
         clear();
       }
     }
@@ -256,12 +250,13 @@ const SearchResultsPage: React.FC<SearchResultsPageProps> = ({
     search(request);
   }, [debouncedFilters, debouncedSort, debouncedSpecFilters, search, clear]);
 
+  // 🔧 FIX: Все колбэки мемоизированы с правильными зависимостями
   const handleBasicFilterChange = useCallback((changes: Partial<FiltersState>) => {
     setFilters(prev => ({ ...prev, ...changes }));
   }, []);
 
   const handleSpecFilterChange = useCallback((specName: string, value: SpecFilterValue) => {
-    setSpecFilters(prev => {
+    setSpecFiltersState(prev => {
       if (value == null) {
         if (!prev) return null;
         const { [specName]: _, ...rest } = prev;
@@ -290,7 +285,7 @@ const SearchResultsPage: React.FC<SearchResultsPageProps> = ({
   }, []);
 
   const handleClearSpecFilters = useCallback(() => {
-    setSpecFilters(null);
+    setSpecFiltersState(null);
   }, []);
 
   const handleRemoveBasicFilter = useCallback((key: keyof FiltersState) => {
@@ -299,7 +294,7 @@ const SearchResultsPage: React.FC<SearchResultsPageProps> = ({
   }, [forcedCategory]);
 
   const handleRemoveSpecFilter = useCallback((specName: string) => {
-    setSpecFilters(prev => {
+    setSpecFiltersState(prev => {
       if (!prev) return null;
       const next = { ...prev };
       delete next[specName];
@@ -315,7 +310,7 @@ const SearchResultsPage: React.FC<SearchResultsPageProps> = ({
       category: forcedCategory !== undefined ? forcedCategory : '',
       inStock: null,
     });
-    setSpecFilters(null);
+    setSpecFiltersState(null);
     setSort({ option: 'relevance', order: 'desc' });
 
     const params = new URLSearchParams();
@@ -489,6 +484,8 @@ const SearchResultsPage: React.FC<SearchResultsPageProps> = ({
       </div>
     </div>
   );
-};
+});
+
+SearchResultsPage.displayName = 'SearchResultsPage';
 
 export default SearchResultsPage;

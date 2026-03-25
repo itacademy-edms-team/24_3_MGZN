@@ -1,8 +1,7 @@
 // src/components/FiltersPanel/FiltersPanel.tsx
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
 import { SpecificationFilterDto, FiltersState } from '../../types/search.ts';
 import { validateNumberRange } from '../../utils/filters.ts';
-// 🔧 FIX: Импортируем новый хук для дебаунса примитивов
 import { useDebouncedValue } from '../../hooks/useDebounce.ts';
 import './FiltersPanel.css';
 
@@ -14,7 +13,6 @@ interface CategoryDto {
 
 type SpecFilterValue = string | number | { Min?: number; Max?: number } | null;
 
-// 🔧 FIX: Константа задержки для единообразия с основным поиском
 const SPEC_FILTER_DEBOUNCE_DELAY = 400;
 
 interface Props {
@@ -26,7 +24,60 @@ interface Props {
   apiBaseUrl: string;
 }
 
-const FiltersPanel: React.FC<Props> = ({
+// 🔧 FIX: Вспомогательный мемоизированный компонент для числового инпута
+interface NumberSpecInputProps {
+  specName: string;
+  field: 'Min' | 'Max';
+  value: string;
+  label: string;
+  placeholder: string;
+  hasError: boolean;
+  onChange: (specName: string, field: 'Min' | 'Max', value: string) => void;
+}
+
+const NumberSpecInput = memo<NumberSpecInputProps>(({
+  specName,
+  field,
+  value,
+  label,
+  placeholder,
+  hasError,
+  onChange,
+}) => {
+  // 🔧 FIX: Локальный стейт только для этого инпута — не вызывает ре-рендер родителя
+  const [localValue, setLocalValue] = useState(value);
+  
+  // Синхронизация при изменении value извне
+  useEffect(() => {
+    setLocalValue(value);
+  }, [value]);
+  
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    setLocalValue(newValue); // Мгновенное обновление для отзывчивости
+    onChange(specName, field, newValue); // Дебаунсированная отправка в родитель
+  }, [specName, field, onChange]);
+  
+  return (
+    <div className="filters-panel__price-input-wrapper">
+      <label className="filters-panel__input-label">{label}</label>
+      <input
+        type="number"
+        min="0"
+        step="any"
+        placeholder={placeholder}
+        value={localValue}
+        onChange={handleChange}
+        className={`filters-panel__input ${hasError ? 'filters-panel__input--error' : ''}`}
+      />
+    </div>
+  );
+});
+
+NumberSpecInput.displayName = 'NumberSpecInput';
+
+// 🔧 FIX: Основной компонент обернут в memo
+const FiltersPanel = memo<Props>(({
   filters,
   specFilters,
   onBasicFilterChange,
@@ -41,10 +92,9 @@ const FiltersPanel: React.FC<Props> = ({
   const prevCategoryRef = useRef<string | null>(null);
   const isUpdatingSpecsRef = useRef(false);
 
-  // 🔧 FIX: Локальный стейт для мгновенного отображения ввода в числовых полях
+  // 🔧 FIX: Локальный стейт для числовых спецификаций
   const [localNumberSpecs, setLocalNumberSpecs] = useState<Record<string, { Min?: string; Max?: string }>>({});
 
-  // 🔧 FIX: Дебаунс-версия локального стейта — именно это значение отправляется в глобальный стейт
   const debouncedLocalNumberSpecs = useDebouncedValue(
     JSON.stringify(localNumberSpecs),
     SPEC_FILTER_DEBOUNCE_DELAY
@@ -130,9 +180,10 @@ const FiltersPanel: React.FC<Props> = ({
     };
     
     fetchSpecs();
-  }, [filters.category, apiBaseUrl, specFilters, onSpecFilterChange, onClearSpecFilters]);
+  }, [filters.category, apiBaseUrl, onSpecFilterChange, onClearSpecFilters]);
+  // 🔧 FIX: Убран specFilters из зависимостей — он может меняться часто
 
-  // 🔧 FIX: Эффект синхронизации дебаунс-значений с глобальным стейтом
+  // Эффект синхронизации дебаунс-значений с глобальным стейтом
   useEffect(() => {
     if (!debouncedLocalNumberSpecs) return;
     
@@ -143,7 +194,6 @@ const FiltersPanel: React.FC<Props> = ({
         const min = values.Min && values.Min !== '' ? parseFloat(values.Min) : undefined;
         const max = values.Max && values.Max !== '' ? parseFloat(values.Max) : undefined;
         
-        // Если оба значения пустые — сбрасываем фильтр в null
         if (min === undefined && max === undefined) {
           onSpecFilterChange(specName, null);
         } else {
@@ -158,7 +208,7 @@ const FiltersPanel: React.FC<Props> = ({
     }
   }, [debouncedLocalNumberSpecs, onSpecFilterChange]);
 
-  // 🔧 FIX: Синхронизация локального стейта при изменении specFilters извне (например, из URL)
+  // Синхронизация локального стейта при изменении specFilters извне
   useEffect(() => {
     if (specFilters) {
       const synced: Record<string, { Min?: string; Max?: string }> = {};
@@ -174,7 +224,6 @@ const FiltersPanel: React.FC<Props> = ({
     }
   }, [specFilters]);
 
-  // Обработчики базовых фильтров
   const handlePriceChange = useCallback((field: 'minPrice' | 'maxPrice', value: string) => {
     const newMin = field === 'minPrice' ? value : filters.minPrice;
     const newMax = field === 'maxPrice' ? value : filters.maxPrice;
@@ -207,11 +256,11 @@ const FiltersPanel: React.FC<Props> = ({
     onBasicFilterChange({ inStock: value });
   }, [onBasicFilterChange]);
 
-  // 🔧 FIX: Обновлённый обработчик для числовых инпутов с локальным стейтом
-  const handleNumberSpecChange = useCallback((specName: string, spec: SpecificationFilterDto, field: 'Min' | 'Max', rawValue: string) => {
+  // 🔧 FIX: Обновлённый обработчик — работает с локальным стейтом NumberSpecInput
+  const handleNumberSpecChange = useCallback((specName: string, field: 'Min' | 'Max', rawValue: string) => {
     if (isUpdatingSpecsRef.current) return;
     
-    // 1. Мгновенно обновляем локальный стейт для отзывчивости UI
+    // Обновляем локальный стейт для дебаунса
     setLocalNumberSpecs(prev => ({
       ...prev,
       [specName]: {
@@ -220,44 +269,31 @@ const FiltersPanel: React.FC<Props> = ({
       },
     }));
     
-    // 2. Валидация диапазона (опционально, для мгновенной обратной связи)
-    if (spec.dataType === 'Number') {
-      const currentValues = localNumberSpecs[specName] || {
-        Min: specFilters?.[specName]?.Min?.toString() || '',
-        Max: specFilters?.[specName]?.Max?.toString() || '',
-      };
-      const testMin = field === 'Min' ? rawValue : currentValues.Min;
-      const testMax = field === 'Max' ? rawValue : currentValues.Max;
-      
-      if (testMin && testMax && testMin !== '' && testMax !== '') {
-        const minNum = parseFloat(testMin);
-        const maxNum = parseFloat(testMax);
-        if (!isNaN(minNum) && !isNaN(maxNum) && minNum > maxNum) {
-          setSpecErrors(prev => ({ ...prev, [specName]: 'Мин. значение не может превышать макс.' }));
-          return;
-        }
-      }
-    }
+    // Валидация для мгновенной обратной связи по ошибкам
+    const currentValues = localNumberSpecs[specName] || {
+      Min: specFilters?.[specName]?.Min?.toString() || '',
+      Max: specFilters?.[specName]?.Max?.toString() || '',
+    };
+    const testMin = field === 'Min' ? rawValue : currentValues.Min;
+    const testMax = field === 'Max' ? rawValue : currentValues.Max;
     
-    // 3. Очищаем ошибку при вводе
-    setSpecErrors(prev => {
-      const { [specName]: _, ...rest } = prev;
-      return rest;
-    });
-  }, [localNumberSpecs, specFilters, isUpdatingSpecsRef]);
-
-  // Обработчик для текстовых фильтров (без изменений, но оставим для полноты)
-  const handleSpecChange = useCallback((specName: string, spec: SpecificationFilterDto, value: any) => {
-    if (isUpdatingSpecsRef.current) return;
-    
-    if (spec.dataType === 'Number' && value?.Min != null && value?.Max != null) {
-      const min = parseFloat(String(value.Min));
-      const max = parseFloat(String(value.Max));
-      if (!isNaN(min) && !isNaN(max) && min > max) {
+    if (testMin && testMax && testMin !== '' && testMax !== '') {
+      const minNum = parseFloat(testMin);
+      const maxNum = parseFloat(testMax);
+      if (!isNaN(minNum) && !isNaN(maxNum) && minNum > maxNum) {
         setSpecErrors(prev => ({ ...prev, [specName]: 'Мин. значение не может превышать макс.' }));
         return;
       }
     }
+    
+    setSpecErrors(prev => {
+      const { [specName]: _, ...rest } = prev;
+      return rest;
+    });
+  }, [localNumberSpecs, specFilters]);
+
+  const handleSpecChange = useCallback((specName: string, spec: SpecificationFilterDto, value: any) => {
+    if (isUpdatingSpecsRef.current) return;
     
     setSpecErrors(prev => {
       const { [specName]: _, ...rest } = prev;
@@ -295,7 +331,7 @@ const FiltersPanel: React.FC<Props> = ({
 
   const handleClearSpecs = useCallback(() => {
     setSpecErrors({});
-    setLocalNumberSpecs({}); // 🔧 FIX: Очищаем и локальный стейт
+    setLocalNumberSpecs({});
     onClearSpecFilters();
   }, [onClearSpecFilters]);
 
@@ -303,6 +339,64 @@ const FiltersPanel: React.FC<Props> = ({
     minPrice: filters.minPrice ?? '',
     maxPrice: filters.maxPrice ?? '',
   }), [filters.minPrice, filters.maxPrice]);
+
+  // 🔧 FIX: Мемоизация списка спецификаций для рендера
+  const renderedSpecs = useMemo(() => {
+    return availableSpecs.map((spec) => (
+      <div key={spec.specId} className="filters-panel__spec-item">
+        <label className="filters-panel__spec-label">
+          {spec.displayName}
+        </label>
+
+        {spec.dataType === 'Text' && (
+          <select
+            className="filters-panel__spec-select"
+            value={specFilters?.[spec.name] ?? ''}
+            onChange={(e) => {
+              const val = e.target.value;
+              onSpecFilterChange(spec.name, val === '' ? null : val);
+            }}
+          >
+            <option value="">Любое</option>
+            {spec.possibleValues?.map((val, idx) => (
+              <option key={`${spec.name}-${idx}`} value={val}>
+                {val}
+              </option>
+            ))}
+          </select>
+        )}
+
+        {spec.dataType === 'Number' && (
+          <div className="filters-panel__price-inputs">
+            <NumberSpecInput
+              specName={spec.name}
+              field="Min"
+              value={localNumberSpecs[spec.name]?.Min ?? specFilters?.[spec.name]?.Min?.toString() ?? ''}
+              label="От"
+              placeholder="0"
+              hasError={!!specErrors[spec.name]}
+              onChange={handleNumberSpecChange}
+            />
+            <NumberSpecInput
+              specName={spec.name}
+              field="Max"
+              value={localNumberSpecs[spec.name]?.Max ?? specFilters?.[spec.name]?.Max?.toString() ?? ''}
+              label="До"
+              placeholder="100 000"
+              hasError={!!specErrors[spec.name]}
+              onChange={handleNumberSpecChange}
+            />
+          </div>
+        )}
+
+        {specErrors[spec.name] && (
+          <span className="filters-panel__status filters-panel__status--error">
+            {specErrors[spec.name]}
+          </span>
+        )}
+      </div>
+    ));
+  }, [availableSpecs, specFilters, localNumberSpecs, specErrors, handleNumberSpecChange, onSpecFilterChange]);
 
   return (
     <aside className="filters-panel">
@@ -396,74 +490,15 @@ const FiltersPanel: React.FC<Props> = ({
             </p>
           ) : (
             <div className="filters-panel__specs-list">
-              {availableSpecs.map((spec) => (
-                <div key={spec.specId} className="filters-panel__spec-item">
-                  <label className="filters-panel__spec-label">
-                    {spec.displayName}
-                  </label>
-
-                  {spec.dataType === 'Text' && (
-                    <select
-                      className="filters-panel__spec-select"
-                      value={specFilters?.[spec.name] ?? ''}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        onSpecFilterChange(spec.name, val === '' ? null : val);
-                      }}
-                    >
-                      <option value="">Любое</option>
-                      {spec.possibleValues?.map((val, idx) => (
-                        <option key={`${spec.name}-${idx}`} value={val}>
-                          {val}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-
-                  {spec.dataType === 'Number' && (
-                    <div className="filters-panel__price-inputs">
-                      <div className="filters-panel__price-input-wrapper">
-                        <label className="filters-panel__input-label">От</label>
-                        <input
-                          type="number"
-                          min="0"
-                          step="any"
-                          placeholder="0"
-                          // 🔧 FIX: Читаем из локального стейта, иначе из глобального
-                          value={localNumberSpecs[spec.name]?.Min ?? specFilters?.[spec.name]?.Min?.toString() ?? ''}
-                          // 🔧 FIX: Используем новый обработчик с локальным стейтом
-                          onChange={(e) => handleNumberSpecChange(spec.name, spec, 'Min', e.target.value)}
-                          className={`filters-panel__input ${specErrors[spec.name] ? 'filters-panel__input--error' : ''}`}
-                        />
-                      </div>
-                      <div className="filters-panel__price-input-wrapper">
-                        <label className="filters-panel__input-label">До</label>
-                        <input
-                          type="number"
-                          min="0"
-                          step="any"
-                          placeholder="100 000"
-                          value={localNumberSpecs[spec.name]?.Max ?? specFilters?.[spec.name]?.Max?.toString() ?? ''}
-                          onChange={(e) => handleNumberSpecChange(spec.name, spec, 'Max', e.target.value)}
-                          className={`filters-panel__input ${specErrors[spec.name] ? 'filters-panel__input--error' : ''}`}
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  {specErrors[spec.name] && (
-                    <span className="filters-panel__status filters-panel__status--error">
-                      {specErrors[spec.name]}
-                    </span>
-                  )}
-                </div>
-              ))}
+              {renderedSpecs}
             </div>
           )}
         </div>
       )}
     </aside>
   );
-};
+});
+
+FiltersPanel.displayName = 'FiltersPanel';
 
 export default FiltersPanel;

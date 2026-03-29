@@ -8,8 +8,9 @@ namespace Contracts.Dtos
 {
     public class SessionCreationResult
     {
-        public int OrderId { get; set; }
         public int SessionId { get; set; }
+        public int OrderId { get; set; }
+        public DateTime ExpiresAt { get; set; }
         public string Message { get; set; }
     }
 }

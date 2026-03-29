@@ -1,21 +1,37 @@
+// ============================================
+// Файл: src/components/SessionHandler.tsx
+// ============================================
+
 import React from 'react';
-import { useSession } from '../hooks/useUserSession.ts';
+import useSession from '../hooks/useSession.ts';
 
-const SessionHandler: React.FC = () => {
-  const { sessionId, loading, error } = useSession();
+interface SessionHandlerProps {
+  children: React.ReactNode;
+  fallback?: React.ReactNode;
+  errorFallback?: React.ReactNode;
+}
 
-  if (loading) {
-    return <div>Создание сессии...</div>;
+const SessionHandler: React.FC<SessionHandlerProps> = ({
+  children,
+  fallback,
+  errorFallback,
+}) => {
+  const { isLoading, error, recreateSession } = useSession();
+
+  if (isLoading) {
+    return fallback ?? <div>Загрузка...</div>;
   }
 
   if (error) {
-    return (
-      <div className="error">
-        Ошибка: {error}
-        <button onClick={() => window.location.reload()}>Повторить</button>
+    return errorFallback ?? (
+      <div>
+        <p>Ошибка: {error}</p>
+        <button onClick={recreateSession}>Повторить</button>
       </div>
     );
   }
+
+  return <>{children}</>;
 };
 
 export default SessionHandler;

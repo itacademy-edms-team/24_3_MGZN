@@ -1,42 +1,57 @@
-import React, { useState, useEffect } from 'react';
+// ============================================
+// Файл: src/pages/EmailVerificationPage.js
+// ============================================
+
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { createUserSession } from '../services/SessionService.ts';
+import { useSession } from '../hooks/useSession.ts';
+import { apiClient } from '../api/client.ts';
 import './EmailVerificationPage.css';
 
 const EmailVerificationPage = () => {
     const [code, setCode] = useState(['', '', '', '']);
-    const [error, setError] = useState(''); // Это будет для ошибок API
+    const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    
     const navigate = useNavigate();
     const location = useLocation();
+    
+    // ✅ Используем useSession
+    const { 
+        orderId, 
+        isValid, 
+        isLoading: sessionLoading,
+        recreateSession 
+    } = useSession();
 
     const email = location.state?.email || '';
+    const orderDataFromState = location.state?.orderData;
 
+    // Проверка email при загрузке
     useEffect(() => {
         if (!email) {
             navigate('/checkout');
         }
     }, [email, navigate]);
 
-    const handleChange = (index, value) => {
+    const handleChange = useCallback((index, value) => {
         if (/^\d$/.test(value) || value === '') {
             const newCode = [...code];
             newCode[index] = value;
             setCode(newCode);
-
             if (value && index < 3) {
-                document.getElementById(`code-${index + 1}`).focus();
+                document.getElementById(`code-${index + 1}`)?.focus();
             }
         }
-    };
+    }, [code]);
 
-    const handleKeyDown = (index, e) => {
+    const handleKeyDown = useCallback((index, e) => {
         if (e.key === 'Backspace' && !code[index] && index > 0) {
-            document.getElementById(`code-${index - 1}`).focus();
+            document.getElementById(`code-${index - 1}`)?.focus();
         }
-    };
+    }, [code]);
 
-    const handleSubmit = async (e) => { // Сделаем функцию асинхронной
+    const handleSubmit = useCallback(async (e) => {
         e.preventDefault();
         const codeString = code.join('');
 
@@ -45,57 +60,37 @@ const EmailVerificationPage = () => {
             return;
         }
 
+        if (!isValid || !orderId) {
+            setError('Сессия не активна');
+            return;
+        }
+
         setLoading(true);
-        setError(''); // Очистим старую ошибку перед новой попыткой
+        setError('');
 
         try {
-            // --- ШАГ 1: Проверка кода ---
-            const validateResponse = await fetch('https://localhost:7275/api/Verification/validate-code', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    email,
-                    code: codeString
-                })
+            // 1. Проверка кода
+            await apiClient.post('/Verification/validate-code', {
+                email,
+                code: codeString
             });
 
-            // Проверим статус ответа
-            if (!validateResponse.ok) {
-                // Если статус не 2xx, значит ошибка
-                const validateErrorData = await validateResponse.json().catch(() => ({ error: 'Неизвестная ошибка при проверке кода' }));
-                // Покажем сообщение об ошибке от API
-                setError(validateErrorData.message || validateErrorData.error || 'Неверный или недействительный код подтверждения.');
-                setLoading(false);
-                return; // Прерываем выполнение
-            }
-
-            // Если код валиден, продолжаем
-            const validateData = await validateResponse.json();
-            console.log('Код подтверждения валиден:', validateData);
-
-            // --- ШАГ 2: Получение данных заказа ---
-            const orderData = JSON.parse(localStorage.getItem('orderData'));
-
+            // 2. Подготовка данных заказа
+            const orderData = orderDataFromState || JSON.parse(localStorage.getItem('orderData'));
+            
             if (!orderData) {
-                setError('Данные заказа не найдены в сессии.');
-                setLoading(false);
-                return;
+                throw new Error('Данные заказа не найдены');
             }
-
-            await createUserSession();
-
-            console.log('Данные заказа из localStorage:', orderData);
 
             const validatedOrderData = {
-                sessionId: orderData.sessionId ? parseInt(orderData.sessionId) : 0,
+                // ✅ sessionId НЕ передаём — бэкенд берёт из cookie
+                orderId: orderId,
                 shipCompanyId: orderData.shipCompanyId ? parseInt(orderData.shipCompanyId) : 1,
                 shipAddress: orderData.shipAddress,
                 shipMethod: orderData.shipMethod,
                 payMethod: orderData.payMethod,
-                customerFullname: orderData.customerFullName,
-                customerEmail: orderData.customerEmail || '',
+                customerFullname: orderData.customerFullName || orderData.customerFullname,
+                customerEmail: orderData.customerEmail || email,
                 customerPhoneNumber: orderData.customerPhoneNumber,
                 orderTotalAmount: orderData.orderTotalAmount,
                 orderItems: (orderData.orderItems || []).map(item => ({
@@ -105,42 +100,56 @@ const EmailVerificationPage = () => {
                 }))
             };
 
-            console.log('Финальные данные для отправки:', JSON.stringify(validatedOrderData, null, 2));
+            // 3. Оформление заказа
+            const checkoutResponse = await apiClient.post('/Order/checkout', validatedOrderData);
+            const checkoutData = checkoutResponse.data;
+            
+            console.log('Заказ оформлен:', checkoutData);
 
-            // --- ШАГ 3: Отправка заказа ---
-            const checkoutResponse = await fetch('https://localhost:7275/api/Order/checkout', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(validatedOrderData)
+            // 4. ✅ ПЕРЕСОЗДАЁМ СЕССИЮ для нового черновика корзины
+            console.log('Recreating session for new cart draft...');
+            await recreateSession();
+
+            // 5. Переход на страницу успеха
+            navigate('/order-success', { 
+                state: { 
+                    orderId: checkoutData.orderId,
+                    orderData: validatedOrderData
+                } 
             });
-
-            if (!checkoutResponse.ok) {
-                const checkoutErrorData = await checkoutResponse.json().catch(() => ({ error: 'Неизвестная ошибка при оформлении заказа' }));
-                setError(checkoutErrorData.message || checkoutErrorData.error || 'Не удалось оформить заказ.');
-                setLoading(false);
-                return; // Прерываем выполнение
-            }
-
-            const checkoutData = await checkoutResponse.json();
-            console.log('Заказ успешно оформлен:', checkoutData);
-
-            // --- ШАГ 4: Перенаправление ---
-            console.log('Успешно оформлен заказ, перенаправляем на страницу заказа');
-            navigate('/order-success');
 
         } catch (err) {
             console.error('Ошибка оформления заказа:', err);
-            setError('Не удалось оформить заказ. Проверьте соединение с интернетом.');
+            
+            if (err.response?.status === 401) {
+                setError('Сессия истекла. Перезагрузка...');
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                setError(err.response?.data?.message || err.message || 'Не удалось оформить заказ.');
+            }
+        } finally {
             setLoading(false);
         }
-    };
+    }, [code, email, orderId, isValid, orderDataFromState, navigate, recreateSession]);
+
+    // Лоадер сессии
+    if (sessionLoading) {
+        return <div className="email-verification-page loading">Инициализация...</div>;
+    }
+
+    if (!isValid) {
+        return (
+            <div className="email-verification-page error">
+                <p>⚠️ Сессия не активна</p>
+                <button onClick={() => window.location.reload()}>Повторить</button>
+            </div>
+        );
+    }
 
     return (
         <div className="email-verification-page">
-            <h1>Подтверждение электронной почты</h1>
-            <p>Мы отправили 4-значный код на вашу электронную почту: <strong>{email}</strong></p>
+            <h1>Подтверждение почты</h1>
+            <p>Код отправлен на: <strong>{email}</strong></p>
 
             <form onSubmit={handleSubmit} className="verification-form">
                 <div className="code-inputs">
@@ -155,13 +164,12 @@ const EmailVerificationPage = () => {
                             onKeyDown={(e) => handleKeyDown(index, e)}
                             className="code-input"
                             required
+                            disabled={loading}
                         />
                     ))}
                 </div>
 
-                {/* --- ОТОБРАЖЕНИЕ ОШИБКИ --- */}
                 {error && <p className="error-message">{error}</p>}
-                {/* --- /ОТОБРАЖЕНИЕ ОШИБКИ --- */}
 
                 <button type="submit" className="submit-button" disabled={loading}>
                     {loading ? 'Проверка...' : 'Подтвердить'}

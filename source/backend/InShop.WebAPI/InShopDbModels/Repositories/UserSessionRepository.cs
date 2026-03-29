@@ -27,6 +27,30 @@ namespace InShopDbModels.Repositories
         {
             return await _appDbContext.UserSessions
                 .FirstOrDefaultAsync(s => s.SessionId == sessionId);
-        } 
+        }
+        // Поиск по токену
+        public async Task<UserSession?> GetSessionByTokenAsync(Guid sessionToken)
+        {
+            return await _appDbContext.UserSessions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.SessionToken == sessionToken);
+        }
+
+        // Обновление сессии
+        public async Task UpdateSessionAsync(UserSession userSession)
+        {
+            _appDbContext.UserSessions.Update(userSession);
+            await _appDbContext.SaveChangesAsync();
+        }
+
+        // Очистка старых сессий
+        public async Task<int> CleanupExpiredSessionsAsync(DateTime cutoffDate)
+        {
+            var expiredSessions = _appDbContext.UserSessions
+                .Where(s => s.ExpiresAt < cutoffDate || !s.IsActive);
+
+            _appDbContext.UserSessions.RemoveRange(expiredSessions);
+            return await _appDbContext.SaveChangesAsync();
+        }
     }
 }

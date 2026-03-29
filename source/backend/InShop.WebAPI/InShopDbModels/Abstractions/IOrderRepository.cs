@@ -16,7 +16,7 @@ namespace InShopDbModels.Abstractions
         Task UpdateOrderItem(OrderItem orderItem);
         Task<Order> UpdateOrder(Order order);
         Task<decimal> CalculateOrderTotalAmount(int orderId);
-        Task<OrderItem> GetOrderItemById(int orderId);
+        Task<OrderItem> GetOrderItemById(int orderItemId);
         Task DeleteOrderItem(int orderItemId);
         Task<Order> GetOrderById(int orderId);
         Task DeleteAllOrderItems(int orderId);

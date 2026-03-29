@@ -30,7 +30,8 @@ namespace InShop.WebAPI
                 {
                     policy.WithOrigins("http://localhost:3000") // Разрешаем запросы только с этого домена
                           .AllowAnyHeader()                    // Разрешаем любые заголовки
-                          .AllowAnyMethod();                   // Разрешаем любые HTTP-методы
+                          .AllowAnyMethod()                   // Разрешаем любые HTTP-методы
+                          .AllowCredentials();
                 });
             });
 
@@ -63,6 +64,8 @@ namespace InShop.WebAPI
 
             app.UseAuthorization();
             app.UseStaticFiles();
+
+            app.UseCors("AllowFrontend");
 
             app.MapControllers();
 

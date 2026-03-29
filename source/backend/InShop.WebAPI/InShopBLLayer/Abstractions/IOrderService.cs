@@ -19,5 +19,6 @@ namespace InShopBLLayer.Abstractions
         Task<OrderResponseDto> CreateOrder(CreateOrderRequestDto request);
         Task<OrderResponseDto?> GetOrderByIdAsync(int orderId);
         Task<OrderResponseDto?> GetOrderBySessionIdAsync(int sessionId);
+        Task<bool> OrderItemBelongsToSessionAsync(int orderItemId, int sessionId);
     }
 }

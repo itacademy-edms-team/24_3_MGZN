@@ -301,22 +301,24 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
   }, []);
 
   const handleClearAllFilters = useCallback(() => {
-    setFilters({
-      query: '',
+    setFilters(prev => ({
+      query: prev.query, // 🔥 Сохраняем поисковый запрос
       minPrice: '',
       maxPrice: '',
       category: forcedCategory !== undefined ? forcedCategory : '',
       inStock: null,
-    });
+    }));
     setSpecFiltersState(null);
     setSort({ option: 'relevance', order: 'desc' });
 
     const params = new URLSearchParams();
+    // 🔥 Сохраняем поисковый запрос в URL
+    if (filters.query) params.set('q', filters.query);
     if (forcedCategory !== undefined) params.set('category', forcedCategory);
     setSearchParams(params, { replace: true });
     clear();
     lastSearchKeyRef.current = '';
-  }, [forcedCategory, setSearchParams, clear]);
+  }, [forcedCategory, setSearchParams, clear, filters.query]);
 
   const handleSortMenuChange = useCallback((newSortOption: SortOption) => {
     let newOption = 'relevance';

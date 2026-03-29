@@ -300,5 +300,16 @@ namespace InShopBLLayer.Services
 
             return _mapper.Map<OrderResponseDto>(order);
         }
+        public async Task<bool> OrderItemBelongsToSessionAsync(int orderItemId, int sessionId)
+        {
+            var orderItem = await _orderRepository.GetOrderItemById(orderItemId);
+
+            if (orderItem == null)
+                return false;
+
+            // Проверяем, что заказ принадлежит сессии
+            var order = await _orderRepository.GetOrderById(orderItem.OrderId);
+            return order?.SessionId == sessionId;
+        }
     }
 }

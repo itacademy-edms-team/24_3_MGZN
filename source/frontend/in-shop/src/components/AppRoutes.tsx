@@ -1,6 +1,11 @@
-// src/components/AppRoutes/AppRoutes.tsx
+// ============================================
+// Файл: src/components/AppRoutes/AppRoutes.tsx
+// ============================================
+
 import React from 'react';
-import { Routes, Route, useLocation } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
+
+// Pages
 import CatalogPage from '../pages/CatalogPage.js';
 import CategoryPage from '../pages/CategoryPage.tsx';
 import ProductPage from '../pages/ProductPage.tsx';
@@ -12,21 +17,41 @@ import PaymentConfirmationPage from '../pages/PaymentConfirmationPage/PaymentCon
 import SearchResultsPage from '../pages/SearchResultPage/SearchResultsPage.tsx';
 
 const AppRoutes: React.FC = () => {
-  const location = useLocation(); // ✅ Теперь это работает — мы внутри Router!
-
   return (
-    // ✅ key={location.key} заставляет пересоздавать компонент при изменении параметров URL
     <Routes>
+      {/* Каталог */}
       <Route path="/" element={<CatalogPage />} />
       <Route path="/catalog" element={<CatalogPage />} />
+      
+      {/* Категория */}
       <Route path="/category/:categoryName" element={<CategoryPage />} />
+      
+      {/* Товар */}
       <Route path="/product/:productId" element={<ProductPage />} />
+      
+      {/* Поиск */}
+      <Route path="/search" element={<SearchResultsPage />} />
+      
+      {/* Оформление заказа */}
       <Route path="/checkout" element={<CheckoutPage />} />
-      <Route path="/email-verification" element={<EmailVerificationPage />} />
-      <Route path="/order-success" element={<OrderSuccessPage />} />
+      
+      {/* Оплата */}
       <Route path="/payment" element={<PaymentPage />} />
       <Route path="/payment-confirmation" element={<PaymentConfirmationPage />} />
-      <Route path="/search" element={<SearchResultsPage />} />
+      
+      {/* Успешный заказ */}
+      <Route path="/order-success" element={<OrderSuccessPage />} />
+      
+      {/* Верификация email */}
+      <Route path="/email-verification" element={<EmailVerificationPage />} />
+      
+      {/* 404 - не найдено */}
+      <Route path="*" element={
+        <div style={{ textAlign: 'center', padding: '48px' }}>
+          <h2>Страница не найдена</h2>
+          <a href="/" style={{ color: '#007bff' }}>Вернуться на главную</a>
+        </div>
+      } />
     </Routes>
   );
 };

@@ -1,79 +1,112 @@
-// CartContext.js
-import React, { createContext, useState, useEffect } from 'react';
-import axios from 'axios';
+// ============================================
+// Файл: src/components/CartContext.js
+// ============================================
+
+import React, { createContext, useState, useEffect, useCallback } from 'react';
+import { apiClient } from '../api/client.ts';
+import { useSession } from '../hooks/useSession.ts';
 
 export const CartContext = createContext();
 
 export const CartProvider = ({ children }) => {
-    const [cart, setCart] = useState([]); // Состояние корзины
-    const [isCartOpen, setIsCartOpen] = useState(false); // Состояние видимости модального окна
-    const [loading, setLoading] = useState(false); // Состояние загрузки
-    const [error, setError] = useState(null); // Состояние ошибки
+    const [cart, setCart] = useState([]);
+    const [isCartOpen, setIsCartOpen] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+    
+    // ✅ Получаем данные сессии из хука
+    const { orderId, isValid, sessionId } = useSession();
 
     // Загрузка корзины из бэкенда
-    const fetchCart = async () => {
+    const fetchCart = useCallback(async () => {
+        // Если сессия не валидна или нет orderId — не загружаем
+        if (!isValid || !orderId) {
+            console.log('[Cart] Session not ready, skipping fetch');
+            return;
+        }
+        
         try {
             setLoading(true);
-            const sessionId = localStorage.getItem('sessionId');
-            if (!sessionId) {
-                throw new Error('SessionId не найден.');
-            }
-
-            const response = await axios.get(`https://localhost:7275/api/Order/cart?sessionId=${encodeURIComponent(sessionId)}`);
-            setCart(response.data);
             setError(null);
+            
+            // ✅ SessionId НЕ передаём — бэкенд берёт из cookie
+            const response = await apiClient.get(`/Order/cart`, {
+                params: { orderId } // Если бэкенд поддерживает фильтр по orderId
+            });
+            
+            setCart(response.data);
         } catch (err) {
-            console.error('Ошибка загрузки корзины:', err);
-            setError(err.message || 'Не удалось загрузить корзину.');
+            console.error('[Cart] Error fetching cart:', err);
+            setError(err.response?.data?.message || err.message || 'Не удалось загрузить корзину.');
+            
+            // Если 401 — сессия истекла, хук useSession автоматически пересоздаст
+            if (err.response?.status === 401) {
+                console.log('[Cart] Session expired, will be recreated by useSession hook');
+            }
         } finally {
             setLoading(false);
         }
-    };
+    }, [isValid, orderId]);
 
     // Открытие модального окна корзины
-    const openCart = () => {
+    const openCart = useCallback(() => {
         setIsCartOpen(true);
-        fetchCart(); // Загружаем корзину при открытии
-    };
+        fetchCart();
+    }, [fetchCart]);
 
     // Закрытие модального окна корзины
-    const closeCart = () => {
+    const closeCart = useCallback(() => {
         setIsCartOpen(false);
-    };
+    }, []);
 
-    // Функция для добавления товара в корзину
-    const addToCart = async (product) => {
+    // Добавление товара в корзину
+    const addToCart = useCallback(async (product) => {
+        if (!isValid || !orderId) {
+            alert('Пожалуйста, подождите инициализации сессии');
+            return;
+        }
+        
         try {
-            const sessionId = localStorage.getItem('sessionId');
-            if (!sessionId) throw new Error('SessionId не найден.');
-
-            const response = await axios.post('https://localhost:7275/api/Order', {
+            // ✅ SessionId НЕ передаём — бэкенд берёт из cookie
+            const response = await apiClient.post('/Order', {
                 productId: product.productId,
-                sessionId: parseInt(sessionId, 10)
+                orderId: orderId, // Если бэкенд принимает orderId вместо sessionId
+                quantity: 1
             });
 
-            // После добавления товара перезагружаем корзину
+            // Перезагружаем корзину
             await fetchCart();
             
+            return response.data;
         } catch (error) {
-            console.error('Ошибка добавления товара:', error);
-            alert('Не удалось добавить товар.');
+            console.error('[Cart] Error adding to cart:', error);
+            
+            if (error.response?.status === 401) {
+                alert('Сессия истекла, страница будет перезагружена...');
+                window.location.reload();
+            } else {
+                alert('Не удалось добавить товар.');
+            }
+            
+            throw error;
         }
-    };
+    }, [isValid, orderId, fetchCart]);
 
-    // Функция изменения количества товара
-    const changeQuantity = async (orderItemId, newQuantity) => {
+    // Изменение количества товара
+    const changeQuantity = useCallback(async (orderItemId, newQuantity) => {
+        if (!isValid) {
+            alert('Сессия не активна');
+            return;
+        }
+        
         try {
-            const sessionId = localStorage.getItem('sessionId');
-            if (!sessionId) throw new Error('SessionId не найден.');
-
-            // Отправляем запрос на бэкенд для обновления количества
-            await axios.put('https://localhost:7275/api/Order/updateQuantity', {
+            // ✅ SessionId НЕ передаём
+            await apiClient.put('/Order/updateQuantity', {
                 orderItemId,
                 quantity: newQuantity
             });
 
-            // Обновляем локальное состояние корзины БЕЗ перезагрузки
+            // Обновляем локальное состояние
             setCart((prevCart) =>
                 prevCart.map((item) =>
                     item.orderItemId === orderItemId
@@ -81,48 +114,75 @@ export const CartProvider = ({ children }) => {
                         : item
                 )
             );
-
-            // Пересчитываем итоговую сумму заказа (если нужно)
-            // Это можно сделать на бэкенде или локально
         } catch (error) {
-            console.error('Ошибка обновления количества:', error);
-            alert('Не удалось обновить количество.');
+            console.error('[Cart] Error updating quantity:', error);
+            
+            if (error.response?.status === 401) {
+                alert('Сессия истекла, страница будет перезагружена...');
+                window.location.reload();
+            } else {
+                alert('Не удалось обновить количество.');
+            }
         }
-    };
+    }, [isValid]);
 
-    // Функция для удаления товара из корзины
-    const removeFromCart = async (orderItemId) => {
+    // Удаление товара из корзины
+    const removeFromCart = useCallback(async (orderItemId) => {
+        if (!isValid) {
+            alert('Сессия не активна');
+            return;
+        }
+        
         try {
-            const sessionId = localStorage.getItem('sessionId');
-            if (!sessionId) throw new Error('SessionId не найден.');
+            // ✅ SessionId НЕ передаём
+            await apiClient.delete(`/Order/${orderItemId}`);
 
-            await axios.delete(`https://localhost:7275/api/Order/${orderItemId}`);
-
-            // Обновляем локальное состояние корзины БЕЗ перезагрузки
+            // Обновляем локальное состояние
             setCart((prevCart) => prevCart.filter((item) => item.orderItemId !== orderItemId));
-
         } catch (error) {
-            console.error('Ошибка удаления товара:', error);
-            alert('Не удалось удалить товар.');
+            console.error('[Cart] Error removing item:', error);
+            
+            if (error.response?.status === 401) {
+                alert('Сессия истекла, страница будет перезагружена...');
+                window.location.reload();
+            } else {
+                alert('Не удалось удалить товар.');
+            }
         }
-    };
+    }, [isValid]);
 
-    // Функция для очистки корзины
-    const clearCart = async () => {
+    // Очистка корзины
+    const clearCart = useCallback(async () => {
+        if (!isValid || !orderId) {
+            alert('Сессия не активна');
+            return;
+        }
+        
         try {
-            const sessionId = localStorage.getItem('sessionId');
-            if (!sessionId) throw new Error('SessionId не найден.');
+            // ✅ SessionId НЕ передаём
+            await apiClient.delete(`/Order/clear`, {
+                params: { orderId }
+            });
 
-            // Отправляем запрос на бэкенд для очистки корзины
-            await axios.delete(`https://localhost:7275/api/Order/clear?sessionId=${parseInt(sessionId, 10)}`);
-
-            // Очищаем локальное состояние корзины
             setCart([]);
         } catch (error) {
-            console.error('Ошибка очистки корзины:', error);
-            alert('Не удалось очистить корзину.');
+            console.error('[Cart] Error clearing cart:', error);
+            
+            if (error.response?.status === 401) {
+                alert('Сессия истекла, страница будет перезагружена...');
+                window.location.reload();
+            } else {
+                alert('Не удалось очистить корзину.');
+            }
         }
-    };
+    }, [isValid, orderId]);
+
+    // Эффект: загружаем корзину при изменении orderId
+    useEffect(() => {
+        if (isValid && orderId && isCartOpen) {
+            fetchCart();
+        }
+    }, [isValid, orderId, isCartOpen, fetchCart]);
 
     return (
         <CartContext.Provider
@@ -137,7 +197,9 @@ export const CartProvider = ({ children }) => {
                 removeFromCart,
                 clearCart,
                 changeQuantity,
-                fetchCart
+                fetchCart,
+                orderId,      // ✅ Экспортируем orderId для использования в других компонентах
+                isValid,      // ✅ Экспортируем isValid
             }}
         >
             {children}

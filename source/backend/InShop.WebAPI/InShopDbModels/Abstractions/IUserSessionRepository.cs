@@ -11,5 +11,8 @@ namespace InShopDbModels.Abstractions
     {
         Task<int> CreateUserSession(UserSession userSession);
         Task<UserSession> GetSessionById(int sessionId);
+        Task<UserSession?> GetSessionByTokenAsync(Guid sessionToken);
+        Task UpdateSessionAsync(UserSession userSession);
+        Task<int> CleanupExpiredSessionsAsync(DateTime cutoffDate);
     }
 }

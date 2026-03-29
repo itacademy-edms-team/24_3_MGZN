@@ -9,8 +9,7 @@ namespace Contracts.Dtos
 {
     public class UserSessionDto
     {
-        [Required(ErrorMessage = "Передача IP обязательна")]
-        public string UserIpaddress { get; set; } = null!;
-        public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public string? UserIpaddress { get; set; }
+        public string? UserAgent { get; set; }
     }
 }

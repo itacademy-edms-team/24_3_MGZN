@@ -10,7 +10,12 @@ namespace InShopBLLayer.Abstractions
 {
     public interface IUserSessionService
     {
-        Task<int> CreateUserSession(UserSessionDto userSessionDto);
-        Task<UserSession> GetSession(int sessionid);
+        Task<(SessionCreationResult Result, Guid SessionToken)> CreateUserSessionAsync(UserSessionDto userSessionDto);
+
+        Task<SessionValidationResult> ValidateSessionAsync(Guid sessionToken);
+
+        Task InvalidateSessionAsync(Guid sessionToken);
+
+        Task<int> CleanupExpiredSessionsAsync();
     }
 }

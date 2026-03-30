@@ -21,7 +21,9 @@ interface Props {
   onSpecFilterChange: (specName: string, value: SpecFilterValue) => void;
   onClearSpecFilters: () => void;
   apiBaseUrl: string;
-  isCategoryForced?: boolean
+  isCategoryForced?: boolean;
+  // 🔧 FIX: NEW - Callback для отправки маппинга specName → displayName
+  onSpecsLoaded?: (specs: Array<{ name: string; displayName: string }>) => void;
 }
 
 // ===== Вспомогательный компонент: кастомный дропдаун (стиль SortMenu) =====
@@ -144,6 +146,7 @@ const FiltersPanel = memo<Props>(({
   onClearSpecFilters,
   apiBaseUrl,
   isCategoryForced = false,
+  onSpecsLoaded, // 🔧 FIX: Деструктуризация нового пропа
 }) => {
   const [specErrors, setSpecErrors] = useState<Record<string, string>>({});
   const [categories, setCategories] = useState<CategoryDto[]>([]);
@@ -206,6 +209,7 @@ const FiltersPanel = memo<Props>(({
   }, [apiBaseUrl]);
 
   // --- Загрузка спецификаций ---
+  // 🔧 FIX: Добавлен onSpecsLoaded в зависимости
   useEffect(() => {
     const currentCategory = filters.category;
     const categoryChanged = prevCategoryRef.current !== currentCategory;
@@ -213,6 +217,8 @@ const FiltersPanel = memo<Props>(({
 
     if (!currentCategory) {
       setAvailableSpecs([]);
+      // 🔧 FIX: Очищаем мапу при сбросе категории
+      if (onSpecsLoaded) onSpecsLoaded([]);
       return;
     }
 
@@ -226,6 +232,17 @@ const FiltersPanel = memo<Props>(({
           const data = await res.json();
           const newAvailableSpecs = data.filters || [];
           setAvailableSpecs(newAvailableSpecs);
+
+          // 🔧 FIX: NEW - Уведомляем родительский компонент о загруженных спеках
+          if (onSpecsLoaded) {
+            const simplifiedSpecs = newAvailableSpecs
+              .filter((spec: SpecificationFilterDto) => spec.name && spec.displayName)
+              .map((spec: SpecificationFilterDto) => ({
+                name: spec.name,
+                displayName: spec.displayName,
+              }));
+            onSpecsLoaded(simplifiedSpecs);
+          }
 
           if (categoryChanged && specFilters && Object.keys(specFilters).length > 0) {
             isUpdatingSpecsRef.current = true;
@@ -252,6 +269,8 @@ const FiltersPanel = memo<Props>(({
           }
         } else if (res.status === 404) {
           setAvailableSpecs([]);
+          // 🔧 FIX: Очищаем мапу при 404
+          if (onSpecsLoaded) onSpecsLoaded([]);
           if (categoryChanged) {
             onClearSpecFilters();
           }
@@ -259,13 +278,15 @@ const FiltersPanel = memo<Props>(({
       } catch (e) {
         console.error('Ошибка загрузки спецификаций:', e);
         setAvailableSpecs([]);
+        // 🔧 FIX: Очищаем мапу при ошибке
+        if (onSpecsLoaded) onSpecsLoaded([]);
       } finally {
         setLoadingSpecs(false);
       }
     };
 
     fetchSpecs();
-  }, [filters.category, apiBaseUrl, onSpecFilterChange, onClearSpecFilters]);
+  }, [filters.category, apiBaseUrl, onSpecFilterChange, onClearSpecFilters, onSpecsLoaded]);
 
   // --- Обработчик числовых спецификаций ---
   const handleNumberSpecChange = useCallback((specName: string, field: 'Min' | 'Max', rawValue: string) => {

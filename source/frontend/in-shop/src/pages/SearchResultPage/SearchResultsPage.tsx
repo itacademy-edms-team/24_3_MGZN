@@ -4,7 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useDebounce } from '../../hooks/useDebounce.ts';
 import { useProductSearch } from '../../hooks/useProductSearch.ts';
 import { parseFiltersFromUrl } from '../../utils/filters.ts';
-import { FiltersState, SearchRequestDto } from '../../types/search.ts';
+import { FiltersState, SearchRequestDto, SpecificationFilterDto } from '../../types/search.ts';
 import FiltersPanel from '../../components/FiltersPanel/FiltersPanel.tsx';
 import ActiveFiltersBar from '../../components/ActiveFiltersBar.tsx';
 import ProductCard from '../../components/ProductCard.jsx';
@@ -65,6 +65,9 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
 
   const [specFiltersState, setSpecFiltersState] = useState<Record<string, SpecFilterValue> | null>(urlSpecFilters);
   const specFilters = useMemo(() => specFiltersState, [specFiltersState]);
+  
+  // 🔧 FIX: Состояние для маппинга specName → displayName
+  const [specDisplayNames, setSpecDisplayNames] = useState<Record<string, string>>({});
   
   const [sort, setSort] = useState<{ option: string; order: 'asc' | 'desc' }>(() => ({
     option: searchParams.get('sort') || 'relevance',
@@ -153,6 +156,8 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
         isUpdatingFromUrl.current = true;
         setFilters(prev => ({ ...prev, category: forcedCategory }));
         setSpecFiltersState(null);
+        // 🔧 FIX: Также очищаем мапу дисплей-имён при смене категории
+        setSpecDisplayNames({});
         clear();
       }
     }
@@ -309,6 +314,8 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
       inStock: null,
     }));
     setSpecFiltersState(null);
+    // 🔧 FIX: Также очищаем мапу дисплей-имён
+    setSpecDisplayNames({});
     setSort({ option: 'relevance', order: 'desc' });
 
     const params = new URLSearchParams();
@@ -319,6 +326,17 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
     clear();
     lastSearchKeyRef.current = '';
   }, [forcedCategory, setSearchParams, clear, filters.query]);
+
+  // 🔧 FIX: Обработчик для получения маппинга specName → displayName от FiltersPanel
+  const handleSpecsLoaded = useCallback((specs: Array<{ name: string; displayName: string }>) => {
+    const nameMap: Record<string, string> = {};
+    specs.forEach(spec => {
+      if (spec.name && spec.displayName) {
+        nameMap[spec.name] = spec.displayName;
+      }
+    });
+    setSpecDisplayNames(nameMap);
+  }, []);
 
   const handleSortMenuChange = useCallback((newSortOption: SortOption) => {
     let newOption = 'relevance';
@@ -399,15 +417,18 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
         <h2>{getPageTitle()}</h2>
       </div>
 
+      {/* 🔧 FIX: Передан проп specDisplayNames */}
       <ActiveFiltersBar
         filters={filters}
         specFilters={specFilters}
+        specDisplayNames={specDisplayNames}
         onRemoveBasic={handleRemoveBasicFilter}
         onRemoveSpec={handleRemoveSpecFilter}
         onClearAll={handleClearAllFilters}
       />
 
       <div className="search-results-layout">
+        {/* 🔧 FIX: Передан проп onSpecsLoaded */}
         <FiltersPanel
           filters={filters}
           specFilters={specFilters}
@@ -416,6 +437,7 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
           onClearSpecFilters={handleClearSpecFilters}
           apiBaseUrl={API_BASE_URL}
           isCategoryForced={forcedCategory !== undefined}
+          onSpecsLoaded={handleSpecsLoaded}
         />
 
         <main className="search-results-main">

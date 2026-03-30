@@ -4,13 +4,12 @@
 .search-component-wrapper {
   position: relative;
   width: 100%;
-  max-width: 20rem; /* ✅ Сохранено: базовая ширина 320px */
+  max-width: 20rem;
   transition: max-width 0.3s ease;
 }
 
-/* ✅ Сохранено: расширение при фокусе до 60rem */
 .search-component-wrapper:focus-within {
-  max-width: 60rem; /* 960px */
+  max-width: 60rem;
 }
 
 /* ===== Контейнер инпута ===== */
@@ -54,7 +53,7 @@
   color: #000000;
 }
 
-/* ===== Кнопка поиска ===== */
+/* ===== Кнопка поиска (обновлено под SVG-иконку) ===== */
 .search-button {
   width: 48px;
   height: 44px;
@@ -66,22 +65,30 @@
   background: #ffffff;
   cursor: pointer;
   transition: background-color 0.2s ease, color 0.2s ease;
-  text-indent: -9999px;
-  overflow: hidden;
-  color: transparent;
-  font-size: 0;
-  line-height: 0;
+  /* Убираем старые хаки */
+  text-indent: 0;
+  overflow: visible;
+  color: #000000;
+  font-size: inherit;
+  line-height: normal;
 }
 
+/* Новая SVG-иконка поиска */
+.search-icon-svg {
+  width: 20px;
+  height: 20px;
+  display: block;
+  pointer-events: none;
+  transition: fill 0.2s ease;
+}
 
-.search-button:hover::before {
-  content: '🔍';
-  position: absolute;
-  font-size: 18px;
-  text-indent: 0;
+/* Цвет иконки при наведении */
+.search-button:hover {
+  background-color: #000000;
   color: #ffffff;
 }
 
+/* Фокус для доступности */
 .search-button:focus {
   outline: 2px solid #000000;
   outline-offset: 2px;
@@ -92,7 +99,7 @@
   outline-offset: 2px;
 }
 
-/* ===== Выпадающее меню (превью) — СОХРАНЕНЫ РАЗМЕРЫ ===== */
+/* ===== Выпадающее меню (превью) ===== */
 .search-preview-dropdown {
   position: absolute;
   top: calc(100% + 4px);
@@ -105,18 +112,17 @@
   z-index: 999;
   display: flex;
   overflow-x: hidden;
-  overflow-y:none;
+  overflow-y: auto;
   max-height: 400px;
-  /* ✅ Сохранено: ширина следует за search-component-wrapper */
   min-width: 320px;
   max-width: 960px;
-  overscroll-behavior: none; /* ✅ Отключает оттягивание */
+  overscroll-behavior: none;
+  scrollbar-width: none;
 }
 
 .search-preview-dropdown::-webkit-scrollbar {
   display: none;
 }
-
 
 /* ===== Левая колонка (история) ===== */
 .search-history-section {
@@ -360,13 +366,12 @@
   opacity: 0.7;
 }
 
-/* ===== Адаптивность — СОХРАНЕНО ПОВЕДЕНИЕ ===== */
+/* ===== Адаптивность ===== */
 @media (max-width: 768px) {
   .search-component-wrapper {
     max-width: 100%;
   }
 
-  /* ✅ Сохранено: на мобильных нет расширения */
   .search-component-wrapper:focus-within {
     max-width: 100%;
   }
@@ -377,7 +382,6 @@
     padding: 10px 12px;
   }
 
-  /* ✅ Сохранено: на мобильных одна колонка */
   .search-preview-dropdown {
     display: block;
     position: fixed;

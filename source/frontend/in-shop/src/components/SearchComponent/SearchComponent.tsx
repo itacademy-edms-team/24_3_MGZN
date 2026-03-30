@@ -174,19 +174,15 @@ const SearchComponent: React.FC = () => {
     });
   }, []);
 
-  // 🔧 FIX: Обновлённая функция — создаёт URL с нуля, сбрасывая старые фильтры
   const performSearchAndNavigate = useCallback((searchQuery: string) => {
     if (isNavigatingRef.current) return;
     
     isNavigatingRef.current = true;
     updateSearchHistory(searchQuery);
     
-    // 🔧 FIX: Создаём параметры С НУЛЯ — это автоматически очищает старые фильтры
-    // Не копируем specs, minPrice, maxPrice, inStock, sort, order из старого URL
     const params = new URLSearchParams();
     params.set('q', searchQuery);
     
-    // 🔧 FIX: Опционально — сохраняем category, если он есть (убери этот блок, если хочешь полный сброс)
     const currentCategory = searchParams.get('category');
     if (currentCategory) {
       params.set('category', currentCategory);
@@ -225,7 +221,6 @@ const SearchComponent: React.FC = () => {
     setQuery(historyQuery);
     updateSearchHistory(historyQuery);
     
-    // 🔧 FIX: Также создаём параметры с нуля для клика по истории
     const params = new URLSearchParams();
     params.set('q', historyQuery);
     
@@ -272,9 +267,18 @@ const SearchComponent: React.FC = () => {
     });
   }, []);
 
+  // 🔧 НОВАЯ ИКОНКА: Font Awesome Search
   const SearchIcon = useMemo(() => (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20px" height="20px" aria-hidden="true">
-      <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+    <svg 
+      xmlns="http://www.w3.org/2000/svg" 
+      viewBox="0 0 512 512" 
+      className="search-icon-svg"
+      aria-hidden="true"
+    >
+      <path 
+        fill="currentColor" 
+        d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352a144 144 0 1 0 0-288 144 144 0 1 0 0 288z"
+      />
     </svg>
   ), []);
 

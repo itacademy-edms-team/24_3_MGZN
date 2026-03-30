@@ -23,6 +23,118 @@ interface Props {
   apiBaseUrl: string;
 }
 
+// ===== Вспомогательный компонент: кастомный дропдаун (стиль SortMenu) =====
+interface DropdownOption {
+  value: string;
+  label: string;
+}
+
+interface CustomDropdownProps {
+  options: DropdownOption[];
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  className?: string;
+  dropdownClassName?: string;
+}
+
+const CustomDropdown: React.FC<CustomDropdownProps> = memo(({
+  options,
+  value,
+  onChange,
+  placeholder = 'Выберите...',
+  className = '',
+  dropdownClassName = '',
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  const selectedLabel = useMemo(() => {
+    const found = options.find(opt => opt.value === value);
+    return found ? found.label : placeholder;
+  }, [options, value, placeholder]);
+
+  // Закрытие при клике вне
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Управление с клавиатуры
+  const handleTriggerKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      setIsOpen(prev => !prev);
+    } else if (e.key === 'Escape') {
+      setIsOpen(false);
+      triggerRef.current?.focus();
+    } else if (e.key === 'ArrowDown' && isOpen) {
+      e.preventDefault();
+      const currentIndex = options.findIndex(opt => opt.value === value);
+      const nextIndex = (currentIndex + 1) % options.length;
+      onChange(options[nextIndex].value);
+    } else if (e.key === 'ArrowUp' && isOpen) {
+      e.preventDefault();
+      const currentIndex = options.findIndex(opt => opt.value === value);
+      const prevIndex = currentIndex <= 0 ? options.length - 1 : currentIndex - 1;
+      onChange(options[prevIndex].value);
+    }
+  };
+
+  return (
+    <div className={`filters-panel__dropdown-wrapper ${className}`} ref={dropdownRef}>
+      {/* Триггер — стиль как в SortMenu */}
+      <button
+        ref={triggerRef}
+        type="button"
+        className={`filters-panel__category-select ${isOpen ? 'filters-panel__category-select--open' : ''}`}
+        onClick={() => setIsOpen(prev => !prev)}
+        onKeyDown={handleTriggerKeyDown}
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+      >
+        <span className="sort-menu__trigger-text">{selectedLabel}</span>
+        <span className={`sort-menu__arrow ${isOpen ? 'sort-menu__arrow--up' : 'sort-menu__arrow--down'}`} />
+      </button>
+
+      {/* Выпадающее меню — стиль как в SortMenu (без чекбоксов) */}
+      {isOpen && (
+        <ul 
+          className={`filters-panel__dropdown ${dropdownClassName}`}
+          role="listbox"
+        >
+          {options.map((option) => (
+            <li
+              key={option.value}
+              className={`filters-panel__dropdown-option ${option.value === value ? 'filters-panel__dropdown-option--active' : ''}`}
+              role="option"
+              aria-selected={option.value === value}
+              onClick={() => {
+                onChange(option.value);
+                setIsOpen(false);
+                triggerRef.current?.focus();
+              }}
+              onMouseDown={(e) => e.preventDefault()}
+            >
+              {/* Только текст опции — без чекбоксов/радиокнопок */}
+              <span className="filters-panel__dropdown-label">{option.label}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+});
+
+CustomDropdown.displayName = 'CustomDropdown';
+
+// ===== Основной компонент FiltersPanel =====
 const FiltersPanel = memo<Props>(({
   filters,
   specFilters,
@@ -211,7 +323,6 @@ const FiltersPanel = memo<Props>(({
     const newMin = field === 'minPrice' ? value : filters.minPrice;
     const newMax = field === 'maxPrice' ? value : filters.maxPrice;
 
-    // Валидируем только если ОБА поля заполнены
     const shouldValidate = 
       (newMin !== undefined && newMin !== null && newMin.trim() !== '') &&
       (newMax !== undefined && newMax !== null && newMax.trim() !== '');
@@ -223,24 +334,20 @@ const FiltersPanel = memo<Props>(({
       );
 
       if (!validation.valid) {
-        // ✅ Показываем ошибку, но НЕ прерываем выполнение
         setSpecErrors(prev => ({ ...prev, [field]: validation.error! }));
       } else {
-        // ✅ Очищаем ошибку, если валидация прошла
         setSpecErrors(prev => {
           const { [field]: _, ...rest } = prev;
           return rest;
         });
       }
     } else {
-      // ✅ Если валидация не требуется — очищаем ошибку для текущего поля
       setSpecErrors(prev => {
         const { [field]: _, ...rest } = prev;
         return rest;
       });
     }
 
-    // ✅ ВСЕГДА обновляем состояние — ввод никогда не блокируется
     onBasicFilterChange({ [field]: value });
   }, [filters.minPrice, filters.maxPrice, onBasicFilterChange]);
 
@@ -279,6 +386,15 @@ const FiltersPanel = memo<Props>(({
     maxPrice: filters.maxPrice ?? '',
   }), [filters.minPrice, filters.maxPrice]);
 
+  // --- Опции для дропдауна категории ---
+  const categoryOptions = useMemo(() => {
+    const opts: DropdownOption[] = [{ value: '', label: 'Все категории' }];
+    categories.forEach(cat => {
+      opts.push({ value: cat.categoryName, label: cat.categoryName });
+    });
+    return opts;
+  }, [categories]);
+
   // --- Рендер спецификаций ---
   const renderedSpecs = useMemo(() => {
     return availableSpecs.map((spec) => (
@@ -288,21 +404,17 @@ const FiltersPanel = memo<Props>(({
         </label>
 
         {spec.dataType === 'Text' && (
-          <select
-            className="filters-panel__spec-select"
+          <CustomDropdown
+            options={[
+              { value: '', label: 'Любое' },
+              ...(spec.possibleValues?.map((val) => ({ value: val, label: val })) || []),
+            ]}
             value={specFilters?.[spec.name]?.toString() ?? ''}
-            onChange={(e) => {
-              const val = e.target.value;
-              onSpecFilterChange(spec.name, val === '' ? null : val);
-            }}
-          >
-            <option value="">Любое</option>
-            {spec.possibleValues?.map((val, idx) => (
-              <option key={`${spec.name}-${idx}`} value={val}>
-                {val}
-              </option>
-            ))}
-          </select>
+            onChange={(val) => onSpecFilterChange(spec.name, val === '' ? null : val)}
+            placeholder="Любое"
+            className="filters-panel__spec-select-wrapper"
+            dropdownClassName="filters-panel__spec-dropdown"
+          />
         )}
 
         {spec.dataType === 'Number' && (
@@ -396,18 +508,14 @@ const FiltersPanel = memo<Props>(({
 
       <div className="filters-panel__section">
         <h4 className="filters-panel__section-title">Категория</h4>
-        <select
-          className="filters-panel__category-select"
+        <CustomDropdown
+          options={categoryOptions}
           value={filters.category ?? ''}
-          onChange={(e) => handleCategoryChange(e.target.value)}
-        >
-          <option value="">Все категории</option>
-          {categories.map((cat) => (
-            <option key={cat.categoryId} value={cat.categoryName}>
-              {cat.categoryName}
-            </option>
-          ))}
-        </select>
+          onChange={handleCategoryChange}
+          placeholder="Все категории"
+          className="filters-panel__category-select-wrapper"
+          dropdownClassName="filters-panel__category-dropdown"
+        />
       </div>
 
       {filters.category && (

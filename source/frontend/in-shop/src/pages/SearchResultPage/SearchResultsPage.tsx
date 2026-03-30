@@ -415,6 +415,7 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
           onSpecFilterChange={handleSpecFilterChange}
           onClearSpecFilters={handleClearSpecFilters}
           apiBaseUrl={API_BASE_URL}
+          isCategoryForced={forcedCategory !== undefined}
         />
 
         <main className="search-results-main">

@@ -621,3 +621,33 @@
     transform: translateY(0);
   }
 }
+
+
+.filters-panel__category-locked {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background-color: #f8f9fa;
+  border: 2px solid #000000;
+  font-size: 14px;
+  color: #495057;
+  user-select: none;
+}
+
+.filters-panel__category-name {
+  font-weight: 500;
+}
+
+.filters-panel__lock-icon {
+  font-size: 12px;
+  opacity: 0.7;
+  cursor: help;
+}
+
+/* Опционально: визуальное отключение дропдауна, если решите не скрывать его полностью */
+.filters-panel__category-select--disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: #f1f3f5;
+}

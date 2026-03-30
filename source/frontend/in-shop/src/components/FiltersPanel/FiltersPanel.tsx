@@ -21,6 +21,7 @@ interface Props {
   onSpecFilterChange: (specName: string, value: SpecFilterValue) => void;
   onClearSpecFilters: () => void;
   apiBaseUrl: string;
+  isCategoryForced?: boolean
 }
 
 // ===== Вспомогательный компонент: кастомный дропдаун (стиль SortMenu) =====
@@ -142,6 +143,7 @@ const FiltersPanel = memo<Props>(({
   onSpecFilterChange,
   onClearSpecFilters,
   apiBaseUrl,
+  isCategoryForced = false,
 }) => {
   const [specErrors, setSpecErrors] = useState<Record<string, string>>({});
   const [categories, setCategories] = useState<CategoryDto[]>([]);
@@ -495,6 +497,32 @@ const FiltersPanel = memo<Props>(({
       </div>
 
       <div className="filters-panel__section">
+        <h4 className="filters-panel__section-title">Категория</h4>
+        
+        {isCategoryForced ? (
+          // 🔒 Режим "только просмотр": категория заблокирована
+          <div className="filters-panel__category-locked">
+            <span className="filters-panel__category-name">
+              {filters.category || 'Все категории'}
+            </span>
+            <span className="filters-panel__lock-icon" title="Категория зафиксирована при переходе из каталога">
+              🔒
+            </span>
+          </div>
+        ) : (
+          // ✏️ Режим поиска: категория редактируется
+          <CustomDropdown
+            options={categoryOptions}
+            value={filters.category ?? ''}
+            onChange={handleCategoryChange}
+            placeholder="Все категории"
+            className="filters-panel__category-select-wrapper"
+            dropdownClassName="filters-panel__category-dropdown"
+          />
+        )}
+      </div>
+
+      <div className="filters-panel__section">
         <label className="filters-panel__checkbox-label">
           <input
             type="checkbox"
@@ -506,17 +534,6 @@ const FiltersPanel = memo<Props>(({
         </label>
       </div>
 
-      <div className="filters-panel__section">
-        <h4 className="filters-panel__section-title">Категория</h4>
-        <CustomDropdown
-          options={categoryOptions}
-          value={filters.category ?? ''}
-          onChange={handleCategoryChange}
-          placeholder="Все категории"
-          className="filters-panel__category-select-wrapper"
-          dropdownClassName="filters-panel__category-dropdown"
-        />
-      </div>
 
       {filters.category && (
         <div className="filters-panel__section">

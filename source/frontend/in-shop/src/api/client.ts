@@ -6,6 +6,9 @@ import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'ax
 
 // ✅ Бэкенд на HTTPS
 const API_BASE_URL = 'https://localhost:7275/api';
+const STORAGE_KEY_ORDER_ID = 'currentOrderId';
+const STORAGE_KEY_SESSION_ID = 'currentSessionId';
+const SESSION_UPDATED_EVENT = 'session:updated';
 
 // Создаём инстанс axios
 export const apiClient: AxiosInstance = axios.create({
@@ -62,9 +65,25 @@ apiClient.interceptors.response.use(
                     console.log('[API] Attempting to recreate session...');
                     
                     // Создаём новую сессию (кука установится автоматически)
-                    await apiClient.post('/UserSession', {}, {
+                    const recreateResponse = await apiClient.post('/UserSession', {}, {
                         // Важно: не добавляем withCredentials здесь — он уже в инстансе
                     });
+
+                    // Если API вернул orderId/sessionId — сохраняем, чтобы фронт не жил "вслепую"
+                    // (создание через интерцептор происходило без записи в localStorage)
+                    const data = recreateResponse?.data as
+                        | { orderId?: number; sessionId?: number }
+                        | undefined;
+
+                    if (typeof data?.orderId === 'number') {
+                        localStorage.setItem(STORAGE_KEY_ORDER_ID, data.orderId.toString());
+                    }
+                    if (typeof data?.sessionId === 'number') {
+                        localStorage.setItem(STORAGE_KEY_SESSION_ID, data.sessionId.toString());
+                    }
+
+                    // Сообщаем хукам в этой вкладке, что сессия обновилась
+                    window.dispatchEvent(new Event(SESSION_UPDATED_EVENT));
                     
                     console.log('[API] Session recreated, retrying original request');
                     

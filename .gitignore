@@ -363,3 +363,5 @@ MigrationBackup/
 FodyWeavers.xsd
 
 appsettings.Docker.json
+
+appsettings.json

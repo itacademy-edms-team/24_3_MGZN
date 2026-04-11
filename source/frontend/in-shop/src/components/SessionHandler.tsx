@@ -3,7 +3,7 @@
 // ============================================
 
 import React from 'react';
-import useSession from '../hooks/useSession.ts';
+import { useSessionContext } from '../context/SessionContext.tsx';
 
 interface SessionHandlerProps {
   children: React.ReactNode;
@@ -16,7 +16,7 @@ const SessionHandler: React.FC<SessionHandlerProps> = ({
   fallback,
   errorFallback,
 }) => {
-  const { isLoading, error, recreateSession } = useSession();
+  const { isLoading, error, recreateSession } = useSessionContext();
 
   if (isLoading) {
     return fallback ?? <div>Загрузка...</div>;

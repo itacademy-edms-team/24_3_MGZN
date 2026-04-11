@@ -13,41 +13,44 @@ import CartModal from './components/CartModal.js';
 import { CartProvider } from './components/CartContext.js';
 import SessionHandler from './components/SessionHandler.tsx';
 import AppRoutes from './components/AppRoutes.tsx';
+import { SessionProvider } from './context/SessionContext.tsx';
 
 function App() {
   return (
     <Router>
-      <CartProvider>
-        {/* ✅ SessionHandler ОБЁРТЫВАЕТ всё приложение */}
-        <SessionHandler
-          fallback={
-            <div className="app-loader">
-              <div className="spinner" />
-              <p>Инициализация сессии...</p>
-            </div>
-          }
-          errorFallback={
-            <div className="app-error">
-              <p>⚠️ Не удалось инициализировать сессию</p>
-              <button onClick={() => window.location.reload()}>
-                Повторить
-              </button>
-            </div>
-          }
-        >
+      {/* Один экземпляр сессии на всё приложение (иначе SessionHandler и CartProvider расходятся по state) */}
+      <SessionProvider>
+      {/* ✅ Сначала гарантируем готовую сессию, потом монтируем корзину/приложение */}
+      <SessionHandler
+        fallback={
+          <div className="app-loader">
+            <div className="spinner" />
+            <p>Инициализация сессии...</p>
+          </div>
+        }
+        errorFallback={
+          <div className="app-error">
+            <p>⚠️ Не удалось инициализировать сессию</p>
+            <button onClick={() => window.location.reload()}>
+              Повторить
+            </button>
+          </div>
+        }
+      >
+        <CartProvider>
           <div className="App">
             <Header />
             <CartModal />
-            
+
             <main>
-              {/* ✅ Роутинг внутри SessionHandler */}
               <AppRoutes />
             </main>
-            
+
             <Footer />
           </div>
-        </SessionHandler>
-      </CartProvider>
+        </CartProvider>
+      </SessionHandler>
+      </SessionProvider>
     </Router>
   );
 }

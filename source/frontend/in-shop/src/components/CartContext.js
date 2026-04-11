@@ -4,7 +4,7 @@
 
 import React, { createContext, useState, useEffect, useCallback } from 'react';
 import { apiClient } from '../api/client.ts';
-import { useSession } from '../hooks/useSession.ts';
+import { useSessionContext } from '../context/SessionContext.tsx';
 
 export const CartContext = createContext();
 
@@ -15,7 +15,7 @@ export const CartProvider = ({ children }) => {
     const [error, setError] = useState(null);
     
     // ✅ Получаем данные сессии из хука
-    const { orderId, isValid, sessionId } = useSession();
+    const { orderId, isValid, sessionId } = useSessionContext();
 
     // Загрузка корзины из бэкенда
     const fetchCart = useCallback(async () => {

@@ -5,7 +5,7 @@
 import React, { useState, useEffect, useContext, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CartContext } from './CartContext.js';
-import { useSession } from '../hooks/useSession.ts';
+import { useSessionContext } from '../context/SessionContext.tsx';
 import { apiClient } from '../api/client.ts';
 import './CheckoutForm.css';
 
@@ -14,7 +14,7 @@ const CheckoutForm = ({ onSubmit }) => {
     const navigate = useNavigate();
     
     // ✅ Получаем данные сессии
-    const { orderId, sessionId, isValid, isLoading: sessionLoading } = useSession();
+    const { orderId, sessionId, isValid, isLoading: sessionLoading } = useSessionContext();
 
     const [formData, setFormData] = useState({
         customerFullName: '',
@@ -166,9 +166,12 @@ const CheckoutForm = ({ onSubmit }) => {
             localStorage.setItem('orderData', JSON.stringify(orderData));
             
             // Отправка кода подтверждения на email
-            await apiClient.post('/Verification/send-code', {
-                email: formData.customerEmail
-            });
+            // Отправка письма через SMTP на бэкенде часто дольше 10 с — общий timeout в apiClient её обрывает
+            await apiClient.post(
+                '/Verification/send-code',
+                { email: formData.customerEmail },
+                { timeout: 120000 }
+            );
             
             // Переход на страницу верификации
             navigate('/email-verification', { 
@@ -184,6 +187,9 @@ const CheckoutForm = ({ onSubmit }) => {
             if (err.response?.status === 401) {
                 alert('Сессия истекла. Страница будет перезагружена.');
                 window.location.reload();
+            } else if (err.code === 'ECONNABORTED') {
+                setError('Сервер не ответил вовремя. Попробуйте ещё раз — часто со второй попытки отправка быстрее.');
+                alert('Превышено время ожидания. Повторите отправку кода.');
             } else {
                 setError(err.response?.data?.message || 'Не удалось отправить код подтверждения.');
                 alert('Не удалось отправить код подтверждения. Проверьте соединение.');

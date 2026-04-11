@@ -2,6 +2,7 @@
 using InShopBLLayer.Services;
 using Contracts.Dtos;
 using InShopBLLayer.Abstractions;
+using Microsoft.Extensions.Logging;
 
 namespace InShop.WebAPI.Controllers
 {
@@ -10,10 +11,14 @@ namespace InShop.WebAPI.Controllers
     public class VerificationController : ControllerBase
     {
         private readonly IEmailVerificationService _verificationService;
+        private readonly ILogger<VerificationController> _logger;
 
-        public VerificationController(IEmailVerificationService verificationService)
+        public VerificationController(
+            IEmailVerificationService verificationService,
+            ILogger<VerificationController> logger)
         {
             _verificationService = verificationService;
+            _logger = logger;
         }
 
         [HttpPost("send-code")]
@@ -29,6 +34,7 @@ namespace InShop.WebAPI.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Verification: не удалось отправить код на {Email}", request.Email);
                 return StatusCode(500, new { error = "Ошибка отправки кода.", details = ex.Message });
             }
         }

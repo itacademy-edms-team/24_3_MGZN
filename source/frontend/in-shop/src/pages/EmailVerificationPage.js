@@ -4,7 +4,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useSession } from '../hooks/useSession.ts';
+import { useSessionContext } from '../context/SessionContext.tsx';
 import { apiClient } from '../api/client.ts';
 import './EmailVerificationPage.css';
 
@@ -22,7 +22,7 @@ const EmailVerificationPage = () => {
         isValid, 
         isLoading: sessionLoading,
         recreateSession 
-    } = useSession();
+    } = useSessionContext();
 
     const email = location.state?.email || '';
     const orderDataFromState = location.state?.orderData;

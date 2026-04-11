@@ -4,7 +4,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useSession } from '../../hooks/useSession.ts';
+import { useSessionContext } from '../../context/SessionContext.tsx';
 import './OrderSuccessPage.css';
 
 const OrderSuccessPage = () => {
@@ -18,7 +18,7 @@ const OrderSuccessPage = () => {
         isLoading: sessionLoading, 
         error: sessionError,
         recreateSession 
-    } = useSession();
+    } = useSessionContext();
 
     useEffect(() => {
         // Получаем данные заказа из localStorage

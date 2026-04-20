@@ -1,6 +1,7 @@
 // src/pages/PaymentConfirmationPage.js
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { apiClient } from '../../api/client.ts';
 import './PaymentConfirmationPage.css';
 
 const PaymentConfirmationPage = () => {
@@ -38,16 +39,8 @@ const PaymentConfirmationPage = () => {
         const checkPaymentStatus = async () => {
             try {
                 console.log("PaymentConfirmationPage: Fetching status for orderId:", orderId);
-                const response = await fetch(`https://localhost:7275/api/Payment/status/${orderId}`, {
-                    method: 'GET',
-                    headers: { 'Content-Type': 'application/json' },
-                });
-
-                if (!response.ok) {
-                    throw new Error(`Ошибка получения статуса: ${response.status}`);
-                }
-
-                const data = await response.json();
+                const response = await apiClient.get(`/Payment/status/${orderId}`);
+                const data = response.data;
                 console.log("PaymentConfirmationPage: API response data:", data);
 
                 const currentStatus = data?.status;

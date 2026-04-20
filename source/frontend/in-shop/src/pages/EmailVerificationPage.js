@@ -20,8 +20,7 @@ const EmailVerificationPage = () => {
     const { 
         orderId, 
         isValid, 
-        isLoading: sessionLoading,
-        recreateSession 
+        isLoading: sessionLoading
     } = useSessionContext();
 
     const email = location.state?.email || '';
@@ -83,8 +82,6 @@ const EmailVerificationPage = () => {
             }
 
             const validatedOrderData = {
-                // ✅ sessionId НЕ передаём — бэкенд берёт из cookie
-                orderId: orderId,
                 shipCompanyId: orderData.shipCompanyId ? parseInt(orderData.shipCompanyId) : 1,
                 shipAddress: orderData.shipAddress,
                 shipMethod: orderData.shipMethod,
@@ -106,15 +103,24 @@ const EmailVerificationPage = () => {
             
             console.log('Заказ оформлен:', checkoutData);
 
-            // 4. ✅ ПЕРЕСОЗДАЁМ СЕССИЮ для нового черновика корзины
-            console.log('Recreating session for new cart draft...');
-            await recreateSession();
+            const completedOrderId = checkoutData?.orderId;
+            if (!completedOrderId) {
+                throw new Error('Сервер не вернул номер оформленного заказа.');
+            }
 
-            // 5. Переход на страницу успеха
+            const completedOrderData = {
+                ...validatedOrderData,
+                orderId: completedOrderId,
+            };
+
+            localStorage.setItem('completedOrderId', completedOrderId.toString());
+            localStorage.setItem('orderData', JSON.stringify(completedOrderData));
+
+            // 4. Переход на страницу успеха
             navigate('/order-success', { 
                 state: { 
-                    orderId: checkoutData.orderId,
-                    orderData: validatedOrderData
+                    completedOrderId,
+                    orderData: completedOrderData
                 } 
             });
 
@@ -130,7 +136,7 @@ const EmailVerificationPage = () => {
         } finally {
             setLoading(false);
         }
-    }, [code, email, orderId, isValid, orderDataFromState, navigate, recreateSession]);
+    }, [code, email, orderId, isValid, orderDataFromState, navigate]);
 
     // Лоадер сессии
     if (sessionLoading) {

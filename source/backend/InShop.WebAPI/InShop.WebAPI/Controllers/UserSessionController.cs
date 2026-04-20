@@ -171,6 +171,19 @@ public class UserSessionController : ControllerBase
                 return Unauthorized(result);
             }
 
+            // Keep cookie lifetime in sync with sliding expiration from DB.
+            var cookieOptions = new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.None,
+                Expires = result.ExpiresAt != default ? result.ExpiresAt : DateTime.UtcNow.AddDays(30),
+                Path = "/",
+                IsEssential = true
+            };
+
+            Response.Cookies.Append("SessionToken", tokenGuid.ToString(), cookieOptions);
+
             return Ok(result);
         }
         catch (Exception ex)

@@ -1,14 +1,33 @@
 // src/pages/PaymentPage/PaymentPage.js
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { apiClient } from '../api/client.ts';
 import './PaymentPage.css'; // Создайте, если нужно
 
 const PaymentPage = () => {
     const navigate = useNavigate();
     const location = useLocation();
 
-    // Получаем данные заказа, если они переданы через state
-    const orderData = location.state?.orderData || null;
+    const orderDataFromState = location.state?.orderData || null;
+    const completedOrderIdFromState = location.state?.completedOrderId;
+    const storedOrderData = useMemo(() => {
+        try {
+            const raw = localStorage.getItem('orderData');
+            return raw ? JSON.parse(raw) : null;
+        } catch {
+            return null;
+        }
+    }, []);
+    const storedCompletedOrderId = localStorage.getItem('completedOrderId');
+
+    const orderData = orderDataFromState || storedOrderData;
+    const resolvedOrderIdRaw =
+        completedOrderIdFromState ??
+        orderDataFromState?.orderId ??
+        storedCompletedOrderId ??
+        storedOrderData?.orderId;
+    const resolvedOrderId = Number.parseInt(String(resolvedOrderIdRaw), 10);
+    const hasValidOrderId = !Number.isNaN(resolvedOrderId);
 
     // Состояния для данных карты
     const [cardNumber, setCardNumber] = useState('');
@@ -17,83 +36,68 @@ const PaymentPage = () => {
     const [cardholderName, setCardholderName] = useState('');
 
     const handlePayment = async () => {
-    // Валидация полей
-    if (!cardNumber || !expiryDate || !cvv || !cardholderName) {
-        alert('Пожалуйста, заполните все поля формы.');
-        return;
-    }
-
-    // Простая валидация номера карты (16 цифр)
-    const cleanCardNumber = cardNumber.replace(/\s/g, '');
-    if (!/^\d{16}$/.test(cleanCardNumber)) {
-        alert('Номер карты должен содержать 16 цифр.');
-        return;
-    }
-
-    // Простая валидация CVV (3 цифры)
-    if (!/^\d{3}$/.test(cvv)) {
-        alert('CVV должен содержать 3 цифры.');
-        return;
-    }
-
-    // Простая валидация срока действия (MM/YY)
-    if (!/^\d{2}\/\d{2}$/.test(expiryDate)) {
-        alert('Срок действия должен быть в формате ММ/ГГ.');
-        return;
-    }
-
-    // ✅ ПОЛУЧАЕМ ORDER ID ИЗ localStorage.orderData
-    const orderData = JSON.parse(localStorage.getItem('orderData'));
-    
-    if (!orderData || !orderData.orderId) {
-        alert('Ошибка: не удалось получить данные заказа.');
-        console.error('orderData:', orderData);
-        return;
-    }
-
-    const orderId = parseInt(orderData.orderId);
-    
-    if (isNaN(orderId)) {
-        alert('Ошибка: orderId не является числом.');
-        return;
-    }
-
-    // Подготовка данных для отправки
-    const paymentData = {
-        orderId: orderId,
-        cardNumber: cleanCardNumber,
-        expiryDate,
-        cvv,
-        cardholderName
-    };
-
-    console.log("Отправляемые данные:", paymentData);
-    console.log("DEBUG: orderId =", orderId);
-
-    try {
-        const response = await fetch('https://localhost:7275/api/Payment/process', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(paymentData),
-        });
-
-        console.log("Ответ от API:", response);
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            console.error("Ошибка от API:", errorData);
-            alert(`Ошибка оплаты: ${errorData.message || 'Неизвестная ошибка'}`);
+        // Валидация полей
+        if (!cardNumber || !expiryDate || !cvv || !cardholderName) {
+            alert('Пожалуйста, заполните все поля формы.');
             return;
         }
 
-        console.log("Успешный ответ, перенаправляем...");
-        navigate('/payment-confirmation', { state: { orderId: paymentData.orderId } });
+        // Простая валидация номера карты (16 цифр)
+        const cleanCardNumber = cardNumber.replace(/\s/g, '');
+        if (!/^\d{16}$/.test(cleanCardNumber)) {
+            alert('Номер карты должен содержать 16 цифр.');
+            return;
+        }
 
-    } catch (error) {
-        console.error('Ошибка при отправке данных оплаты:', error);
-        alert('Ошибка при отправке данных оплаты. Проверьте соединение с интернетом.');
+        // Простая валидация CVV (3 цифры)
+        if (!/^\d{3}$/.test(cvv)) {
+            alert('CVV должен содержать 3 цифры.');
+            return;
+        }
+
+        // Простая валидация срока действия (MM/YY)
+        if (!/^\d{2}\/\d{2}$/.test(expiryDate)) {
+            alert('Срок действия должен быть в формате ММ/ГГ.');
+            return;
+        }
+
+        if (!hasValidOrderId) {
+            alert('Ошибка: не удалось получить номер оформленного заказа.');
+            return;
+        }
+
+        // Подготовка данных для отправки
+        const paymentData = {
+            orderId: resolvedOrderId,
+            cardNumber: cleanCardNumber,
+            expiryDate,
+            cvv,
+            cardholderName
+        };
+
+        console.log("Отправляемые данные:", paymentData);
+
+        try {
+            await apiClient.post('/Payment/process', paymentData);
+            console.log("Успешный ответ, перенаправляем...");
+            navigate('/payment-confirmation', { state: { orderId: paymentData.orderId } });
+        } catch (error) {
+            console.error('Ошибка при отправке данных оплаты:', error);
+            alert(error.response?.data?.message || 'Ошибка при отправке данных оплаты. Проверьте соединение с интернетом.');
+        }
+    };
+
+    if (!hasValidOrderId) {
+        return (
+            <div className="payment-page">
+                <div className="payment-container">
+                    <h1>Оплата заказа</h1>
+                    <p>Номер оформленного заказа не найден.</p>
+                    <button className="cancel-button" onClick={() => navigate('/order-success')}>Назад</button>
+                </div>
+            </div>
+        );
     }
-};
 
     const handleCancel = () => {
         // Возврат на страницу заказа или на главную
@@ -107,7 +111,7 @@ const PaymentPage = () => {
 
                 {orderData && (
                     <div className="order-summary">
-                        <p><strong>Номер заказа:</strong> #{orderData.orderId || 'N/A'}</p>
+                        <p><strong>Номер заказа:</strong> #{resolvedOrderId}</p>
                         <p><strong>Сумма к оплате:</strong> {(orderData.orderTotalAmount || 0).toFixed(2)} ₽</p>
                     </div>
                 )}

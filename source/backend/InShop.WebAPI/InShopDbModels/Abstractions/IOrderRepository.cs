@@ -23,6 +23,7 @@ namespace InShopDbModels.Abstractions
         Task<List<OrderItem>> GetOrderItemsByOrderId(int orderId);
         Task<List<ShipCompany>> GetAllShipCompanies();
         Task<Order?> GetOrderBySessionIdAsync(int sessionId);
+        Task<Order?> GetDraftOrderBySessionIdAsync(int sessionId);
         Task<Order> CreateOrder(Order order);
     }
 }

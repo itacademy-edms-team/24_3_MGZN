@@ -137,8 +137,6 @@ const CheckoutForm = ({ onSubmit }) => {
 
         // Подготовка данных заказа
         const orderData = {
-            // ✅ sessionId НЕ передаём — бэкенд берёт из cookie
-            orderId: orderId, // Если бэкенд принимает orderId
             shipCompanyId: formData.shipMethod === 'Служба доставки' ? parseInt(formData.shipCompanyId) : 1,
             shipAddress: formData.shipMethod === 'Самовывоз' ? 'Самовывоз' : formData.shipAddress,
             shipMethod: formData.shipMethod,

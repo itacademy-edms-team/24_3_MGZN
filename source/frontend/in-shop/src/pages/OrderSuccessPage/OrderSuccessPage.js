@@ -3,27 +3,44 @@
 // ============================================
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useSessionContext } from '../../context/SessionContext.tsx';
 import './OrderSuccessPage.css';
 
 const OrderSuccessPage = () => {
     const [orderData, setOrderData] = useState(null);
+    const [completedOrderId, setCompletedOrderId] = useState(null);
     const navigate = useNavigate();
+    const location = useLocation();
     
     // ✅ Используем useSession
     const { 
-        orderId: currentOrderId, 
         isValid, 
         isLoading: sessionLoading, 
-        error: sessionError,
-        recreateSession 
+        error: sessionError
     } = useSessionContext();
 
     useEffect(() => {
-        // Получаем данные заказа из localStorage
+        const stateCompletedOrderId = location.state?.completedOrderId;
+        const stateOrderData = location.state?.orderData;
+        const storedCompletedOrderId = localStorage.getItem('completedOrderId');
         const storedOrderData = localStorage.getItem('orderData');
-        
+
+        if (stateCompletedOrderId) {
+            setCompletedOrderId(stateCompletedOrderId);
+        } else if (storedCompletedOrderId) {
+            const parsedCompletedOrderId = parseInt(storedCompletedOrderId, 10);
+            if (!Number.isNaN(parsedCompletedOrderId)) {
+                setCompletedOrderId(parsedCompletedOrderId);
+            }
+        }
+
+        if (stateOrderData) {
+            setOrderData(stateOrderData);
+            return;
+        }
+
+        // Получаем данные заказа из localStorage
         if (storedOrderData) {
             try {
                 const parsedData = JSON.parse(storedOrderData);
@@ -32,7 +49,7 @@ const OrderSuccessPage = () => {
                 console.error('Ошибка при парсинге данных заказа:', error);
             }
         }
-    }, []);
+    }, [location.state]);
 
     // Лоадер сессии
     if (sessionLoading) {
@@ -60,12 +77,18 @@ const OrderSuccessPage = () => {
     }
 
     const handlePayNow = () => {
+        if (!completedOrderId) {
+            alert('Номер оформленного заказа не найден.');
+            return;
+        }
+
         // Переход на оплату с данными заказа
         navigate('/payment', { 
             state: { 
+                completedOrderId,
                 orderData: {
                     ...orderData,
-                    orderId: currentOrderId // ✅ Используем текущий orderId из сессии
+                    orderId: completedOrderId
                 } 
             } 
         });
@@ -82,7 +105,7 @@ const OrderSuccessPage = () => {
                 <div className="order-success-header">
                     <div className="success-icon">✓</div>
                     <h1>Заказ оформлен</h1>
-                    <p className="order-number">Номер заказа: <strong>#{currentOrderId || 'N/A'}</strong></p>
+                    <p className="order-number">Номер заказа: <strong>#{completedOrderId || 'N/A'}</strong></p>
                 </div>
 
                 <div className="order-success-content">

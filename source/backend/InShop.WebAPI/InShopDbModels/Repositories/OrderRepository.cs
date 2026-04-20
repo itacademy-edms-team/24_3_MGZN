@@ -113,5 +113,13 @@ namespace InShopDbModels.Repositories
                 .ThenInclude(oi => oi.Product)
                 .FirstOrDefaultAsync(o => o.SessionId == sessionId);
         }
+
+        public async Task<Order?> GetDraftOrderBySessionIdAsync(int sessionId)
+        {
+            return await _appDbContext.Orders
+                .Include(o => o.OrderItems)
+                .ThenInclude(oi => oi.Product)
+                .FirstOrDefaultAsync(o => o.SessionId == sessionId && o.OrderStatus == "Draft");
+        }
     }
 }

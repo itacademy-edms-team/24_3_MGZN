@@ -47,7 +47,14 @@ namespace InShopBLLayer.Services
                     OrderStatus = "Draft",
                     OrderDate = DateOnly.FromDateTime(DateTime.Now),
                     SessionId = sessionId,
-                    OrderTotalAmount = 0
+                    OrderTotalAmount = 0,
+                    // Keep draft creation aligned with DB NOT NULL constraints.
+                    ShipMethod = "draft",
+                    PayStatus = "Unpayed",
+                    CustomerFullname = "draft",
+                    PayMethod = "draft",
+                    CustomerEmail = "draft",
+                    CustomerPhoneNumber = "draft"
                 };
                 await _orderRepository.CreateOrder(order);
             }
@@ -159,62 +166,58 @@ namespace InShopBLLayer.Services
 
         public async Task<OrderResponseDto> CreateOrder(CreateOrderRequestDto requestDto)
         {
-            // Найти заказ по SessionId
-            var existingOrder = await _orderRepository.GetOrderBySessionIdAsync(requestDto.SessionId);
+            // Checkout can only finalize the current draft order for this session.
+            var existingOrder = await _orderRepository.GetDraftOrderBySessionIdAsync(requestDto.SessionId);
 
             if (existingOrder != null)
             {
-                if (existingOrder.OrderStatus == "Draft")
-                {
-                    // Обновляем поля заказа
-                    existingOrder.ShipCompanyId = requestDto.ShipCompanyId;
-                    existingOrder.ShipAddress = requestDto.ShipAddress;
-                    existingOrder.ShipMethod = requestDto.ShipMethod;
-                    existingOrder.PayMethod = requestDto.PayMethod;
-                    existingOrder.CustomerFullname = requestDto.CustomerFullname;
-                    existingOrder.CustomerEmail = requestDto.CustomerEmail;
-                    existingOrder.CustomerPhoneNumber = requestDto.CustomerPhoneNumber;
+                // Обновляем поля заказа
+                existingOrder.ShipCompanyId = requestDto.ShipCompanyId;
+                existingOrder.ShipAddress = requestDto.ShipAddress;
+                existingOrder.ShipMethod = requestDto.ShipMethod;
+                existingOrder.PayMethod = requestDto.PayMethod;
+                existingOrder.CustomerFullname = requestDto.CustomerFullname;
+                existingOrder.CustomerEmail = requestDto.CustomerEmail;
+                existingOrder.CustomerPhoneNumber = requestDto.CustomerPhoneNumber;
 
-                    // Обновляем OrderItems, если нужно (например, заменить)
-                    existingOrder.OrderItems.Clear();
-                    foreach (var item in requestDto.OrderItems)
+                // Обновляем OrderItems, если нужно (например, заменить)
+                existingOrder.OrderItems.Clear();
+                foreach (var item in requestDto.OrderItems)
+                {
+                    existingOrder.OrderItems.Add(new OrderItem
                     {
-                        existingOrder.OrderItems.Add(new OrderItem
-                        {
-                            ProductId = item.ProductId,
-                            QuantityItem = item.QuantityItem,
-                            Price = item.Price,
-                            TotalPrice = item.QuantityItem * item.Price
-                        });
-                    }
-
-                    // Пересчитываем итоговую сумму
-                    existingOrder.OrderTotalAmount = existingOrder.OrderItems.Sum(oi => oi.TotalPrice).GetValueOrDefault();
-
-                    // Меняем статус
-                    existingOrder.OrderStatus = "Unpayed";
-
-                    // Обновляем дату
-                    existingOrder.OrderDate = DateOnly.FromDateTime(DateTime.UtcNow);
-
-                    // Сохраняем изменения
-                    var updatedOrder = await _orderRepository.UpdateOrder(existingOrder);
-                    // Перезагрузите заказ, чтобы получить Product
-                    var orderForEmail = await _orderRepository.GetOrderBySessionIdAsync(requestDto.SessionId);
-
-                    // Отправляем письмо
-                    await SendOrderConfirmationEmailAsync(orderForEmail, orderForEmail.CustomerEmail);
-
-                    return _mapper.Map<OrderResponseDto>(orderForEmail);
+                        ProductId = item.ProductId,
+                        QuantityItem = item.QuantityItem,
+                        Price = item.Price,
+                        TotalPrice = item.QuantityItem * item.Price
+                    });
                 }
-                else
-                {
-                    throw new InvalidOperationException("Заказ не в статусе Draft, оформление невозможно.");
-                }
+
+                // Пересчитываем итоговую сумму
+                existingOrder.OrderTotalAmount = existingOrder.OrderItems.Sum(oi => oi.TotalPrice).GetValueOrDefault();
+
+                // Меняем статус
+                existingOrder.OrderStatus = "Unpayed";
+
+                // Обновляем дату
+                existingOrder.OrderDate = DateOnly.FromDateTime(DateTime.UtcNow);
+
+                // Сохраняем изменения
+                var updatedOrder = await _orderRepository.UpdateOrder(existingOrder);
+                // Перезагружаем конкретный оформленный заказ, чтобы получить Product
+                var orderForEmail = await _orderRepository.GetOrderById(updatedOrder.OrderId);
+
+                if (orderForEmail == null)
+                    throw new InvalidOperationException("Не удалось получить оформленный заказ.");
+
+                // Отправляем письмо
+                await SendOrderConfirmationEmailAsync(orderForEmail, orderForEmail.CustomerEmail);
+
+                return _mapper.Map<OrderResponseDto>(orderForEmail);
             }
             else
             {
-                throw new InvalidOperationException("Заказ с указанным SessionId не найден.");
+                throw new InvalidOperationException("Черновик заказа для текущей сессии не найден.");
             }
         }
 

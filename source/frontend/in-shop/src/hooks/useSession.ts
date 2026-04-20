@@ -54,6 +54,8 @@ export const useSession = () => {
         if (isInitialized.current) return;
 
         await runWithLock(async (signal) => {
+            let initializedSuccessfully = false;
+
             if (signal.aborted) return;
 
             try {
@@ -90,6 +92,7 @@ export const useSession = () => {
                         isLoading: false,
                         error: null,
                     }));
+                    initializedSuccessfully = true;
                 } else {
                     localStorage.removeItem(STORAGE_KEY_ORDER_ID);
                     localStorage.removeItem(STORAGE_KEY_SESSION_ID);
@@ -112,6 +115,7 @@ export const useSession = () => {
                         isLoading: false,
                         error: null,
                     }));
+                    initializedSuccessfully = true;
                 }
             } catch (error) {
                 if (signal.aborted) return;
@@ -125,7 +129,8 @@ export const useSession = () => {
                     error: error instanceof Error ? error.message : 'Failed to initialize session',
                 }));
             } finally {
-                isInitialized.current = true;
+                // Do not lock further init attempts when startup failed.
+                isInitialized.current = initializedSuccessfully;
             }
         });
     }, [runWithLock]);

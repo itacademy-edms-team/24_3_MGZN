@@ -1,0 +1,119 @@
+/* src/components/ReviewForm.css */
+
+.review-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.review-form h3 {
+  font-size: 20px;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin: 0;
+  border-bottom: 2px solid #000000;
+  padding-bottom: 10px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group label {
+  font-weight: 700;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.form-group textarea {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid #000000;
+  background-color: #ffffff;
+  font-family: inherit;
+  font-size: 14px;
+  resize: vertical;
+  outline: none;
+  box-sizing: border-box;
+  transition: box-shadow 0.2s ease;
+}
+
+.form-group textarea:focus {
+  box-shadow: 4px 4px 0 #000000;
+  transform: translate(-2px, -2px);
+}
+
+.form-group small {
+  font-size: 10px;
+  color: #666;
+  text-align: right;
+  text-transform: uppercase;
+}
+
+.form-error {
+  color: #000000;
+  background-color: #ffcccc; /* Или просто черный текст на белом с рамкой */
+  border: 2px solid #000000;
+  padding: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 12px;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 15px;
+  margin-top: 10px;
+}
+
+.form-actions button {
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border: 2px solid #000000;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 4px 4px 0 #000000;
+}
+
+/* Кнопка Отмена */
+.form-actions button[type="button"] {
+  background-color: #ffffff;
+  color: #000000;
+}
+
+.form-actions button[type="button"]:hover:not(:disabled) {
+  background-color: #f0f0f0;
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 #000000;
+}
+
+/* Кнопка Отправить */
+.form-actions button[type="submit"] {
+  background-color: #000000;
+  color: #ffffff;
+}
+
+.form-actions button[type="submit"]:hover:not(:disabled) {
+  background-color: #333333;
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 #000000;
+}
+
+.form-actions button:active:not(:disabled) {
+  transform: translate(0, 0);
+  box-shadow: 0 0 0 #000000;
+}
+
+.form-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}

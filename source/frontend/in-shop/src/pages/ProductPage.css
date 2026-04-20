@@ -1,13 +1,14 @@
-/* src/pages/ProductPage/ProductPage.css */
+/* src/pages/ProductPage.css */
 
-/* ===== Стили для страницы товара ===== */
+/* ===== Основной контейнер страницы ===== */
 .product-page {
   max-width: 1000px;
-  margin: 0 auto;
+  margin: 40px auto;
   padding: 40px;
   background-color: #fff;
-  border-radius: 12px;
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+  border: 2px solid #000000;
+  border-radius: 0; /* Строго без скруглений */
+  box-shadow: 8px 8px 0 #000000; /* Жесткая тень */
 }
 
 .product-details {
@@ -20,47 +21,77 @@
   width: 45%;
   height: auto;
   object-fit: cover;
-  border-radius: 12px;
+  border: 2px solid #000000;
+  border-radius: 0;
   align-self: flex-start;
 }
 
-.product-subinfo {
+.product-info {
+  width: 55%;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  gap: 20px;
-  width: 55%;
-}
-
-/* Стиль для текста "Нет в наличии" */
-.out-of-stock {
-  color: #d32f2f;
-  font-weight: bold;
 }
 
 .product-page h2 {
   margin: 0 0 20px 0;
-  font-size: 1.8em;
-  color: #333;
+  font-size: 2rem;
+  color: #000000;
+  text-transform: uppercase;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+/* ===== Блок рейтинга ===== */
+.product-rating-summary {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin: 15px 0 25px 0;
+}
+
+.average-rating-value {
+    font-size: 1.2rem;
+    font-weight: 900;
+    color: #000000;
+}
+
+.reviews-count {
+    color: #666;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+/* ===== Текстовые блоки ===== */
+.out-of-stock {
+  color: #000000;
+  background-color: #ffcccc;
+  border: 2px solid #000000;
+  padding: 5px 10px;
+  font-weight: bold;
+  text-transform: uppercase;
+  display: inline-block;
+  width: fit-content;
 }
 
 .product-price {
   margin: 0 0 20px 0;
-  font-size: 1.4em;
-  color: #000;
-  font-weight: bold;
+  font-size: 1.8rem;
+  color: #000000;
+  font-weight: 900;
+  text-transform: uppercase;
 }
 
 .product-description {
-  margin: 0 0 20px 0;
-  font-size: 1.1em;
-  color: #666;
+  margin: 0 0 30px 0;
+  font-size: 1.1rem;
+  color: #000000;
   line-height: 1.6;
 }
 
-/* ===== Кнопка "Добавить в корзину" — ОБНОВЛЕНО ===== */
+/* ===== Кнопка "Добавить в корзину" ===== */
 .add-to-cart-button {
-  margin: 0 auto;
+  margin-bottom: 20px;
   background-color: #ffffff;
   color: #000000;
   border: 2px solid #000000;
@@ -71,7 +102,7 @@
   border-radius: 0;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  transition: all 0.2s ease;
   box-shadow: 4px 4px 0 #000000;
   width: fit-content;
 }
@@ -79,183 +110,150 @@
 .add-to-cart-button:hover {
   background-color: #000000;
   color: #ffffff;
-  box-shadow: 6px 6px 0 #000000;
   transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 #000000;
 }
 
 .add-to-cart-button:active {
-  box-shadow: 2px 2px 0 #000000;
   transform: translate(0, 0);
+  box-shadow: 0 0 0 #000000;
 }
 
-.add-to-cart-button:disabled {
-  background-color: #f8f9fa;
-  color: #000000;
-  opacity: 0.5;
-  cursor: not-allowed;
-  box-shadow: none;
-  transform: none;
+/* ===== Кнопка "Написать отзыв" ===== */
+.write-review-button {
+    padding: 12px 24px;
+    background-color: #ffffff;
+    color: #000000;
+    border: 2px solid #000000;
+    font-size: 14px;
+    font-weight: 700;
+    text-transform: uppercase;
+    cursor: pointer;
+    box-shadow: 4px 4px 0 #000000;
+    transition: all 0.2s ease;
+    width: fit-content;
+    border-radius: 0;
 }
 
-/* ===== Стили для раздела "Другие товары этой категории" ===== */
-.related-products {
-  margin-top: 60px;
+.write-review-button:hover {
+    background-color: #000000;
+    color: #ffffff;
+    transform: translate(-2px, -2px);
+    box-shadow: 6px 6px 0 #000000;
 }
 
-.related-products h3 {
-  font-size: 1.6rem;
-  color: #333;
-  margin-bottom: 24px;
-  font-weight: 600;
+.write-review-button:active {
+    transform: translate(0, 0);
+    box-shadow: 0 0 0 #000000;
 }
 
-/* Список товаров: ровно 3 в ряд на десктопе */
-.related-products ul.products-list {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 24px;
-  list-style: none;
-  padding: 0;
-  max-width: 1000px;
-  margin: 0 auto;
-}
-
-/* Для мобильных устройств: адаптация */
-@media (max-width: 768px) {
-  .related-products ul.products-list {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 480px) {
-  .related-products ul.products-list {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* ===== Секция характеристик — ОБНОВЛЕНО ===== */
+/* ===== Секция характеристик ===== */
 .product-specifications-section {
-  margin-top: 48px;
-  margin-bottom: 48px;
+  margin-top: 60px;
+  margin-bottom: 60px;
   background-color: #ffffff;
   border: 2px solid #000000;
   border-radius: 0;
-  padding: 24px;
-  box-shadow: 4px 4px 0 #000000;
+  padding: 30px;
+  box-shadow: 6px 6px 0 #000000;
 }
 
 .specs-title {
-  font-size: 20px;
-  font-weight: 700;
+  font-size: 24px;
+  font-weight: 900;
   color: #000000;
-  margin-bottom: 24px;
+  margin: 0 0 20px 0;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
   border-bottom: 2px solid #000000;
-  padding-bottom: 12px;
+  padding-bottom: 10px;
   display: inline-block;
 }
 
 .specs-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 16px 32px;
+  gap: 20px;
 }
 
 .spec-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 0;
-  border-bottom: 2px solid #000000;
-  transition: background-color 0.2s ease, padding 0.2s ease;
+  padding: 10px 0;
+  border-bottom: 1px solid #000000;
 }
 
 .spec-item:last-child {
   border-bottom: none;
 }
 
-.spec-item:hover {
-  background-color: #f8f9fa;
-  padding-left: 8px;
-  padding-right: 8px;
-  margin-left: -8px;
-  margin-right: -8px;
-}
-
 .spec-name {
-  font-weight: 600;
+  font-weight: 700;
   color: #000000;
-  opacity: 0.7;
   text-transform: uppercase;
   font-size: 12px;
-  letter-spacing: 0.3px;
-  margin-right: 15px;
-  flex-shrink: 0;
+  opacity: 0.8;
 }
 
 .spec-value {
-  font-weight: 700;
+  font-weight: 900;
   color: #000000;
   text-align: right;
-  word-break: break-word;
   font-size: 14px;
 }
 
-/* ===== Адаптивность для характеристики ===== */
-@media (max-width: 768px) {
-  .product-specifications-section {
-    padding: 16px;
-    box-shadow: 2px 2px 0 #000000;
+/* ===== Секция отзывов ===== */
+.product-reviews-section {
+    margin-top: 60px;
+    border-top: 2px solid #000000;
+    padding-top: 40px;
+}
+
+/* ===== Связанные товары ===== */
+.related-products {
+  margin-top: 60px;
+  border-top: 2px solid #000000;
+  padding-top: 40px;
+}
+
+
+.related-products ul.products-list {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 30px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* ===== Адаптивность ===== */
+@media (max-width: 900px) {
+  .product-details {
+    flex-direction: column;
+    gap: 30px;
+  }
+  
+  .product-page__img, .product-info {
+    width: 100%;
+  }
+
+  .related-products ul.products-list {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .product-page {
+    padding: 20px;
+    margin: 20px 10px;
+    box-shadow: 4px 4px 0 #000000;
   }
 
   .specs-grid {
     grid-template-columns: 1fr;
-    gap: 12px;
-  }
-  
-  .spec-item {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
-    padding-left: 0;
-    padding-right: 0;
-    margin-left: 0;
-    margin-right: 0;
-  }
-  
-  .spec-item:hover {
-    background-color: transparent;
-    padding-left: 0;
-    padding-right: 0;
-  }
-  
-  .spec-value {
-    text-align: left;
-  }
-}
-
-@media (max-width: 480px) {
-  .product-specifications-section {
-    padding: 12px;
-    box-shadow: 2px 2px 0 #000000;
   }
 
-  .specs-title {
-    font-size: 18px;
+  .related-products ul.products-list {
+    grid-template-columns: 1fr;
   }
-
-  .spec-name {
-    font-size: 11px;
-  }
-
-  .spec-value {
-    font-size: 13px;
-  }
-}
-
-/* ===== Доступность: focus visible для кнопки ===== */
-.add-to-cart-button:focus-visible {
-  outline: 2px solid #000000;
-  outline-offset: 2px;
 }

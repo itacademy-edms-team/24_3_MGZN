@@ -1,7 +1,8 @@
-﻿    using InShopBLLayer.Abstractions;
+﻿using InShopBLLayer.Abstractions;
 using InShopBLLayer.Services;
 using Contracts.Dtos;
 using Microsoft.AspNetCore.Mvc;
+using InShop.WebAPI.Extensions;
 
 namespace InShop.WebAPI.Controllers
 {
@@ -10,9 +11,11 @@ namespace InShop.WebAPI.Controllers
     public class ProductsController : ControllerBase
     {
         private readonly IProductService _productService;
-        public ProductsController(IProductService productService)
+        private readonly IReviewService _reviewService;
+        public ProductsController(IProductService productService, IReviewService reviewService)
         {
             _productService = productService;
+            _reviewService = reviewService;
         }
         [HttpGet("{id}")]
         public async Task<IActionResult> Get(int id)
@@ -117,6 +120,103 @@ namespace InShop.WebAPI.Controllers
             }
 
             return Ok(specs);
+        }
+
+        [HttpGet("{id}/reviews")]
+        public async Task<IActionResult> GetProductReviews(int id, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        {
+            // Берем SessionId из контекста (он там благодаря Middleware)
+            int? sessionId = HttpContext.GetSessionId();
+
+            var result = await _reviewService.GetProductReviewsAsync(id, page, pageSize, sessionId);
+
+            return Ok(new
+            {
+                reviews = result.Reviews,
+                totalCount = result.TotalCount,
+                page,
+                pageSize
+            });
+        }
+
+        [HttpPost("{id}/reviews")]
+        public async Task<IActionResult> CreateReview(int id, [FromBody] CreateReviewDto dto)
+        {
+            int? sessionId = HttpContext.GetSessionId();
+            if (!sessionId.HasValue)
+            {
+                return Unauthorized(new { message = "Требуется активная сессия" });
+            }
+
+            try
+            {
+                var review = await _reviewService.AddReviewAsync(id, sessionId.Value, dto);
+                return CreatedAtAction(nameof(GetProductReviews), new { id }, review);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [HttpPut("reviews/{reviewId}")]
+        public async Task<IActionResult> UpdateReview(int reviewId, [FromBody] UpdateReviewDto dto)
+        {
+            int? sessionId = HttpContext.GetSessionId();
+            if (!sessionId.HasValue)
+            {
+                return Unauthorized();
+            }
+
+            try
+            {
+                var review = await _reviewService.UpdateReviewAsync(reviewId, sessionId.Value, dto);
+                return Ok(review);
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound();
+            }
+        }
+
+        [HttpDelete("reviews/{reviewId}")]
+        public async Task<IActionResult> DeleteReview(int reviewId)
+        {
+            int? sessionId = HttpContext.GetSessionId();
+            if (!sessionId.HasValue)
+            {
+                return Unauthorized();
+            }
+
+            try
+            {
+                await _reviewService.DeleteReviewAsync(reviewId, sessionId.Value);
+                return NoContent();
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound();
+            }
+        }
+
+        [HttpPost("reviews/{reviewId}/vote")]
+        public async Task<IActionResult> VoteReview(int reviewId, [FromBody] ReviewVoteDto dto)
+        {
+            int? sessionId = HttpContext.GetSessionId();
+            if (!sessionId.HasValue)
+            {
+                return Unauthorized();
+            }
+
+            try
+            {
+                await _reviewService.VoteReviewAsync(reviewId, sessionId.Value, dto.VoteType);
+                return NoContent();
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
     }
 }

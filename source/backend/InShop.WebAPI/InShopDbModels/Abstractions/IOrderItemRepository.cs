@@ -8,13 +8,9 @@ using System.Threading.Tasks;
 
 namespace InShopDbModels.Abstractions
 {
-    //public interface IOrderItemRepository
-    //{
-    //    Task<int> AddItem(OrderItem item);
-    //    Task DeleteItem(OrderItem item);
-    //    Task DeleteAllItemsByOrderId(int orderId);
-    //    Task<IEnumerable<OrderItem>> GetAllItemsByOrderId(int orderId);
-    //    Task<Product> GetProductByItem(OrderItem item);
+    public interface IOrderItemRepository
+    {
+        Task<bool> CheckVerifiedPurchaseAsync(int sessionId, int productId);
 
-    //}
+    }
 }

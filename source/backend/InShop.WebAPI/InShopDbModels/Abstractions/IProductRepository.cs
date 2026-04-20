@@ -27,6 +27,7 @@ namespace InShopDbModels.Abstractions
         Task<List<ProductSpecification>> GetSpecificationsByGroupNameAsync(string groupName);
         Task<(List<string>? TextValues, (decimal? Min, decimal? Max)? NumberRange)> GetPossibleValuesForSpecAsync(int specId);
         Task<List<(int ProductId, string Name, string DisplayName, string? ValueText, decimal? ValueNumber)>> GetAllProductSpecificationsRawAsync(CancellationToken ct);
+        Task<(decimal AverageRating, int Count)> GetReviewStatsAsync(int productId);
 
     }
 }

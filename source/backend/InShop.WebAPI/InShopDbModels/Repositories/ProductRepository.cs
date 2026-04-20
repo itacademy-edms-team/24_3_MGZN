@@ -256,5 +256,19 @@ namespace InShopDbModels.Repositories
                 ValueNumber: link.Value.NumberValue
             )).ToList();
         }
+        public async Task<(decimal AverageRating, int Count)> GetReviewStatsAsync(int productId)
+        {
+            var stats = await _appDbContext.ProductReviews
+                .Where(r => r.ProductId == productId)
+                .GroupBy(r => r.ProductId)
+                .Select(g => new
+                {
+                    Avg = g.Average(x => (decimal)x.Rating),
+                    Count = g.Count()
+                })
+                .FirstOrDefaultAsync();
+
+            return (stats?.Avg ?? 0, stats?.Count ?? 0);
+        }
     }
 }

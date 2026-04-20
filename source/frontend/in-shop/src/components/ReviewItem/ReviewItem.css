@@ -1,0 +1,172 @@
+/* src/components/ReviewItem.css */
+
+.review-item {
+  border: 2px solid #000000;
+  background-color: #ffffff;
+  box-shadow: 4px 4px 0 #000000;
+  padding: 20px;
+  margin-bottom: 20px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  /* Убираем border-radius, так как он 0 по умолчанию в твоем стиле */
+}
+
+.review-item:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 #000000;
+}
+
+.review-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  border-bottom: 2px solid #000000;
+  padding-bottom: 10px;
+}
+
+.author-name {
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 14px;
+  letter-spacing: 0.5px;
+}
+
+.verified-badge {
+  background-color: #000000;
+  color: #ffffff;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-left: 8px;
+  border: 1px solid #000000; /* Дополнительная рамка для стиля */
+}
+
+.review-date {
+  font-size: 12px;
+  color: #666;
+  text-transform: uppercase;
+}
+
+.review-content {
+  margin-bottom: 15px;
+}
+
+.review-text {
+  margin-top: 10px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #000000;
+}
+
+.vote-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 2px solid #000000;
+}
+
+.vote-score {
+  font-weight: 700;
+  font-size: 12px;
+  text-transform: uppercase;
+  margin-right: auto; /* Сдвигаем кнопки вправо */
+}
+
+.vote-btn {
+  background-color: #ffffff;
+  color: #000000;
+  border: 2px solid #000000;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 2px 2px 0 #000000;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.vote-btn:hover:not(:disabled) {
+  background-color: #000000;
+  color: #ffffff;
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 #000000;
+}
+
+.vote-btn:active:not(:disabled) {
+  transform: translate(0, 0);
+  box-shadow: 0 0 0 #000000;
+}
+
+.vote-btn.active {
+  background-color: #000000;
+  color: #ffffff;
+  box-shadow: inset 2px 2px 0 #ffffff; /* Эффект вдавленности или просто активное состояние */
+  transform: translate(1px, 1px); /* Смещение вниз-вправо для эффекта нажатия */
+  box-shadow: none;
+}
+
+.vote-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+/* ... предыдущие стили ... */
+
+.verified-badge {
+  background-color: #000000;
+  color: #ffffff;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-left: 8px;
+  border: 1px solid #000000;
+}
+
+/* Новый стиль для непроверенного покупателя */
+.unverified-badge {
+  background-color: #ffffff;
+  color: #666666;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-left: 8px;
+  border: 1px dashed #666666; /* Пунктирная рамка для отличия */
+}
+
+/* Стили для кнопок редактирования/удаления */
+.review-actions {
+  display: flex;
+  gap: 10px;
+  margin-left: auto; /* Сдвигаем вправо */
+}
+
+.action-btn {
+  background: none;
+  border: none;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}
+
+.action-btn.edit {
+  color: #000000;
+}
+
+.action-btn.delete {
+  color: #cc0000;
+}
+
+.action-btn:hover {
+  opacity: 0.7;
+}

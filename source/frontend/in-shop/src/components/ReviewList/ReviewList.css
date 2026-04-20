@@ -1,0 +1,64 @@
+/* src/components/ReviewList.css */
+
+.review-list-container {
+  margin-top: 40px;
+  border-top: 2px solid #000000;
+  padding-top: 40px;
+}
+
+.review-list-container h3 {
+  font-size: 24px;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-bottom: 30px;
+  display: inline-block;
+  border-bottom: 2px solid #000000;
+  padding-bottom: 5px;
+}
+
+.no-reviews {
+  font-size: 16px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #666;
+  border: 2px dashed #000000;
+  padding: 20px;
+  text-align: center;
+}
+
+.load-more-container {
+  text-align: center;
+  margin-top: 30px;
+}
+
+.load-more-container button {
+  background-color: #ffffff;
+  color: #000000;
+  border: 2px solid #000000;
+  padding: 12px 30px;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 4px 4px 0 #000000;
+  transition: all 0.2s ease;
+}
+
+.load-more-container button:hover:not(:disabled) {
+  background-color: #000000;
+  color: #ffffff;
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 #000000;
+}
+
+.load-more-container button:active:not(:disabled) {
+  transform: translate(0, 0);
+  box-shadow: 0 0 0 #000000;
+}
+
+.load-more-container button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}

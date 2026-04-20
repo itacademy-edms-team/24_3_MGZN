@@ -9,6 +9,10 @@
         public bool ProductAvailability { get; set; }
         public int ProductStockQuantity { get; set; }
         public string? ImageUrl { get; set; }
+        public decimal AverageRating { get; set; }
+        public int ReviewsCount { get; set; }
+
+
         public int ProductCategoryId { get; set; }
         public string ProductCategoryName { get; set; } = null!;
         

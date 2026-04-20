@@ -1,13 +1,18 @@
 import React, { useEffect, useState, useContext } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
-import Breadcrumb from '../components/Breadcrumb';
-import { CartContext } from '../components/CartContext';
+import Breadcrumb from '../components/Breadcrumb.js';
+import { CartContext } from '../components/CartContext.js';
 import './ProductPage.css';
-import ProductCard from '../components/ProductCard';
+import ProductCard from '../components/ProductCard.jsx';
 import LoadingSpinner from '../components/LoadingSpinner.tsx';
+import StarRating from '../components/StarRating/StarRating.tsx'; 
+import ReviewList from '../components/ReviewList/ReviewList.tsx';
+import ReviewForm from '../components/ReviewForm/ReviewForm.tsx';
+import Modal from '../components/Modal.tsx';
+import { createReview, updateReview, deleteReview } from '../api/reviews.ts';
+import { Review, CreateReviewDto, UpdateReviewDto } from '../types/review.ts';
 
-// Интерфейс для характеристики (если файл .tsx)
 interface ProductSpecificationDto {
     specId: number;
     name: string;
@@ -17,58 +22,63 @@ interface ProductSpecificationDto {
     numberValue: number | null;
 }
 
+interface ProductDto {
+    productId: number;
+    productName: string;
+    productDescription: string;
+    productPrice: number;
+    productAvailability: boolean;
+    productCategoryId: number;
+    productStockQuantity: number;
+    imageUrl: string;
+    productCategoryName: string;
+    averageRating?: number;
+    reviewsCount?: number;
+}
+
 const ProductPage = () => {
     const { productId } = useParams();
     
-    // Состояния
-    const [product, setProduct] = useState<ProductSpecificationDto | null>(null); // Исправлен тип на любой или конкретный DTO товара
+    const [product, setProduct] = useState<ProductDto | null>(null); 
     const [relatedProducts, setRelatedProducts] = useState<any[]>([]);
     const [specifications, setSpecifications] = useState<ProductSpecificationDto[]>([]);
     const [loading, setLoading] = useState(true);
     const [specsLoading, setSpecsLoading] = useState(false);
 
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingReview, setEditingReview] = useState<Review | null>(null);
+    const [refreshReviewsTrigger, setRefreshReviewsTrigger] = useState(0);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
     const { addToCart } = useContext(CartContext);
 
-    // 1. Эффект для загрузки основного товара и характеристик
     useEffect(() => {
         if (!productId) return;
-
         setLoading(true);
         setSpecsLoading(true);
 
         const fetchProductData = async () => {
             try {
-                // Загружаем товар
                 const productRes = await axios.get(`https://localhost:7275/api/Products/${productId}`);
-                const productData = productRes.data;
-                
-                console.log('Данные о товаре:', productData);
-                setProduct(productData);
-
-                // Сразу же загружаем характеристики
+                setProduct(productRes.data);
                 const specsRes = await axios.get(`https://localhost:7275/api/Products/${productId}/specifications`);
                 setSpecifications(specsRes.data || []);
             } catch (error) {
                 console.error('Ошибка загрузки данных:', error);
             } finally {
                 setSpecsLoading(false);
-                // Не сбрасываем loading здесь, так как мы ждем еще и связанных товаров
             }
         };
-
         fetchProductData();
-    }, [productId]); // Зависит только от ID
+    }, [productId]); 
 
-    // 2. Отдельный эффект для загрузки связанных товаров (когда product уже загружен)
     useEffect(() => {
         if (!product?.productCategoryName || !productId) return;
-
         const fetchRelatedProducts = async () => {
             try {
                 const response = await axios.get(
                     `https://localhost:7275/api/Products/products-by-category?categoryName=${encodeURIComponent(product.productCategoryName)}`
                 );
-                
                 const relatedProductsData = response.data.filter(
                     (p: any) => p.productId !== parseInt(productId)
                 );
@@ -76,12 +86,66 @@ const ProductPage = () => {
             } catch (error) {
                 console.error('Ошибка загрузки связанных товаров:', error);
             } finally {
-                setLoading(false); // Теперь можно безопасно остановить спиннер загрузки всей страницы
+                setLoading(false); 
             }
         };
-
         fetchRelatedProducts();
-    }, [product, productId]); // Зависит от product (чтобы сработало после его загрузки) и productId
+    }, [product, productId]); 
+
+    const handleDeleteReview = async (reviewId: number) => {
+        if (!window.confirm('Вы уверены, что хотите удалить этот отзыв?')) return;
+        
+        try {
+            await deleteReview(reviewId);
+            setRefreshReviewsTrigger(prev => prev + 1);
+            
+            if (productId) {
+                const productRes = await axios.get(`https://localhost:7275/api/Products/${productId}`);
+                setProduct(productRes.data);
+            }
+        } catch (error: any) {
+            console.error('Ошибка удаления:', error);
+            // Если бэкенд вернул 403 или 404 (нет прав), сообщаем пользователю
+            if (error.response?.status === 403 || error.response?.status === 404) {
+                alert('У вас нет прав на удаление этого отзыва.');
+            } else {
+                alert('Не удалось удалить отзыв');
+            }
+        }
+    };
+
+    const openCreateModal = () => {
+        setEditingReview(null);
+        setIsModalOpen(true);
+    };
+
+    const closeModal = () => {
+        setIsModalOpen(false);
+        setEditingReview(null);
+    };
+
+    const handleReviewSubmit = async (data: CreateReviewDto | UpdateReviewDto) => {
+        setIsSubmitting(true);
+        try {
+            if (editingReview) {
+                await updateReview(editingReview.reviewId, data as UpdateReviewDto);
+            } else {
+                await createReview(Number(productId), data as CreateReviewDto);
+            }
+            closeModal();
+            setRefreshReviewsTrigger(prev => prev + 1);
+            
+            if (productId) {
+                 const productRes = await axios.get(`https://localhost:7275/api/Products/${productId}`);
+                 setProduct(productRes.data);
+            }
+        } catch (error) {
+            console.error('Ошибка при отправке отзыва:', error);
+            throw error;
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
 
     if (loading) {
         return <LoadingSpinner message="Загрузка товаров..." />;
@@ -112,6 +176,20 @@ const ProductPage = () => {
                     <div className="product-info">
                         <h2>{product.productName}</h2>
 
+                        <div className="product-rating-summary">
+                            <StarRating 
+                                rating={product.averageRating || 0} 
+                                readOnly 
+                                size="medium" 
+                            />
+                            <span className="average-rating-value">
+                                {product.averageRating ? product.averageRating.toFixed(1) : '—'}
+                            </span>
+                            <span className="reviews-count">
+                                ({product.reviewsCount || 0} отзывов)
+                            </span>
+                        </div>
+
                         {product.productStockQuantity > 0 ? (
                             <p>На складе: {product.productStockQuantity} шт.</p>
                         ) : (
@@ -129,21 +207,22 @@ const ProductPage = () => {
                                 Добавить в корзину
                             </button>
                         ) : null}
+                        
+                        <button className="write-review-button" onClick={openCreateModal}>
+                            Написать отзыв
+                        </button>
                     </div>
                 </div>
 
-                {/* Блок характеристик */}
                 {specifications.length > 0 && (
                     <div className="product-specifications-section">
                         <h3 className="specs-title">Характеристики</h3>
-                        
                         {specsLoading ? (
                             <div className="specs-loading"><LoadingSpinner message="Загрузка характеристик..." /></div>
                         ) : (
                             <div className="specs-grid">
                                 {specifications.map((spec) => {
                                     const value = spec.textValue ?? spec.numberValue;
-                                    
                                     const displayValue = typeof value === 'number' 
                                         ? (Number.isInteger(value) ? value : parseFloat(value.toFixed(2))) 
                                         : value;
@@ -160,7 +239,18 @@ const ProductPage = () => {
                     </div>
                 )}
 
-                {/* Другие товары этой категории */}
+                <div className="product-reviews-section">
+                    <ReviewList 
+                        productId={Number(productId)} 
+                        onRefreshTrigger={refreshReviewsTrigger} 
+                        onEdit={(review) => {
+                            setEditingReview(review);
+                            setIsModalOpen(true);
+                        }}
+                        onDelete={handleDeleteReview}
+                    />
+                </div>
+
                 <div className="related-products">
                     <h3>Товары категории {product.productCategoryName}</h3>
                     <ul className="products-list">
@@ -172,6 +262,15 @@ const ProductPage = () => {
                     </ul>
                 </div>
             </div>
+
+            <Modal isOpen={isModalOpen} onClose={closeModal} title={editingReview ? "Редактировать отзыв" : "Написать отзыв"}>
+                <ReviewForm 
+                    initialReview={editingReview}
+                    onSubmit={handleReviewSubmit}
+                    onCancel={closeModal}
+                    isLoading={isSubmitting}
+                />
+            </Modal>
         </div>
     );
 };

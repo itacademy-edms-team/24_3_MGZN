@@ -67,6 +67,8 @@ namespace InShop.WebAPI
 
             app.UseCors("AllowFrontend");
 
+            app.UseMiddleware<InShop.WebAPI.Middleware.SessionMiddleware>();
+
             app.MapControllers();
 
             app.Run();

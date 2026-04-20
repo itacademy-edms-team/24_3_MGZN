@@ -31,6 +31,8 @@ namespace InShopBLLayer.Extensions
             services.AddScoped<IEmailVerificationService, EmailVerificationService>();
             services.AddScoped<IEmailSender, EmailSender>();
             services.AddScoped<IPaymentStatusService, PaymentStatusService>();
+            services.AddScoped<IReviewService, ReviewService>();
+            services.AddAutoMapper(config => config.AddProfile<ReviewProfile>());
 
             services.AddHostedService<VectorIndexingService>();
 

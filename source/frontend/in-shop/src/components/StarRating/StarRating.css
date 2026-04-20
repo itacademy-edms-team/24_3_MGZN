@@ -1,0 +1,40 @@
+/* src/components/StarRating.css */
+
+.star-rating {
+  display: inline-flex;
+  color: #ffffff; /* Цвет пустых звезд - белый фон, но так как рамка черная, лучше сделать их прозрачными или светло-серыми */
+  background-color: transparent;
+}
+
+/* Чтобы звезды были видны на белом фоне, пустые делаем светло-серыми или белыми с обводкой, 
+   но в брутализме часто используют просто черный контур. 
+   Давай сделаем: пустые - белые с черной обводкой (символ ★ имеет толщину, но если шрифт тонкий, может быть плохо видно).
+   Проще: пустые - #ddd (светло-серый), заполненные - #000 (черный). */
+
+.star {
+  font-size: 1.5rem;
+  transition: color 0.1s ease, transform 0.1s ease;
+  cursor: default;
+  user-select: none;
+}
+
+/* Пустые звезды */
+.star.empty {
+  color: #e0e0e0; 
+  /* Или можно использовать text-shadow для имитации обводки, если нужно строже */
+}
+
+/* Заполненные звезды */
+.star.filled {
+  color: #000000;
+}
+
+/* Интерактивный режим (при наведении) */
+.star-rating:hover .star {
+  cursor: pointer;
+}
+
+/* Размеры */
+.star-rating.small .star { font-size: 1rem; }
+.star-rating.medium .star { font-size: 1.5rem; }
+.star-rating.large .star { font-size: 2.5rem; }

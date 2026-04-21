@@ -12,8 +12,8 @@ import LoadingSpinner from '../../components/LoadingSpinner.tsx';
 import SortMenu, { SortOption } from '../../components/SortMenu/SortMenu.tsx';
 
 // Swiper imports
-import { Swiper, SwiperSlide, useSwiper } from 'swiper/react'; // Добавили useSwiper для альтернативного подхода, если нужно
-import { Pagination } from 'swiper/modules'; // Navigation можно убрать из modules, если используем свои кнопки
+import { Swiper, SwiperSlide } from 'swiper/react';
+import { Pagination } from 'swiper/modules';
 import 'swiper/css';
 import 'swiper/css/pagination';
 
@@ -27,12 +27,151 @@ interface SearchResultsPageProps {
 
 type SpecFilterValue = string | number | { Min?: number; Max?: number } | null;
 
-const DEFAULT_LIMIT = 50;
+const PAGE_SIZE = 12;
 const DEBOUNCE_DELAY = 400;
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'https://localhost:7275/api';
 
-// Компонент-обертка для кнопок, чтобы иметь доступ к экземпляру Swiper через контекст (альтернативный вариант)
-// Но мы оставим вариант с ref, так как он проще для внешней структуры.
+// 🔧 FIX: Выносим блок рекомендаций в отдельный мемоизированный компонент
+const RecommendationsSection = memo<{
+  products: Array<{ productId: string; productName: string; productPrice: number; imageUrl?: string }>;
+}>(({ products }) => {
+  const [swiperInstance, setSwiperInstance] = useState<any>(null);
+  const [showNavigationButtons, setShowNavigationButtons] = useState(false);
+
+  useEffect(() => {
+    const checkNavigationNeed = () => {
+      if (!swiperInstance) {
+        setShowNavigationButtons(false);
+        return;
+      }
+
+      const windowWidth = window.innerWidth;
+      let slidesPerView = 1;
+
+      if (windowWidth >= 1024) {
+        slidesPerView = 4;
+      } else if (windowWidth >= 768) {
+        slidesPerView = 3;
+      } else if (windowWidth >= 640) {
+        slidesPerView = 2;
+      } else {
+        slidesPerView = 1;
+      }
+
+      setShowNavigationButtons(products.length > slidesPerView);
+    };
+
+    checkNavigationNeed();
+    window.addEventListener('resize', checkNavigationNeed);
+    return () => window.removeEventListener('resize', checkNavigationNeed);
+  }, [swiperInstance, products.length]);
+
+  const handlePrevClick = useCallback(() => {
+    if (swiperInstance) {
+      swiperInstance.slidePrev();
+    }
+  }, [swiperInstance]);
+
+  const handleNextClick = useCallback(() => {
+    if (swiperInstance) {
+      swiperInstance.slideNext();
+    }
+  }, [swiperInstance]);
+
+  // 🔧 FIX: Используем useMemo для стабилизации слайдов
+  const slides = useMemo(() => {
+    return products.map(product => (
+      <SwiperSlide key={`rec-${product.productId}`} className="recommendation-slide">
+        <ProductCard product={product} />
+      </SwiperSlide>
+    ));
+  }, [products]);
+
+  if (products.length === 0) return null;
+
+  return (
+    <div className="recommendations-section">
+      <h3 className="recommendations-title">Рекомендуем также</h3>
+      
+      <div className="recommendations-slider-wrapper">
+        {showNavigationButtons && (
+          <button 
+            className="recommendations-swiper-button-prev" 
+            onClick={handlePrevClick}
+            aria-label="Предыдущий слайд"
+          >
+            &lt;
+          </button>
+        )}
+
+        <div className="recommendations-swiper-container">
+          <Swiper
+            onSwiper={setSwiperInstance}
+            modules={[Pagination]}
+            spaceBetween={20}
+            slidesPerView={1}
+            pagination={{ clickable: true }}
+            breakpoints={{
+              640: {
+                slidesPerView: 2,
+                spaceBetween: 20,
+              },
+              768: {
+                slidesPerView: 3,
+                spaceBetween: 30,
+              },
+              1024: {
+                slidesPerView: 4,
+                spaceBetween: 32,
+              },
+            }}
+            className="recommendations-swiper"
+          >
+            {slides}
+          </Swiper>
+        </div>
+
+        {showNavigationButtons && (
+          <button 
+            className="recommendations-swiper-button-next" 
+            onClick={handleNextClick}
+            aria-label="Следующий слайд"
+          >
+            &gt;
+          </button>
+        )}
+      </div>
+    </div>
+  );
+});
+
+RecommendationsSection.displayName = 'RecommendationsSection';
+
+// 🔧 FIX: Выносим сетку товаров в отдельный компонент
+const ProductsGrid = memo<{
+  products: Array<{ productId: string; productName: string; productPrice: number; imageUrl?: string }>;
+}>(({ products }) => {
+  // 🔧 FIX: Стабилизируем продукты через useMemo
+  const productElements = useMemo(() => {
+    return products.map((product) => (
+      <div 
+        key={`main-${product.productId}`} 
+        className="product-card-wrapper"
+        style={{ animation: 'fadeInUp 0.4s ease-out forwards' }}
+      >
+        <ProductCard product={product} />
+      </div>
+    ));
+  }, [products]);
+
+  return (
+    <div className="products-grid">
+      {productElements}
+    </div>
+  );
+});
+
+ProductsGrid.displayName = 'ProductsGrid';
 
 const SearchResultsPage = memo<SearchResultsPageProps>(({
   forcedCategory,
@@ -41,7 +180,7 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   
-  const { results, recommended, loading, error, search, clear } = useProductSearch(API_BASE_URL);
+  const { results, recommended, loading, error, hasMore, search, clear, loadMore } = useProductSearch(API_BASE_URL);
   
   const isInitialMount = useRef(true);
   const prevForcedCategory = useRef(forcedCategory);
@@ -50,8 +189,8 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
   const lastAppliedSpecsParamRef = useRef<string | null>(null);
   const prevUrlQueryRef = useRef<string>('');
   
-  // Используем state для хранения экземпляра, чтобы гарантировать обновление UI при изменении рефа
-  const [swiperInstance, setSwiperInstance] = useState<any>(null);
+  const isManualPagination = useRef(false);
+  const lastSearchParamsRef = useRef<SearchRequestDto | null>(null);
 
   const urlFilters = useMemo(() => parseFiltersFromUrl(searchParams), [searchParams]);
   const urlQuery = searchParams.get('q') || '';
@@ -91,7 +230,7 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
   const debouncedSort = useDebounce(sort, DEBOUNCE_DELAY);
   const debouncedSpecFilters = useDebounce(specFilters, DEBOUNCE_DELAY);
 
-  // ... (useEffect и хендлеры остаются без изменений) ...
+  // Синхронизация URL -> State
   useEffect(() => {
     if (isUpdatingFromUrl.current) {
       isUpdatingFromUrl.current = false;
@@ -176,6 +315,7 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
     }
   }, [forcedCategory, filters.category, clear]);
 
+  // Синхронизация State -> URL
   useEffect(() => {
     if (isInitialMount.current) {
       isInitialMount.current = false;
@@ -210,7 +350,12 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
     }
   }, [debouncedFilters, debouncedSort, debouncedSpecFilters, forcedCategory, setSearchParams, searchParams]);
 
+  // Основной эффект поиска (только при изменении фильтров/сортировки)
   useEffect(() => {
+    if (isManualPagination.current) {
+      return;
+    }
+
     const hasSearchCriteria =
       debouncedFilters.query?.trim() ||
       debouncedFilters.category ||
@@ -224,6 +369,7 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
         clear();
       }
       lastSearchKeyRef.current = '';
+      lastSearchParamsRef.current = null;
       return;
     }
 
@@ -253,7 +399,8 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
 
     const request: SearchRequestDto = {
       query: debouncedFilters.query?.trim() ?? '',
-      limit: DEFAULT_LIMIT,
+      limit: PAGE_SIZE,
+      offset: 0,
       category: debouncedFilters.category || null,
       minPrice: minPrice,
       maxPrice: maxPrice,
@@ -263,14 +410,36 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
       sortOrder: debouncedSort.order,
     };
 
-    search(request);
+    lastSearchParamsRef.current = request;
+    
+    search(request, false);
   }, [debouncedFilters, debouncedSort, debouncedSpecFilters, search, clear, results.length, recommended.length]);
 
+  const handleLoadMore = useCallback(() => {
+    if (!lastSearchParamsRef.current) return;
+    
+    isManualPagination.current = true;
+    
+    const request: SearchRequestDto = {
+      ...lastSearchParamsRef.current,
+      offset: results.length,
+      limit: PAGE_SIZE,
+    };
+    
+    loadMore(request);
+    
+    setTimeout(() => {
+      isManualPagination.current = false;
+    }, 0);
+  }, [results.length, loadMore]);
+
   const handleBasicFilterChange = useCallback((changes: Partial<FiltersState>) => {
+    isManualPagination.current = false;
     setFilters(prev => ({ ...prev, ...changes }));
   }, []);
 
   const handleSpecFilterChange = useCallback((specName: string, value: SpecFilterValue) => {
+    isManualPagination.current = false;
     setSpecFiltersState(prev => {
       if (value == null) {
         if (!prev) return null;
@@ -300,15 +469,18 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
   }, []);
 
   const handleClearSpecFilters = useCallback(() => {
+    isManualPagination.current = false;
     setSpecFiltersState(null);
   }, []);
 
   const handleRemoveBasicFilter = useCallback((key: keyof FiltersState) => {
     if (key === 'category' && forcedCategory !== undefined) return;
+    isManualPagination.current = false;
     setFilters(prev => ({ ...prev, [key]: key === 'inStock' ? null : '' }));
   }, [forcedCategory]);
 
   const handleRemoveSpecFilter = useCallback((specName: string) => {
+    isManualPagination.current = false;
     setSpecFiltersState(prev => {
       if (!prev) return null;
       const next = { ...prev };
@@ -318,6 +490,7 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
   }, []);
 
   const handleClearAllFilters = useCallback(() => {
+    isManualPagination.current = false;
     setFilters(prev => ({
       query: prev.query, 
       minPrice: '',
@@ -335,6 +508,7 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
     setSearchParams(params, { replace: true });
     clear();
     lastSearchKeyRef.current = '';
+    lastSearchParamsRef.current = null;
   }, [forcedCategory, setSearchParams, clear, filters.query]);
 
   const handleSpecsLoaded = useCallback((specs: Array<{ name: string; displayName: string }>) => {
@@ -348,6 +522,7 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
   }, []);
 
   const handleSortMenuChange = useCallback((newSortOption: SortOption) => {
+    isManualPagination.current = false;
     let newOption = 'relevance';
     let newOrder: 'asc' | 'desc' = 'desc';
 
@@ -382,6 +557,7 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
     return `${sort.option}-${sort.order}` as SortOption;
   }, [sort.option, sort.order]);
 
+  // 🔧 FIX: Мемоизируем адаптированные продукты
   const adaptedProducts = useMemo(() => {
     return results.map(p => ({
       productId: p.id,
@@ -391,6 +567,7 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
     }));
   }, [results]);
 
+  // 🔧 FIX: Мемоизируем адаптированные рекомендации
   const adaptedRecommended = useMemo(() => {
     return recommended.map(p => ({
       productId: p.id,
@@ -417,19 +594,6 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
     }
     return 'По выбранным фильтрам ничего не найдено';
   }, [forcedCategory, filters.query, filters.category, filters.minPrice, filters.maxPrice, specFilters]);
-
-  // Обработчики для внешних кнопок
-  const handlePrevClick = () => {
-    if (swiperInstance) {
-      swiperInstance.slidePrev();
-    }
-  };
-
-  const handleNextClick = () => {
-    if (swiperInstance) {
-      swiperInstance.slideNext();
-    }
-  };
 
   return (
     <div className="search-results-page">
@@ -467,7 +631,7 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
             />
           </div>
 
-          {loading && (
+          {loading && results.length === 0 && (
             <div className="loading-container">
               <LoadingSpinner />
             </div>
@@ -498,84 +662,31 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
             <>
               <div className="results-header">
                 <p className="results-count">
-                  Найдено товаров: <strong>{adaptedProducts.length}</strong>
+                  Показано товаров: <strong>{adaptedProducts.length}</strong>
                 </p>
-                {adaptedProducts.length === DEFAULT_LIMIT && (
-                  <p className="results-limit-warning">
-                    Показаны первые {DEFAULT_LIMIT} результатов
-                  </p>
-                )}
               </div>
-              <div className="products-grid">
-                {adaptedProducts.map(product => (
-                  <ProductCard 
-                    key={`main-${product.productId}`} 
-                    product={product}
-                  />
-                ))}
-              </div>
+              
+              {/* 🔧 FIX: Используем мемоизированный компонент сетки */}
+              <ProductsGrid products={adaptedProducts} />
+              
+              {/* Кнопка "Показать еще" */}
+              {hasMore && (
+                <div className="load-more-container">
+                  <button 
+                    onClick={handleLoadMore} 
+                    className="load-more-btn"
+                    disabled={loading}
+                  >
+                    {loading ? 'Загрузка...' : 'Показать еще'}
+                  </button>
+                </div>
+              )}
             </>
           )}
 
-          {/* Блок рекомендаций со слайдером */}
+          {/* 🔧 FIX: Блок рекомендаций теперь мемоизирован и не перерендеривается */}
           {!loading && !error && adaptedRecommended.length > 0 && (
-            <div className="recommendations-section">
-              <h3 className="recommendations-title">Рекомендуем также</h3>
-              
-              <div className="recommendations-slider-wrapper">
-                {/* Левая кнопка */}
-                <button 
-                  className="recommendations-swiper-button-prev" 
-                  onClick={handlePrevClick}
-                  aria-label="Предыдущий слайд"
-                  disabled={!swiperInstance}
-                >
-                  &lt;
-                </button>
-
-                {/* Контейнер слайдера с градиентами */}
-                <div className="recommendations-swiper-container">
-                  <Swiper
-                    onSwiper={(swiper) => setSwiperInstance(swiper)}
-                    modules={[Pagination]}
-                    spaceBetween={20}
-                    slidesPerView={1}
-                    pagination={{ clickable: true }}
-                    breakpoints={{
-                      640: {
-                        slidesPerView: 2,
-                        spaceBetween: 20,
-                      },
-                      768: {
-                        slidesPerView: 3,
-                        spaceBetween: 30,
-                      },
-                      1024: {
-                        slidesPerView: 4,
-                        spaceBetween: 32,
-                      },
-                    }}
-                    className="recommendations-swiper"
-                  >
-                    {adaptedRecommended.map(product => (
-                      <SwiperSlide key={`rec-${product.productId}`} className="recommendation-slide">
-                        <ProductCard product={product} />
-                      </SwiperSlide>
-                    ))}
-                  </Swiper>
-                </div>
-
-                {/* Правая кнопка */}
-                <button 
-                  className="recommendations-swiper-button-next" 
-                  onClick={handleNextClick}
-                  aria-label="Следующий слайд"
-                  disabled={!swiperInstance}
-                >
-                  &gt;
-                </button>
-              </div>
-            </div>
+            <RecommendationsSection products={adaptedRecommended} />
           )}
         </main>
       </div>

@@ -78,6 +78,11 @@
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 32px;
   margin-bottom: 30px;
+  min-height: 100px;
+  
+  /* 🔥 Оптимизация производительности */
+  contain: layout style paint;
+  will-change: contents;
 }
 
 /* ===== Индикатор загрузки ===== */
@@ -304,8 +309,100 @@
   background-color: #ffffff;
 }
 
+/* ===== Карточка товара с анимацией ===== */
+.product-card-wrapper {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  
+  /* Базовое состояние */
+  opacity: 1;
+  transform: translateY(0);
+  
+  /* Оптимизация для анимации */
+  will-change: transform, opacity;
+  contain: content;
+  
+  /* Плавный переход для hover эффектов */
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.product-card-wrapper:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+/* 🔥 ВАЖНО: Состояние для новых карточек с анимацией */
+.product-card-wrapper.product-card-new {
+  opacity: 0;
+  animation: fadeInUp 0.4s ease-out forwards;
+}
+
+/* Отключаем hover-анимацию во время появления для плавности */
+.product-card-wrapper.product-card-new:hover {
+  transform: translateY(-4px);
+}
+
+/* ===== Анимация появления ===== */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ===== Кнопка "Показать еще" ===== */
+.load-more-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 40px;
+  margin-bottom: 40px;
+  min-height: 60px; /* Резервируем место, чтобы контент не прыгал */
+}
+
+.load-more-btn {
+  padding: 12px 32px;
+  background: #ffffff;
+  color: #000000;
+  border: 2px solid #000000;
+  border-radius: 0;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all 0.2s ease;
+  box-shadow: 4px 4px 0 #000000;
+  min-width: 160px; /* Фиксируем ширину, чтобы кнопка не дергалась при смене текста */
+  
+  /* Оптимизация */
+  will-change: transform;
+}
+
+.load-more-btn:hover:not(:disabled) {
+  background: #000000;
+  color: #ffffff;
+  box-shadow: 6px 6px 0 #000000;
+  transform: translate(-2px, -2px);
+}
+
+.load-more-btn:active:not(:disabled) {
+  box-shadow: 2px 2px 0 #000000;
+  transform: translate(0, 0);
+}
+
+.load-more-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+  box-shadow: 2px 2px 0 #000000;
+}
+
 /* =========================================
-   Recommendations Slider Styles (Swiper) - BUTTONS OUTSIDE
+   Recommendations Slider Styles (Swiper)
    ========================================= */
 
 .recommendations-section {
@@ -313,6 +410,9 @@
   padding-top: 32px;
   border-top: 2px solid #000000;
   width: 100%;
+  
+  /* 🔥 Изоляция от перерендеров основного контента */
+  contain: layout style paint;
 }
 
 .recommendations-title {
@@ -330,15 +430,18 @@
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 16px; /* Расстояние между кнопками и слайдером */
+  gap: 16px;
   padding: 10px 0 40px 0;
+  
+  /* Оптимизация */
+  contain: layout style;
 }
 
-/* Контейнер самого слайдера — теперь он занимает основное пространство */
+/* Контейнер самого слайдера */
 .recommendations-swiper-container {
   flex-grow: 1;
   position: relative;
-  overflow: hidden; /* Карточки обрезаются внутри этого контейнера */
+  overflow: hidden;
 }
 
 .recommendations-swiper {
@@ -346,7 +449,7 @@
   padding-bottom: 40px !important;
 }
 
-/* Градиенты теперь применяются к контейнеру слайдера, а не к общей обертке */
+/* Градиенты для плавного затухания по краям */
 .recommendations-swiper-container::before {
   content: '';
   position: absolute;
@@ -385,10 +488,10 @@
   flex-direction: column;
 }
 
-/* 🔥 КНОПКИ НАВИГАЦИИ — теперь они вне слайдера, в общей обертке */
+/* 🔥 КНОПКИ НАВИГАЦИИ */
 .recommendations-swiper-button-prev,
 .recommendations-swiper-button-next {
-  flex-shrink: 0; /* Не сжимаются */
+  flex-shrink: 0;
   color: #000000;
   background-color: #ffffff;
   width: 44px;
@@ -402,6 +505,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  
+  /* Оптимизация */
+  will-change: transform, background, box-shadow;
 }
 
 .recommendations-swiper-button-prev:hover,
@@ -447,8 +553,35 @@
   transform: scale(1.2);
 }
 
-/* Адаптивность */
+/* ===== Адаптивность ===== */
+@media (max-width: 1200px) {
+  .products-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+  }
+}
+
+@media (max-width: 900px) {
+  .products-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+  }
+}
+
 @media (max-width: 768px) {
+  .search-results-page {
+    padding: 24px 16px;
+  }
+  
+  .search-results-layout {
+    flex-direction: column;
+  }
+  
+  .search-filters-sidebar {
+    width: 100%;
+    max-width: none;
+  }
+  
   .recommendations-slider-wrapper {
     flex-direction: column;
     gap: 16px;
@@ -458,7 +591,7 @@
     width: 100%;
   }
 
-  /* На мобильных скрываем кнопки и градиенты, оставляем только свайп */
+  /* На мобильных скрываем кнопки и градиенты */
   .recommendations-swiper-button-prev,
   .recommendations-swiper-button-next,
   .recommendations-swiper-container::before,
@@ -469,5 +602,37 @@
   .recommendations-section {
     margin-top: 32px;
     padding-top: 24px;
+  }
+  
+  .products-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
+/* ===== Отключение анимаций для пользователей с чувствительностью ===== */
+@media (prefers-reduced-motion: reduce) {
+  .product-card-wrapper.product-card-new {
+    animation: none;
+    opacity: 1;
+  }
+  
+  .product-card-wrapper:hover {
+    transform: none;
+  }
+  
+  .load-more-btn:hover:not(:disabled) {
+    transform: none;
+  }
+  
+  .recommendations-swiper-button-prev:hover,
+  .recommendations-swiper-button-next:hover {
+    transform: none;
+  }
+  
+  .apply-filters-button-search:hover,
+  .clear-all-btn:hover,
+  .empty-state button:hover {
+    transform: none;
   }
 }

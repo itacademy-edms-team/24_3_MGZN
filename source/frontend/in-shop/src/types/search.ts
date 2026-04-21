@@ -25,7 +25,6 @@ export interface FiltersState {
   inStock: boolean | null;
 }
 
-// Новый интерфейс для ответа от бэкенда
 export interface SearchResponseDto {
   results: ProductSearchResultDto[];
   recommended: ProductSearchResultDto[];
@@ -33,7 +32,8 @@ export interface SearchResponseDto {
 
 export interface SearchRequestDto {
   query: string;
-  limit: number;
+  limit: number; // Сколько товаров подгрузить за раз (например, 12)
+  offset: number; // Смещение (сколько уже есть)
   category: string | null;
   minPrice: number | null;
   maxPrice: number | null;

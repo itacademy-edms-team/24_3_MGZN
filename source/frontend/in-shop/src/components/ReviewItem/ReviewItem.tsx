@@ -47,6 +47,12 @@ const ReviewItem: React.FC<ReviewItemProps> = ({
       <div className="review-header">
         <div className="review-author">
           <span className="author-name">Пользователь #{review.sessionId}</span>
+
+           {review.isVerifiedPurchase ? (
+            <span className="verified-badge">✓ Проверенный покупатель</span>
+          ) : (
+            <span className="unverified-badge">✗ Не покупал товар</span>
+          )}
         </div>
         
         <span className="review-date">{formatDate(review.createdAt)}</span>

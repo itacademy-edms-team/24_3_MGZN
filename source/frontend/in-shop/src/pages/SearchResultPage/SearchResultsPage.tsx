@@ -4,12 +4,19 @@ import { useSearchParams } from 'react-router-dom';
 import { useDebounce } from '../../hooks/useDebounce.ts';
 import { useProductSearch } from '../../hooks/useProductSearch.ts';
 import { parseFiltersFromUrl } from '../../utils/filters.ts';
-import { FiltersState, SearchRequestDto, SpecificationFilterDto } from '../../types/search.ts';
+import { FiltersState, SearchRequestDto } from '../../types/search.ts';
 import FiltersPanel from '../../components/FiltersPanel/FiltersPanel.tsx';
 import ActiveFiltersBar from '../../components/ActiveFiltersBar.tsx';
 import ProductCard from '../../components/ProductCard.jsx';
 import LoadingSpinner from '../../components/LoadingSpinner.tsx';
 import SortMenu, { SortOption } from '../../components/SortMenu/SortMenu.tsx';
+
+// Swiper imports
+import { Swiper, SwiperSlide, useSwiper } from 'swiper/react'; // Добавили useSwiper для альтернативного подхода, если нужно
+import { Pagination } from 'swiper/modules'; // Navigation можно убрать из modules, если используем свои кнопки
+import 'swiper/css';
+import 'swiper/css/pagination';
+
 import './SearchResultsPage.css';
 
 interface SearchResultsPageProps {
@@ -24,13 +31,17 @@ const DEFAULT_LIMIT = 50;
 const DEBOUNCE_DELAY = 400;
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'https://localhost:7275/api';
 
+// Компонент-обертка для кнопок, чтобы иметь доступ к экземпляру Swiper через контекст (альтернативный вариант)
+// Но мы оставим вариант с ref, так как он проще для внешней структуры.
+
 const SearchResultsPage = memo<SearchResultsPageProps>(({
   forcedCategory,
   hideSearchQuery = false,
   pageTitleOverride,
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const { results, loading, error, search, clear } = useProductSearch(API_BASE_URL);
+  
+  const { results, recommended, loading, error, search, clear } = useProductSearch(API_BASE_URL);
   
   const isInitialMount = useRef(true);
   const prevForcedCategory = useRef(forcedCategory);
@@ -38,6 +49,9 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
   const lastSearchKeyRef = useRef<string>('');
   const lastAppliedSpecsParamRef = useRef<string | null>(null);
   const prevUrlQueryRef = useRef<string>('');
+  
+  // Используем state для хранения экземпляра, чтобы гарантировать обновление UI при изменении рефа
+  const [swiperInstance, setSwiperInstance] = useState<any>(null);
 
   const urlFilters = useMemo(() => parseFiltersFromUrl(searchParams), [searchParams]);
   const urlQuery = searchParams.get('q') || '';
@@ -66,7 +80,6 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
   const [specFiltersState, setSpecFiltersState] = useState<Record<string, SpecFilterValue> | null>(urlSpecFilters);
   const specFilters = useMemo(() => specFiltersState, [specFiltersState]);
   
-  // 🔧 FIX: Состояние для маппинга specName → displayName
   const [specDisplayNames, setSpecDisplayNames] = useState<Record<string, string>>({});
   
   const [sort, setSort] = useState<{ option: string; order: 'asc' | 'desc' }>(() => ({
@@ -78,6 +91,7 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
   const debouncedSort = useDebounce(sort, DEBOUNCE_DELAY);
   const debouncedSpecFilters = useDebounce(specFilters, DEBOUNCE_DELAY);
 
+  // ... (useEffect и хендлеры остаются без изменений) ...
   useEffect(() => {
     if (isUpdatingFromUrl.current) {
       isUpdatingFromUrl.current = false;
@@ -156,7 +170,6 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
         isUpdatingFromUrl.current = true;
         setFilters(prev => ({ ...prev, category: forcedCategory }));
         setSpecFiltersState(null);
-        // 🔧 FIX: Также очищаем мапу дисплей-имён при смене категории
         setSpecDisplayNames({});
         clear();
       }
@@ -197,7 +210,6 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
     }
   }, [debouncedFilters, debouncedSort, debouncedSpecFilters, forcedCategory, setSearchParams, searchParams]);
 
-  // 🔧 FIX: Добавлен results.length в зависимости для соответствия правилам eslint
   useEffect(() => {
     const hasSearchCriteria =
       debouncedFilters.query?.trim() ||
@@ -208,7 +220,7 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
       (debouncedSpecFilters && Object.keys(debouncedSpecFilters).length > 0);
 
     if (!hasSearchCriteria) {
-      if (results.length > 0) {
+      if (results.length > 0 || recommended.length > 0) {
         clear();
       }
       lastSearchKeyRef.current = '';
@@ -252,7 +264,7 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
     };
 
     search(request);
-  }, [debouncedFilters, debouncedSort, debouncedSpecFilters, search, clear, results.length]);
+  }, [debouncedFilters, debouncedSort, debouncedSpecFilters, search, clear, results.length, recommended.length]);
 
   const handleBasicFilterChange = useCallback((changes: Partial<FiltersState>) => {
     setFilters(prev => ({ ...prev, ...changes }));
@@ -307,19 +319,17 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
 
   const handleClearAllFilters = useCallback(() => {
     setFilters(prev => ({
-      query: prev.query, // 🔥 Сохраняем поисковый запрос
+      query: prev.query, 
       minPrice: '',
       maxPrice: '',
       category: forcedCategory !== undefined ? forcedCategory : '',
       inStock: null,
     }));
     setSpecFiltersState(null);
-    // 🔧 FIX: Также очищаем мапу дисплей-имён
     setSpecDisplayNames({});
     setSort({ option: 'relevance', order: 'desc' });
 
     const params = new URLSearchParams();
-    // 🔥 Сохраняем поисковый запрос в URL
     if (filters.query) params.set('q', filters.query);
     if (forcedCategory !== undefined) params.set('category', forcedCategory);
     setSearchParams(params, { replace: true });
@@ -327,7 +337,6 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
     lastSearchKeyRef.current = '';
   }, [forcedCategory, setSearchParams, clear, filters.query]);
 
-  // 🔧 FIX: Обработчик для получения маппинга specName → displayName от FiltersPanel
   const handleSpecsLoaded = useCallback((specs: Array<{ name: string; displayName: string }>) => {
     const nameMap: Record<string, string> = {};
     specs.forEach(spec => {
@@ -382,6 +391,15 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
     }));
   }, [results]);
 
+  const adaptedRecommended = useMemo(() => {
+    return recommended.map(p => ({
+      productId: p.id,
+      productName: p.name,
+      productPrice: p.price,
+      imageUrl: p.imageUrl,
+    }));
+  }, [recommended]);
+
   const getPageTitle = useCallback(() => {
     if (pageTitleOverride) return pageTitleOverride;
     if (forcedCategory !== undefined) return `Категория: ${forcedCategory}`;
@@ -400,16 +418,18 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
     return 'По выбранным фильтрам ничего не найдено';
   }, [forcedCategory, filters.query, filters.category, filters.minPrice, filters.maxPrice, specFilters]);
 
-  const activeFiltersCount = useMemo(() => {
-    let count = 0;
-    if (filters.query) count++;
-    if (filters.minPrice) count++;
-    if (filters.maxPrice) count++;
-    if (filters.category && forcedCategory === undefined) count++;
-    if (filters.inStock !== null) count++;
-    if (specFilters) count += Object.keys(specFilters).length;
-    return count;
-  }, [filters, specFilters, forcedCategory]);
+  // Обработчики для внешних кнопок
+  const handlePrevClick = () => {
+    if (swiperInstance) {
+      swiperInstance.slidePrev();
+    }
+  };
+
+  const handleNextClick = () => {
+    if (swiperInstance) {
+      swiperInstance.slideNext();
+    }
+  };
 
   return (
     <div className="search-results-page">
@@ -417,7 +437,6 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
         <h2>{getPageTitle()}</h2>
       </div>
 
-      {/* 🔧 FIX: Передан проп specDisplayNames */}
       <ActiveFiltersBar
         filters={filters}
         specFilters={specFilters}
@@ -428,7 +447,6 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
       />
 
       <div className="search-results-layout">
-        {/* 🔧 FIX: Передан проп onSpecsLoaded */}
         <FiltersPanel
           filters={filters}
           specFilters={specFilters}
@@ -463,7 +481,7 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
             </div>
           )}
 
-          {!loading && !error && adaptedProducts.length === 0 && (
+          {!loading && !error && adaptedProducts.length === 0 && adaptedRecommended.length === 0 && (
             <div className="empty-state">
               <p>{getEmptyStateMessage()}</p>
               <button 
@@ -475,6 +493,7 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
             </div>
           )}
 
+          {/* Основная выдача */}
           {!loading && !error && adaptedProducts.length > 0 && (
             <>
               <div className="results-header">
@@ -490,12 +509,73 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
               <div className="products-grid">
                 {adaptedProducts.map(product => (
                   <ProductCard 
-                    key={product.productId} 
+                    key={`main-${product.productId}`} 
                     product={product}
                   />
                 ))}
               </div>
             </>
+          )}
+
+          {/* Блок рекомендаций со слайдером */}
+          {!loading && !error && adaptedRecommended.length > 0 && (
+            <div className="recommendations-section">
+              <h3 className="recommendations-title">Рекомендуем также</h3>
+              
+              <div className="recommendations-slider-wrapper">
+                {/* Левая кнопка */}
+                <button 
+                  className="recommendations-swiper-button-prev" 
+                  onClick={handlePrevClick}
+                  aria-label="Предыдущий слайд"
+                  disabled={!swiperInstance}
+                >
+                  &lt;
+                </button>
+
+                {/* Контейнер слайдера с градиентами */}
+                <div className="recommendations-swiper-container">
+                  <Swiper
+                    onSwiper={(swiper) => setSwiperInstance(swiper)}
+                    modules={[Pagination]}
+                    spaceBetween={20}
+                    slidesPerView={1}
+                    pagination={{ clickable: true }}
+                    breakpoints={{
+                      640: {
+                        slidesPerView: 2,
+                        spaceBetween: 20,
+                      },
+                      768: {
+                        slidesPerView: 3,
+                        spaceBetween: 30,
+                      },
+                      1024: {
+                        slidesPerView: 4,
+                        spaceBetween: 32,
+                      },
+                    }}
+                    className="recommendations-swiper"
+                  >
+                    {adaptedRecommended.map(product => (
+                      <SwiperSlide key={`rec-${product.productId}`} className="recommendation-slide">
+                        <ProductCard product={product} />
+                      </SwiperSlide>
+                    ))}
+                  </Swiper>
+                </div>
+
+                {/* Правая кнопка */}
+                <button 
+                  className="recommendations-swiper-button-next" 
+                  onClick={handleNextClick}
+                  aria-label="Следующий слайд"
+                  disabled={!swiperInstance}
+                >
+                  &gt;
+                </button>
+              </div>
+            </div>
           )}
         </main>
       </div>

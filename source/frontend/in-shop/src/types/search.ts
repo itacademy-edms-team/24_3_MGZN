@@ -1,3 +1,5 @@
+// src/types/search.ts
+
 export interface ProductSearchResultDto {
   id: number;
   name: string;
@@ -21,6 +23,12 @@ export interface FiltersState {
   maxPrice: string;
   category: string;
   inStock: boolean | null;
+}
+
+// Новый интерфейс для ответа от бэкенда
+export interface SearchResponseDto {
+  results: ProductSearchResultDto[];
+  recommended: ProductSearchResultDto[];
 }
 
 export interface SearchRequestDto {

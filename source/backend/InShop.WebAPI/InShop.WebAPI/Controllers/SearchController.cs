@@ -1,4 +1,4 @@
-﻿using Contracts.Dtos; // Добавьте using
+﻿using Contracts.Dtos;
 using InShopBLLayer.Abstractions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -17,28 +17,33 @@ namespace InShop.WebAPI.Controllers
         private readonly IEmbeddingService _embeddingService;
         private readonly ConnectionMultiplexer _redis;
         private readonly ILogger<SearchController> _logger;
-        private readonly IProductService _productService; // Внедрите через конструктор
+        private readonly IProductService _productService;
 
-        // Порог для косинусного расстояния (0.0 = максимально близкие, 2.0 = максимально далекие)
-        private const double MaxCosineDistanceThreshold = 0.5;
+        // Пороги для косинусного расстояния
+        private const double MainCosineDistanceThreshold = 0.5;
+        private const double RecCosineDistanceThreshold = 0.99;
 
         // Веса для гибридного поиска
-        private const double VectorWeight = 0.4; // Вес векторной оценки (1 - distance)
-        private const double LexicalWeight = 0.6; // Вес лексической оценки (BM25)
+        private const double VectorWeight = 0.4;
+        private const double LexicalWeight = 0.6;
+
+        // Настройки блока рекомендаций
+        private const int RecommendationLimit = 10;
+        private const int RecommendationBuffer = 20;
 
         public SearchController(
             IEmbeddingService embeddingService,
             ConnectionMultiplexer redis,
             ILogger<SearchController> logger,
-            IProductService productService) // <-- Добавлен IProductService
+            IProductService productService)
         {
             _embeddingService = embeddingService;
             _redis = redis;
             _logger = logger;
-            _productService = productService; // <-- Присвоено
+            _productService = productService;
         }
 
-        [HttpGet("specifications/filters")] // <-- Новый эндпоинт
+        [HttpGet("specifications/filters")]
         public async Task<IActionResult> GetSpecificationFiltersForCategory([FromQuery] string categoryName)
         {
             if (string.IsNullOrWhiteSpace(categoryName))
@@ -56,13 +61,12 @@ namespace InShop.WebAPI.Controllers
             return Ok(filtersDto);
         }
 
-
         [HttpPost("search")]
         public async Task<IActionResult> SearchVectorPost(
-            [FromBody] SearchRequestDto request, // <-- Принимаем DTO из тела запроса
+            [FromBody] SearchRequestDto request,
             CancellationToken ct = default)
         {
-            // ✅ НОВОЕ: Разрешаем пустой Query, если есть другие фильтры
+            // --- 1. Валидация входных данных ---
             bool hasCategory = !string.IsNullOrWhiteSpace(request.Category);
             bool hasPriceFilter = request.MinPrice.HasValue || request.MaxPrice.HasValue;
             bool hasStockFilter = request.InStock.HasValue;
@@ -71,111 +75,156 @@ namespace InShop.WebAPI.Controllers
 
             if (!hasQuery && !hasCategory && !hasPriceFilter && !hasStockFilter && !hasSpecFilters)
             {
-                return BadRequest("Необходимо указать хотя бы один параметр поиска: запрос (q), категорию, цену, наличие или характеристики.");
+                return BadRequest("Необходимо указать хотя бы один параметр поиска.");
             }
 
-            // Валидация параметров сортировки (остаётся без изменений)
             if (!IsValidSortParameter(request.SortBy, out string validatedSortBy))
             {
-                return BadRequest($"Недопустимое значение параметра 'sortBy': '{request.SortBy}'. Допустимые значения: relevance, name, price.");
+                return BadRequest($"Недопустимое значение параметра 'sortBy': '{request.SortBy}'.");
             }
 
             if (!IsValidSortOrder(request.SortOrder, out string validatedSortOrder))
             {
-                return BadRequest($"Недопустимое значение параметра 'sortOrder': '{request.SortOrder}'. Допустимые значения: asc, desc.");
+                return BadRequest($"Недопустимое значение параметра 'sortOrder': '{request.SortOrder}'.");
             }
 
-            // ВАЖНО: Валидация фильтров по характеристикам (остаётся без изменений)
             Dictionary<string, object>? validatedSpecFilters = null;
             if (request.SpecFilters != null && !string.IsNullOrEmpty(request.Category))
             {
                 validatedSpecFilters = await _productService.ValidateSpecFiltersAsync(request.SpecFilters, request.Category);
                 if (validatedSpecFilters == null)
                 {
-                    _logger.LogWarning("Фильтры по характеристикам недопустимы для категории '{Category}' или имеют неверный тип. Запрос: {@SpecFilters}", request.Category, request.SpecFilters);
-                    return BadRequest("Один или несколько фильтров по характеристикам недопустимы для выбранной категории или имеют неверный тип.");
+                    return BadRequest("Недопустимые фильтры по характеристикам.");
                 }
             }
             else if (request.SpecFilters != null && string.IsNullOrEmpty(request.Category))
             {
-                _logger.LogInformation("Фильтры по характеристикам переданы, но категория не выбрана. Фильтры игнорируются.");
                 validatedSpecFilters = null;
             }
 
-            _logger.LogInformation("Получен гибридный поиск: '{Query}', Limit: {Limit}, Category: '{Category}', MinPrice: {MinPrice}, MaxPrice: {MaxPrice}, InStock: {InStock}, SortBy: {SortBy}, SortOrder: {SortOrder}",
-                request.Query ?? "(пустой)", request.Limit, request.Category ?? "null", request.MinPrice?.ToString() ?? "null", request.MaxPrice?.ToString() ?? "null", request.InStock?.ToString() ?? "null", validatedSortBy, validatedSortOrder);
-
-
             try
             {
-                // 1. Генерируем вектор для запроса
+                // --- 2. Подготовка вектора и фильтров ---
                 var queryVector = await _embeddingService.GenerateEmbeddingAsync(request.Query, ct);
-
-                // 2. Конвертируем вектор в байты для Redis
                 var queryVectorBytes = new byte[queryVector.Length * sizeof(float)];
                 Buffer.BlockCopy(queryVector, 0, queryVectorBytes, 0, queryVectorBytes.Length);
 
-                // 3. Подготовим фильтр
-                var filterClause = BuildFilterClause(request.Category, request.MinPrice, request.MaxPrice, request.InStock, validatedSpecFilters);
+                // 2.1. Фильтры для ОСНОВНОЙ выдачи (строгие: цена, категория, наличие, спеки)
+                var mainFilterClause = BuildFilterClause(request.Category, request.MinPrice, request.MaxPrice, request.InStock, validatedSpecFilters);
 
-                // 4. Формируем команды для векторного и лексического поиска
-                var vectorQuery = string.IsNullOrEmpty(filterClause)
-                    ? $"*=>[KNN {request.Limit} @embedding $BLOB AS vector_distance]"
-                    : $"({filterClause})=>[KNN {request.Limit} @embedding $BLOB AS vector_distance]";
+                // 2.2. Фильтры для РЕКОМЕНДАЦИЙ
+                // ПОЛЬЗОВАТЕЛЬСКОЕ ТРЕБОВАНИЕ: Только поисковой запрос, без фильтров.
+                // Поэтому оставляем строку фильтра пустой.
+                var recFilterClause = string.Empty;
 
                 var escapedQueryTerms = string.Join(" ", request.Query.Split(' ', StringSplitOptions.RemoveEmptyEntries));
-                var lexicalQuery = string.IsNullOrEmpty(filterClause)
-                    ? escapedQueryTerms
-                    : $"({filterClause}) {escapedQueryTerms}";
 
-                _logger.LogInformation("Формируемая строка векторного запроса для FT.SEARCH: '{Query}'", vectorQuery);
-                _logger.LogInformation("Формируемая строка лексического запроса для FT.SEARCH: '{Query}'", lexicalQuery);
+                int mainLimit = request.Limit > 0 ? request.Limit : 10;
+                int recPoolLimit = mainLimit + RecommendationLimit + RecommendationBuffer;
+
+                // Формируем векторные запросы
+                // Основной: с фильтрами
+                var mainVectorQuery = string.IsNullOrEmpty(mainFilterClause)
+                    ? $"*=>[KNN {mainLimit} @embedding $BLOB AS vector_distance]"
+                    : $"({mainFilterClause})=>[KNN {mainLimit} @embedding $BLOB AS vector_distance]";
+
+                // Рекомендации: БЕЗ фильтров (только вектор запроса ко всем товарам)
+                var recVectorQuery = $"*=>[KNN {recPoolLimit} @embedding $BLOB AS vector_distance]";
+
+                // Лексические запросы
+                // Основной: с фильтрами
+                var mainLexicalQuery = string.IsNullOrEmpty(mainFilterClause)
+                    ? escapedQueryTerms
+                    : $"({mainFilterClause}) {escapedQueryTerms}";
+
+                // Рекомендации: БЕЗ фильтров
+                var recLexicalQuery = escapedQueryTerms;
 
                 var db = _redis.GetDatabase();
+                var batch = db.CreateBatch();
 
-                // --- ВЫПОЛНЯЕМ ВЕКТОРНЫЙ ПОИСК ---
-                var vectorResultTask = db.ExecuteAsync("FT.SEARCH",
+                // --- 3. Выполнение поиска через BATCH ---
+
+                // Основная выдача
+                var mainVectorTask = batch.ExecuteAsync("FT.SEARCH",
                     "idx:products",
-                    vectorQuery,
+                    mainVectorQuery,
                     "PARAMS", "2", "BLOB", (RedisValue)queryVectorBytes,
                     "RETURN", "8", "name", "description", "price", "category", "stock", "availability", "image_url", "vector_distance",
-                    "SORTBY", "vector_distance",
-                    "ASC",
-                    "LIMIT", "0", request.Limit.ToString(),
                     "DIALECT", "4"
                 );
 
-                // --- ВЫПОЛНЯЕМ ЛЕКСИЧЕСКИЙ ПОИСК С ИСПОЛЬЗОВАНИЕМ WITHSCORES ---
-                var lexicalResultTask = db.ExecuteAsync("FT.SEARCH",
+                var mainLexicalTask = batch.ExecuteAsync("FT.SEARCH",
                     "idx:products",
-                    lexicalQuery,
+                    mainLexicalQuery,
                     "SCORER", "BM25",
                     "WITHSCORES",
                     "RETURN", "7", "name", "description", "price", "category", "stock", "availability", "image_url",
-                    "LIMIT", "0", request.Limit.ToString(),
+                    "LIMIT", "0", mainLimit.ToString(),
                     "DIALECT", "4"
                 );
 
-                await Task.WhenAll(vectorResultTask, lexicalResultTask);
+                // Рекомендации (расширенный пул, без фильтров)
+                var recVectorTask = batch.ExecuteAsync("FT.SEARCH",
+                    "idx:products",
+                    recVectorQuery,
+                    "PARAMS", "2", "BLOB", (RedisValue)queryVectorBytes,
+                    "RETURN", "8", "name", "description", "price", "category", "stock", "availability", "image_url", "vector_distance",
+                    "DIALECT", "4"
+                );
 
-                var vectorResult = await vectorResultTask;
-                var lexicalResult = await lexicalResultTask;
+                var recLexicalTask = batch.ExecuteAsync("FT.SEARCH",
+                    "idx:products",
+                    recLexicalQuery,
+                    "SCORER", "BM25",
+                    "WITHSCORES",
+                    "RETURN", "7", "name", "description", "price", "category", "stock", "availability", "image_url",
+                    "LIMIT", "0", recPoolLimit.ToString(),
+                    "DIALECT", "4"
+                );
 
-                _logger.LogDebug("Результат векторного поиска: {@VectorResult}", vectorResult); // <-- Лог
-                _logger.LogDebug("Результат лексического поиска: {@LexicalResult}", lexicalResult); // <-- Лог
+                batch.Execute();
+                await Task.WhenAll(mainVectorTask, mainLexicalTask, recVectorTask, recLexicalTask);
 
-                // --- ОБРАБАТЫВАЕМ РЕЗУЛЬТАТЫ ---
-                var hybridResults = await ProcessHybridSearch(vectorResult, lexicalResult, MaxCosineDistanceThreshold);
+                // --- 4. Обработка результатов ---
 
-                // --- ПРИМЕНЯЕМ СОРТИРОВКУ К ГИБРИДНЫМ РЕЗУЛЬТАТАМ ---
-                var sortedResults = ApplySorting(hybridResults, validatedSortBy, validatedSortOrder);
+                // 4.1. Основная выдача
+                var mainHybridResults = await ProcessHybridSearch(
+                    await mainVectorTask,
+                    await mainLexicalTask,
+                    MainCosineDistanceThreshold);
 
-                // --- БЕРЁМ ТОП-N РЕЗУЛЬТАТОВ И ИЗВЛЕКАЕМ DTO ---
-                var finalDtoList = sortedResults.Select(r => r.Dto).Take(request.Limit).ToList();
+                var sortedMainResults = ApplySorting(mainHybridResults, validatedSortBy, validatedSortOrder);
+                var finalMainDtos = sortedMainResults.Select(r => r.Dto).Take(mainLimit).ToList();
+                var mainIds = new HashSet<int>(finalMainDtos.Select(p => p.Id));
 
-                _logger.LogInformation("Найдено {Count} гибридных результатов для запроса: '{Query}'", finalDtoList.Count, request.Query);
+                // 4.2. Рекомендации
+                var recHybridResults = await ProcessHybridSearch(
+                    await recVectorTask,
+                    await recLexicalTask,
+                    RecCosineDistanceThreshold);
 
-                return Ok(finalDtoList);
+                // Исключаем дубликаты из основной выдачи
+                var uniqueRecCandidates = recHybridResults
+                    .Where(r => !mainIds.Contains(r.Dto.Id))
+                    .ToList();
+
+                var sortedRecCandidates = ApplySorting(uniqueRecCandidates, validatedSortBy, validatedSortOrder);
+                var finalRecDtos = sortedRecCandidates
+                    .Select(r => r.Dto)
+                    .Take(RecommendationLimit)
+                    .ToList();
+
+                var response = new SearchResponseDto
+                {
+                    Results = finalMainDtos,
+                    Recommended = finalRecDtos
+                };
+
+                _logger.LogInformation("Поиск завершен. Основных: {MainCount}, Рекомендаций: {RecCount}",
+                    response.Results.Count, response.Recommended.Count);
+
+                return Ok(response);
             }
             catch (Exception ex)
             {
@@ -184,7 +233,84 @@ namespace InShop.WebAPI.Controllers
             }
         }
 
-        // --- МЕТОД: Валидация параметра сортировки ---
+        // --- МЕТОД: Построение фильтров для основного поиска (СТРОГИЕ) ---
+        private static string BuildFilterClause(string? category, decimal? minPrice, decimal? maxPrice, bool? inStock, Dictionary<string, object>? specFilters = null)
+        {
+            var clauses = new List<string>();
+
+            if (!string.IsNullOrEmpty(category))
+            {
+                var escapedCategory = EscapeTagValue(category);
+                clauses.Add($"@category:{{{escapedCategory}}}");
+            }
+
+            if (minPrice.HasValue && maxPrice.HasValue)
+            {
+                clauses.Add($"@price:[{minPrice.Value} {maxPrice.Value}]");
+            }
+            else if (minPrice.HasValue)
+            {
+                clauses.Add($"@price:[{minPrice.Value} +inf]");
+            }
+            else if (maxPrice.HasValue)
+            {
+                clauses.Add($"@price:[-inf {maxPrice.Value}]");
+            }
+
+            if (inStock.HasValue)
+            {
+                var availabilityValue = inStock.Value ? "InStock" : "OutOfStock";
+                clauses.Add($"@availability:{{{availabilityValue}}}");
+            }
+
+            if (specFilters != null && specFilters.Any())
+            {
+                foreach (var filter in specFilters)
+                {
+                    var specName = filter.Key;
+                    var specValue = filter.Value;
+
+                    if (specValue is { } objVal)
+                    {
+                        if (objVal.GetType().GetProperty("Min") != null || objVal.GetType().GetProperty("Max") != null)
+                        {
+                            var minProp = objVal.GetType().GetProperty("Min")?.GetValue(objVal) as decimal?;
+                            var maxProp = objVal.GetType().GetProperty("Max")?.GetValue(objVal) as decimal?;
+                            string rangeClause = $"@{specName}:[";
+                            rangeClause += minProp?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "-inf";
+                            rangeClause += " ";
+                            rangeClause += maxProp?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "+inf";
+                            rangeClause += "]";
+                            clauses.Add(rangeClause);
+                        }
+                        else
+                        {
+                            string valueStr;
+                            if (objVal is decimal dec)
+                                valueStr = dec.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                            else if (objVal is string str)
+                                valueStr = EscapeTagValue(str);
+                            else
+                                continue;
+
+                            if (objVal is decimal)
+                            {
+                                clauses.Add($"@{specName}:[{valueStr} {valueStr}]");
+                            }
+                            else if (objVal is string)
+                            {
+                                clauses.Add($"@{specName}:{{{valueStr}}}");
+                            }
+                        }
+                    }
+                }
+            }
+
+            return string.Join(" ", clauses);
+        }
+
+        // --- ОСТАЛЬНЫЕ МЕТОДЫ (IsValidSortParameter, IsValidSortOrder, ApplySorting, ProcessHybridSearch, ParseRedisResultToDict, CreateDtoFromFields, EscapeTagValue, ExtractIdFromKey, HybridResult, ScoreLocation) ---
+
         private static bool IsValidSortParameter(string input, out string validatedOutput)
         {
             validatedOutput = input?.ToLowerInvariant() ?? string.Empty;
@@ -197,7 +323,6 @@ namespace InShop.WebAPI.Controllers
             };
         }
 
-        // --- МЕТОД: Валидация параметра порядка ---
         private static bool IsValidSortOrder(string input, out string validatedOutput)
         {
             validatedOutput = input?.ToLowerInvariant() ?? string.Empty;
@@ -209,9 +334,10 @@ namespace InShop.WebAPI.Controllers
             };
         }
 
-        // --- МЕТОД: Применение сортировки ---
         private List<HybridResult> ApplySorting(List<HybridResult> results, string sortBy, string sortOrder)
         {
+            if (!results.Any()) return results;
+
             IOrderedEnumerable<HybridResult> orderedResults = sortBy switch
             {
                 "name" => sortOrder == "asc" ? results.OrderBy(r => r.Dto.Name, StringComparer.OrdinalIgnoreCase) : results.OrderByDescending(r => r.Dto.Name, StringComparer.OrdinalIgnoreCase),
@@ -222,7 +348,6 @@ namespace InShop.WebAPI.Controllers
             return orderedResults.ToList();
         }
 
-        // --- МЕТОД: Обработка гибридного поиска ---
         private async Task<List<HybridResult>> ProcessHybridSearch(RedisResult vectorResult, RedisResult lexicalResult, double threshold)
         {
             var vectorProducts = ParseRedisResultToDict(vectorResult, "vector_distance", ScoreLocation.InArray, true, threshold);
@@ -267,7 +392,6 @@ namespace InShop.WebAPI.Controllers
             return hybridResults.Values.ToList();
         }
 
-        // --- ВСПОМОГАТЕЛЬНЫЙ МЕТОД: Парсинг RedisResult в словарь ---
         private Dictionary<int, (ProductSearchResultDto dto, double score)> ParseRedisResultToDict(RedisResult rawResult, string scoreFieldName, ScoreLocation expectedScoreLocation, bool isVector, double? threshold)
         {
             var dict = new Dictionary<int, (ProductSearchResultDto dto, double score)>();
@@ -285,7 +409,7 @@ namespace InShop.WebAPI.Controllers
                 return dict;
             }
 
-            for (int i = 1; i < response.Length; /* i увеличивается внутри */ )
+            for (int i = 1; i < response.Length;)
             {
                 if (i >= response.Length || response[i].Resp2Type != ResultType.BulkString)
                 {
@@ -336,11 +460,9 @@ namespace InShop.WebAPI.Controllers
                                 if (double.TryParse(fieldValue, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double s))
                                 {
                                     score = s;
-                                    _logger.LogDebug("Найдена оценка '{ScoreField}' ({ScoreVal}) внутри массива полей для товара {Key}", scoreFieldName, s, key);
                                 }
                                 else
                                 {
-                                    _logger.LogWarning("Поле '{ScoreField}' для товара {Key} ({FieldValue}) не является числом. Игнорируется.", scoreFieldName, key, fieldValue);
                                     fieldDict[fieldName] = fieldValue;
                                 }
                             }
@@ -417,13 +539,15 @@ namespace InShop.WebAPI.Controllers
                 }
 
                 var product = CreateDtoFromFields(key, fieldDict);
-                dict[product.Id] = (product, score.Value);
+                if (!dict.ContainsKey(product.Id))
+                {
+                    dict[product.Id] = (product, score.Value);
+                }
             }
 
             return dict;
         }
 
-        // --- ВСПОМОГАТЕЛЬНЫЙ МЕТОД: Создание DTO из словаря ---
         private ProductSearchResultDto CreateDtoFromFields(string key, Dictionary<string, string> fieldDict)
         {
             return new ProductSearchResultDto
@@ -439,88 +563,6 @@ namespace InShop.WebAPI.Controllers
             };
         }
 
-        // --- ОБНОВЛЁННЫЙ МЕТОД: Построение фильтра ---
-        private static string BuildFilterClause(string? category, decimal? minPrice, decimal? maxPrice, bool? inStock, Dictionary<string, object>? specFilters = null)
-        {
-            var clauses = new List<string>();
-
-            if (!string.IsNullOrEmpty(category))
-            {
-                var escapedCategory = EscapeTagValue(category);
-                clauses.Add($"@category:{{{escapedCategory}}}");
-            }
-
-            if (minPrice.HasValue && maxPrice.HasValue)
-            {
-                clauses.Add($"@price:[{minPrice.Value} {maxPrice.Value}]");
-            }
-            else if (minPrice.HasValue)
-            {
-                clauses.Add($"@price:[{minPrice.Value} +inf]");
-            }
-            else if (maxPrice.HasValue)
-            {
-                clauses.Add($"@price:[-inf {maxPrice.Value}]");
-            }
-
-            if (inStock.HasValue)
-            {
-                var availabilityValue = inStock.Value ? "InStock" : "OutOfStock";
-                clauses.Add($"@availability:{{{availabilityValue}}}");
-            }
-
-            // --- НОВОЕ: Для характеристик ---
-            if (specFilters != null && specFilters.Any())
-            {
-                foreach (var filter in specFilters)
-                {
-                    var specName = filter.Key;
-                    var specValue = filter.Value;
-
-                    if (specValue is { } objVal)
-                    {
-                        if (objVal.GetType().GetProperty("Min") != null || objVal.GetType().GetProperty("Max") != null)
-                        {
-                            var minProp = objVal.GetType().GetProperty("Min")?.GetValue(objVal) as decimal?;
-                            var maxProp = objVal.GetType().GetProperty("Max")?.GetValue(objVal) as decimal?;
-                            string rangeClause = "@";
-                            rangeClause += specName;
-                            rangeClause += ":[";
-                            rangeClause += minProp?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "-inf";
-                            rangeClause += " ";
-                            rangeClause += maxProp?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "+inf";
-                            rangeClause += "]";
-                            clauses.Add(rangeClause);
-                        }
-                        else
-                        {
-                            string valueStr;
-                            if (objVal is decimal dec)
-                                valueStr = dec.ToString(System.Globalization.CultureInfo.InvariantCulture);
-                            else if (objVal is string str)
-                                valueStr = EscapeTagValue(str);
-                            else
-                                continue;
-
-                            if (objVal is decimal)
-                            {
-                                clauses.Add($"@{specName}:[{valueStr} {valueStr}]");
-                            }
-                            else if (objVal is string)
-                            {
-                                clauses.Add($"@{specName}:{{{valueStr}}}");
-                            }
-                        }
-                    }
-                }
-            }
-            // --- КОНЕЦ НОВОГО ---
-            var clauseStr = string.Join(" ", clauses);
-            Console.WriteLine($"DEBUG BuildFilterClause: {clauseStr}");
-            return string.Join(" ", clauses);
-        }
-
-        // --- ВСПОМОГАТЕЛЬНЫЙ МЕТОД: Экранирование значений для TAG ---
         private static string EscapeTagValue(string value)
         {
             if (string.IsNullOrEmpty(value))
@@ -537,7 +579,6 @@ namespace InShop.WebAPI.Controllers
             return result;
         }
 
-        // --- ВСПОМОГАТЕЛЬНЫЙ МЕТОД: Извлечение ID из ключа ---
         private static int ExtractIdFromKey(string key)
         {
             var lastColon = key.LastIndexOf(':');
@@ -548,7 +589,6 @@ namespace InShop.WebAPI.Controllers
             throw new ArgumentException($"Невозможно извлечь ID из ключа: {key}");
         }
 
-        // --- ВСПОМОГАТЕЛЬНЫЙ КЛАСС ДЛЯ ХРАНЕНИЯ ГИБРИДНОГО РЕЗУЛЬТАТА ---
         private class HybridResult
         {
             public ProductSearchResultDto Dto { get; set; } = null!;
@@ -557,7 +597,6 @@ namespace InShop.WebAPI.Controllers
             public double HybridScore { get; set; }
         }
 
-        // --- ENUM для указания места ожидаемой оценки ---
         public enum ScoreLocation { InArray, AfterKey }
     }
 }

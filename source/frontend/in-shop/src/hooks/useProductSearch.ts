@@ -1,6 +1,6 @@
 // src/hooks/useProductSearch.ts
 import { useState, useCallback } from 'react';
-import { ProductSearchResultDto, SearchRequestDto } from '../types/search';
+import { ProductSearchResultDto, SearchRequestDto, SearchResponseDto } from '../types/search';
 
 // Вспомогательный тип для формата, который ожидает бэкенд (camelCase ключи)
 interface BackendSearchRequest {
@@ -62,7 +62,7 @@ const normalizeSpecFilters = (
 
 // Преобразование внутреннего DTO в формат бэкенда (camelCase ключи)
 const toBackendRequest = (request: SearchRequestDto): BackendSearchRequest => ({
-  q: request.query ?? '',  // ← Ключ "q", как в [JsonPropertyName("q")]
+  q: request.query ?? '',  
   limit: request.limit ?? 50,
   category: request.category ?? null,
   minPrice: request.minPrice != null 
@@ -79,6 +79,7 @@ const toBackendRequest = (request: SearchRequestDto): BackendSearchRequest => ({
 
 interface UseProductSearchReturn {
   results: ProductSearchResultDto[];
+  recommended: ProductSearchResultDto[]; // Добавлено
   loading: boolean;
   error: string | null;
   search: (request: SearchRequestDto) => Promise<void>;
@@ -87,6 +88,7 @@ interface UseProductSearchReturn {
 
 export const useProductSearch = (apiBaseUrl: string): UseProductSearchReturn => {
   const [results, setResults] = useState<ProductSearchResultDto[]>([]);
+  const [recommended, setRecommended] = useState<ProductSearchResultDto[]>([]); // Добавлено
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -95,27 +97,23 @@ export const useProductSearch = (apiBaseUrl: string): UseProductSearchReturn => 
     setError(null);
     
     try {
-      // Преобразуем запрос в формат, который ожидает бэкенд
       const backendRequest = toBackendRequest(request);
       
-      // Лог для отладки (можно убрать в продакшене)
       console.log('📤 Search request to backend:', backendRequest);
 
       const response = await fetch(`${apiBaseUrl}/search/search`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(backendRequest), // ← Отправляем с camelCase ключами
+        body: JSON.stringify(backendRequest),
       });
 
       if (!response.ok) {
         let errorMsg = `Ошибка сервера: ${response.status}`;
         
         try {
-          // Пытаемся распарсить детали ошибки
           const errorData = await response.json();
           console.error('❌ Backend error response:', errorData);
           
-          // Приоритет полей для сообщения об ошибке
           errorMsg = errorData?.detail 
             || errorData?.message 
             || errorData?.title 
@@ -123,7 +121,6 @@ export const useProductSearch = (apiBaseUrl: string): UseProductSearchReturn => 
             || JSON.stringify(errorData)
             || errorMsg;
         } catch (parseError) {
-          // Если тело не JSON, пробуем прочитать как текст
           try {
             const text = await response.text();
             if (text) {
@@ -136,15 +133,17 @@ export const useProductSearch = (apiBaseUrl: string): UseProductSearchReturn => 
         throw new Error(errorMsg);
       }
 
-      const data = await response.json();
+      const data: SearchResponseDto = await response.json();
       
-      // Гарантируем, что результаты — это массив
-      setResults(Array.isArray(data) ? data : []);
+      // Обновляем оба состояния из нового формата ответа
+      setResults(Array.isArray(data.results) ? data.results : []);
+      setRecommended(Array.isArray(data.recommended) ? data.recommended : []);
       
     } catch (e) {
       console.error('🔥 Search error:', e);
       setError(e instanceof Error ? e.message : 'Неизвестная ошибка при поиске');
       setResults([]);
+      setRecommended([]);
     } finally {
       setLoading(false);
     }
@@ -152,9 +151,10 @@ export const useProductSearch = (apiBaseUrl: string): UseProductSearchReturn => 
 
   const clear = useCallback(() => {
     setResults([]);
+    setRecommended([]);
     setError(null);
     setLoading(false);
   }, []);
 
-  return { results, loading, error, search, clear };
+  return { results, recommended, loading, error, search, clear };
 };

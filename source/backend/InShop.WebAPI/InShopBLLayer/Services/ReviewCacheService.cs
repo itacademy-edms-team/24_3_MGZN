@@ -13,6 +13,12 @@ namespace InShopBLLayer.Services
 {
     public class ReviewCacheService : IReviewCacheService
     {
+        private sealed class CachedReviewSummary
+        {
+            public ReviewSummaryDto Summary { get; set; } = new();
+            public int ReviewCount { get; set; }
+        }
+
         private readonly IDatabase _redisDb;
         private readonly ILogger<ReviewCacheService> _logger;
 
@@ -25,32 +31,38 @@ namespace InShopBLLayer.Services
             _logger = logger;
         }
 
-        public async Task<ReviewSummaryDto?> GetSummaryAsync(int productId)
+        public async Task<(ReviewSummaryDto? Summary, int? ReviewCount)> GetSummaryAsync(int productId)
         {
             try
             {
                 var key = $"{SUMMARY_PREFIX}{productId}";
                 var json = await _redisDb.StringGetAsync(key);
 
-                if (json.IsNullOrEmpty) return null;
+                if (json.IsNullOrEmpty) return (null, null);
 
                 // Используем опции, игнорирующие регистр свойств JSON
                 var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-                return JsonSerializer.Deserialize<ReviewSummaryDto>(json!, options);
+                var cached = JsonSerializer.Deserialize<CachedReviewSummary>(json!, options);
+                return (cached?.Summary, cached?.ReviewCount);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting review summary from Redis for ProductId {ProductId}", productId);
-                return null;
+                return (null, null);
             }
         }
 
-        public async Task SetSummaryAsync(int productId, ReviewSummaryDto summary, TimeSpan ttl)
+        public async Task SetSummaryAsync(int productId, ReviewSummaryDto summary, int reviewCount, TimeSpan ttl)
         {
             try
             {
                 var key = $"{SUMMARY_PREFIX}{productId}";
-                var json = JsonSerializer.Serialize(summary);
+                var payload = new CachedReviewSummary
+                {
+                    Summary = summary,
+                    ReviewCount = reviewCount
+                };
+                var json = JsonSerializer.Serialize(payload);
                 await _redisDb.StringSetAsync(key, json, ttl);
             }
             catch (Exception ex)

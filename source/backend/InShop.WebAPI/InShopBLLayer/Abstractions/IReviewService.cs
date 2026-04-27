@@ -11,6 +11,7 @@ namespace InShopBLLayer.Abstractions
     {
         // Получить отзывы с пагинацией и сортировкой по полезности
         Task<(List<ReviewResponseDto> Reviews, int TotalCount)> GetProductReviewsAsync(int productId, int page, int pageSize, int? currentSessionId);
+        Task<int> GetReviewCountAsync(int productId);
 
         // Создать отзыв
         Task<ReviewResponseDto> AddReviewAsync(int productId, int sessionId, CreateReviewDto dto);

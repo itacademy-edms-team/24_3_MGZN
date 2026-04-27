@@ -4,6 +4,7 @@ using InShopBLLayer.Abstractions;
 using InShopDbModels.Abstractions;
 using InShopDbModels.Data;
 using InShopDbModels.Models;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -70,9 +71,12 @@ namespace InShopBLLayer.Services
                 });
             }
 
-            dtos = dtos.OrderByDescending(d => d.VoteScore).ThenByDescending(d => d.CreatedAt).ToList();
-
             return (dtos, totalCount);
+        }
+
+        public async Task<int> GetReviewCountAsync(int productId)
+        {
+            return await _reviewRepository.GetCountByProductIdAsync(productId);
         }
 
 
@@ -134,6 +138,7 @@ namespace InShopBLLayer.Services
                 }
 
                 await transaction.CommitAsync();
+                await _reviewCacheService.InvalidateSummaryAsync(review.ProductId);
                 return await MapToDtoWithExtrasAsync(review, sessionId);
             }
             catch
@@ -160,12 +165,22 @@ namespace InShopBLLayer.Services
 
                 await UpdateProductStatsAsync(productId);
                 await transaction.CommitAsync();
+                await _reviewCacheService.InvalidateSummaryAsync(productId);
             }
             catch
             {
                 await transaction.RollbackAsync();
                 throw;
             }
+        }
+
+        public static bool IsUniqueConstraintViolation(DbUpdateException ex)
+        {
+            var message = ex.InnerException?.Message ?? ex.Message;
+            return message.Contains("UNIQUE", StringComparison.OrdinalIgnoreCase)
+                || message.Contains("duplicate", StringComparison.OrdinalIgnoreCase)
+                || message.Contains("2601", StringComparison.OrdinalIgnoreCase)
+                || message.Contains("2627", StringComparison.OrdinalIgnoreCase);
         }
 
         public async Task VoteReviewAsync(int reviewId, int sessionId, int voteType)

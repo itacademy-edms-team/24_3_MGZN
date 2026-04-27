@@ -4,6 +4,7 @@ using InShopBLLayer.Abstractions;
 using InShopBLLayer.Services;
 using InShopDbModels.Abstractions;
 using InShopDbModels.Repositories;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
 
 namespace InShop.WebAPI.Controllers
@@ -138,6 +139,16 @@ namespace InShop.WebAPI.Controllers
         [HttpGet("{id}/reviews")]
         public async Task<IActionResult> GetProductReviews(int id, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         {
+            if (page < 1)
+            {
+                return BadRequest(new { message = "Параметр page должен быть >= 1." });
+            }
+
+            if (pageSize < 1 || pageSize > 50)
+            {
+                return BadRequest(new { message = "Параметр pageSize должен быть в диапазоне 1..50." });
+            }
+
             // Берем SessionId из контекста (он там благодаря Middleware)
             int? sessionId = HttpContext.GetSessionId();
 
@@ -169,6 +180,10 @@ namespace InShop.WebAPI.Controllers
             catch (InvalidOperationException ex)
             {
                 return BadRequest(new { message = ex.Message });
+            }
+            catch (DbUpdateException ex) when (ReviewService.IsUniqueConstraintViolation(ex))
+            {
+                return Conflict(new { message = "Вы уже оставили отзыв на этот товар." });
             }
         }
 
@@ -230,6 +245,10 @@ namespace InShop.WebAPI.Controllers
             {
                 return BadRequest(ex.Message);
             }
+            catch (DbUpdateException ex) when (ReviewService.IsUniqueConstraintViolation(ex))
+            {
+                return Conflict(new { message = "Конфликт голосования. Повторите попытку." });
+            }
         }
 
         [HttpGet("{id}/reviews/ai-summary")]
@@ -242,11 +261,18 @@ namespace InShop.WebAPI.Controllers
             var product = await _productService.GetProduct(id); // Или твой метод получения товара
             if (product == null) return NotFound("Product not found");
 
+            var currentReviewCount = await _reviewService.GetReviewCountAsync(id);
+
             // 2. Пробуем получить из кэша
             var cachedSummary = await _reviewCacheService.GetSummaryAsync(id);
-            if (cachedSummary != null)
+            if (cachedSummary.Summary != null && cachedSummary.ReviewCount == currentReviewCount)
             {
-                return Ok(cachedSummary);
+                return Ok(cachedSummary.Summary);
+            }
+
+            if (cachedSummary.Summary != null && cachedSummary.ReviewCount != currentReviewCount)
+            {
+                await _reviewCacheService.InvalidateSummaryAsync(id);
             }
 
             // 3. Пытаемся захватить блокировку
@@ -260,11 +286,13 @@ namespace InShop.WebAPI.Controllers
 
             try
             {
+                currentReviewCount = await _reviewService.GetReviewCountAsync(id);
+
                 // Double-check кэша
                 cachedSummary = await _reviewCacheService.GetSummaryAsync(id);
-                if (cachedSummary != null)
+                if (cachedSummary.Summary != null && cachedSummary.ReviewCount == currentReviewCount)
                 {
-                    return Ok(cachedSummary);
+                    return Ok(cachedSummary.Summary);
                 }
 
                 // 4. Получаем тексты отзывов ЧЕРЕЗ СЕРВИС (BLL Layer)
@@ -284,7 +312,7 @@ namespace InShop.WebAPI.Controllers
                 }
 
                 // 6. Сохраняем в кэш на 24 часа
-                await _reviewCacheService.SetSummaryAsync(id, summary, TimeSpan.FromHours(24));
+                await _reviewCacheService.SetSummaryAsync(id, summary, currentReviewCount, TimeSpan.FromHours(24));
 
                 return Ok(summary);
             }

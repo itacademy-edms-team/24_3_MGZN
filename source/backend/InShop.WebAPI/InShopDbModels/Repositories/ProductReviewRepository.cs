@@ -31,7 +31,9 @@ namespace InShopDbModels.Repositories
             return await _context.ProductReviews
                 .Include(r => r.ReviewVotes)
                 .Where(r => r.ProductId == productId)
-                .OrderByDescending(r => r.CreatedAt) // Сортировку по полезности лучше делать в сервисе или через сложный запрос, но пока базовая по дате
+                // Важно сортировать до пагинации, иначе на разных страницах порядок по полезности ломается.
+                .OrderByDescending(r => r.ReviewVotes.Sum(v => (int?)v.VoteType) ?? 0)
+                .ThenByDescending(r => r.CreatedAt)
                 .Skip(skip)
                 .Take(take)
                 .ToListAsync();

@@ -20,7 +20,8 @@ namespace InShop.WebAPI.Controllers
         private readonly IProductService _productService;
 
         private const double MainCosineDistanceThreshold = 0.5;
-        private const double RecCosineDistanceThreshold = 0.99;
+        // Для рекомендаций порог мягче, чтобы найти больше похожих товаров
+        private const double RecCosineDistanceThreshold = 0.8;
 
         private const double VectorWeight = 0.4;
         private const double LexicalWeight = 0.6;
@@ -28,7 +29,7 @@ namespace InShop.WebAPI.Controllers
         private const int RecommendationLimit = 10;
         private const int RecommendationBuffer = 20;
 
-        // Максимальный лимит для одного запроса к Redis, чтобы не убить память
+        // Максимальный лимит для одного запроса к Redis
         private const int MaxRedisFetchLimit = 200;
 
         public SearchController(
@@ -66,12 +67,19 @@ namespace InShop.WebAPI.Controllers
             [FromBody] SearchRequestDto request,
             CancellationToken ct = default)
         {
+            if (request == null)
+            {
+                return BadRequest("Тело запроса отсутствует.");
+            }
+
+            var normalizedQuery = request.Query?.Trim() ?? string.Empty;
+
             // --- 1. Валидация ---
             bool hasCategory = !string.IsNullOrWhiteSpace(request.Category);
             bool hasPriceFilter = request.MinPrice.HasValue || request.MaxPrice.HasValue;
             bool hasStockFilter = request.InStock.HasValue;
             bool hasSpecFilters = request.SpecFilters != null && request.SpecFilters.Any();
-            bool hasQuery = !string.IsNullOrWhiteSpace(request.Query);
+            bool hasQuery = !string.IsNullOrWhiteSpace(normalizedQuery);
 
             if (!hasQuery && !hasCategory && !hasPriceFilter && !hasStockFilter && !hasSpecFilters)
             {
@@ -106,46 +114,75 @@ namespace InShop.WebAPI.Controllers
             int limit = request.Limit > 0 ? request.Limit : 12;
             int offset = request.Offset > 0 ? request.Offset : 0;
 
-            // Сколько всего товаров нам нужно получить из Redis, чтобы покрыть offset + limit
+            // Сколько всего товаров нам нужно получить из Redis для основной выдачи
             int totalNeeded = offset + limit;
-
-            // Ограничиваем максимальную выборку для безопасности
-            int fetchLimit = Math.Min(totalNeeded, MaxRedisFetchLimit);
+            int fetchLimit = Math.Min(totalNeeded + 10, MaxRedisFetchLimit); // +10 буфер
 
             try
             {
                 // --- 2. Подготовка вектора и фильтров ---
-                var queryVector = await _embeddingService.GenerateEmbeddingAsync(request.Query, ct);
+
+                // Если запроса нет, работаем только с фильтрами (без векторов)
+                if (!hasQuery)
+                {
+                    var fallbackFilterClause = BuildFilterClause(request.Category, request.MinPrice, request.MaxPrice, request.InStock, validatedSpecFilters);
+                    var filterOnlyQuery = string.IsNullOrEmpty(fallbackFilterClause) ? "*" : fallbackFilterClause;
+
+                    var filterOnlyResult = await _redis.GetDatabase().ExecuteAsync("FT.SEARCH",
+                        "idx:products",
+                        filterOnlyQuery,
+                        "RETURN", "7", "name", "description", "price", "category", "stock", "availability", "image_url",
+                        "LIMIT", offset.ToString(), limit.ToString(),
+                        "DIALECT", "4"
+                    );
+
+                    var fallbackProducts = ParseFlatSearchResults(filterOnlyResult);
+                    return Ok(new SearchResponseDto
+                    {
+                        Results = fallbackProducts,
+                        Recommended = new List<ProductSearchResultDto>() // Без query рекомендации не имеют смысла
+                    });
+                }
+
+                var queryVector = await _embeddingService.GenerateEmbeddingAsync(normalizedQuery, ct);
                 var queryVectorBytes = new byte[queryVector.Length * sizeof(float)];
                 Buffer.BlockCopy(queryVector, 0, queryVectorBytes, 0, queryVectorBytes.Length);
 
-                var mainFilterClause = BuildFilterClause(request.Category, request.MinPrice, request.MaxPrice, request.InStock, validatedSpecFilters);
-                var recFilterClause = string.Empty; // Рекомендации без фильтров
+                var escapedQueryTerms = string.Join(" ", normalizedQuery.Split(' ', StringSplitOptions.RemoveEmptyEntries));
 
-                var escapedQueryTerms = string.Join(" ", request.Query.Split(' ', StringSplitOptions.RemoveEmptyEntries));
+                // 2.1. Фильтры для ОСНОВНОЙ выдачи (строгие)
+                var mainFilterClause = BuildFilterClause(request.Category, request.MinPrice, request.MaxPrice, request.InStock, validatedSpecFilters);
+
+                // 2.2. Фильтры для РЕКОМЕНДАЦИЙ (только запрос, без фильтров цены/наличия)
+                // Мы хотим показать похожие товары, даже если они чуть дороже или в другой категории (если это уместно)
+                // Но обычно категорию оставляют. Здесь сделаем полностью без фильтров, как вы просили ранее.
+                var recFilterClause = string.Empty;
 
                 // Формируем векторные запросы
-                // Важно: KNN в Redis возвращает топ-N самых близких. 
-                // Чтобы сделать "offset", мы должны запросить топ-(offset+limit) и отбросить первые offset.
                 var mainVectorQuery = string.IsNullOrEmpty(mainFilterClause)
                     ? $"*=>[KNN {fetchLimit} @embedding $BLOB AS vector_distance]"
                     : $"({mainFilterClause})=>[KNN {fetchLimit} @embedding $BLOB AS vector_distance]";
 
-                var recVectorQuery = $"*=>[KNN {RecommendationLimit + RecommendationBuffer} @embedding $BLOB AS vector_distance]";
+                // Для рекомендаций берем с запасом
+                var recVectorQuery = string.IsNullOrEmpty(recFilterClause)
+                    ? $"*=>[KNN {RecommendationLimit + RecommendationBuffer} @embedding $BLOB AS vector_distance]"
+                    : $"({recFilterClause})=>[KNN {RecommendationLimit + RecommendationBuffer} @embedding $BLOB AS vector_distance]";
 
                 // Лексические запросы
                 var mainLexicalQuery = string.IsNullOrEmpty(mainFilterClause)
                     ? escapedQueryTerms
                     : $"({mainFilterClause}) {escapedQueryTerms}";
 
-                var recLexicalQuery = escapedQueryTerms;
+                var recLexicalQuery = string.IsNullOrEmpty(recFilterClause)
+                    ? escapedQueryTerms
+                    : $"({recFilterClause}) {escapedQueryTerms}";
 
                 var db = _redis.GetDatabase();
                 var batch = db.CreateBatch();
 
                 // --- 3. Выполнение поиска через BATCH ---
 
-                // Основная выдача
+                // А. Основная выдача
                 var mainVectorTask = batch.ExecuteAsync("FT.SEARCH",
                     "idx:products",
                     mainVectorQuery,
@@ -160,13 +197,11 @@ namespace InShop.WebAPI.Controllers
                     "SCORER", "BM25",
                     "WITHSCORES",
                     "RETURN", "7", "name", "description", "price", "category", "stock", "availability", "image_url",
-                    "LIMIT", "0", fetchLimit.ToString(), // Забираем всё сразу
+                    "LIMIT", "0", fetchLimit.ToString(),
                     "DIALECT", "4"
                 );
 
-                // Рекомендации (запрашиваем только при первом обращении, offset=0)
-                // Если offset > 0, рекомендации можно не запрашивать повторно, но для простоты оставим как есть
-                // Или оптимизируем: если offset > 0, можно вернуть пустой список рекомендаций, чтобы не гонять лишние данные
+                // Б. Рекомендации (независимый поиск)
                 var recVectorTask = batch.ExecuteAsync("FT.SEARCH",
                     "idx:products",
                     recVectorQuery,
@@ -196,10 +231,9 @@ namespace InShop.WebAPI.Controllers
                     await mainLexicalTask,
                     MainCosineDistanceThreshold);
 
-                // Сортируем ВСЕ найденные кандидаты
                 var sortedMainResults = ApplySorting(mainHybridResults, validatedSortBy, validatedSortOrder);
 
-                // Применяем "пагинацию" в памяти: берем нужный срез
+                // Пагинация в памяти
                 var pagedMainResults = sortedMainResults
                     .Skip(offset)
                     .Take(limit)
@@ -207,21 +241,14 @@ namespace InShop.WebAPI.Controllers
 
                 var finalMainDtos = pagedMainResults.Select(r => r.Dto).ToList();
 
-                // IDs для исключения из рекомендаций (только если это первая страница)
-                var mainIds = new HashSet<int>(finalMainDtos.Select(p => p.Id));
+                // Собираем IDs основной выдачи для исключения из рекомендаций
+                var mainProductIds = new HashSet<int>(finalMainDtos.Select(p => p.Id));
 
                 // 4.2. Рекомендации
-                // Оптимизация: если offset > 0, мы уже получили рекомендации ранее на клиенте.
-                // Но бэкенд stateless, поэтому мы всегда их считаем. 
-                // Чтобы не дублировать, мы исключим из рекомендаций товары, которые есть в ТЕКУЩЕЙ выдаче.
-                // (В идеале, клиент должен сам фильтровать, но сделаем это на бэке для чистоты)
-
                 List<ProductSearchResultDto> finalRecDtos = new();
 
-                // Вычисляем рекомендации только если это первый запрос (offset == 0), 
-                // либо если мы хотим обновлять их динамически (что редко нужно).
-                // Для экономии ресурсов, если offset > 0, можно вернуть пустой список рекомендаций,
-                // так как фронтенд уже сохранил старые.
+                // Вычисляем рекомендации только если это первая страница (offset == 0),
+                // чтобы не тратить ресурсы впустую и не менять рекомендации при скролле
                 if (offset == 0)
                 {
                     var recHybridResults = await ProcessHybridSearch(
@@ -229,12 +256,12 @@ namespace InShop.WebAPI.Controllers
                         await recLexicalTask,
                         RecCosineDistanceThreshold);
 
-                    var uniqueRecCandidates = recHybridResults
-                        .Where(r => !mainIds.Contains(r.Dto.Id))
-                        .ToList();
+                    // Сортируем рекомендации
+                    var sortedRecResults = ApplySorting(recHybridResults, validatedSortBy, validatedSortOrder);
 
-                    var sortedRecCandidates = ApplySorting(uniqueRecCandidates, validatedSortBy, validatedSortOrder);
-                    finalRecDtos = sortedRecCandidates
+                    // Исключаем дубликаты из основной выдачи
+                    finalRecDtos = sortedRecResults
+                        .Where(r => !mainProductIds.Contains(r.Dto.Id))
                         .Select(r => r.Dto)
                         .Take(RecommendationLimit)
                         .ToList();
@@ -255,7 +282,7 @@ namespace InShop.WebAPI.Controllers
             }
         }
 
-        // ... (Остальные методы: IsValidSortParameter, IsValidSortOrder, ApplySorting, ProcessHybridSearch, ParseRedisResultToDict, CreateDtoFromFields, BuildFilterClause, EscapeTagValue, ExtractIdFromKey, HybridResult, ScoreLocation остаются БЕЗ ИЗМЕНЕНИЙ) ...
+        // --- ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ---
 
         private static bool IsValidSortParameter(string input, out string validatedOutput)
         {
@@ -459,6 +486,10 @@ namespace InShop.WebAPI.Controllers
                 }
 
                 var product = CreateDtoFromFields(key, fieldDict);
+                if (product.Id <= 0)
+                {
+                    continue;
+                }
                 if (!dict.ContainsKey(product.Id))
                 {
                     dict[product.Id] = (product, score.Value);
@@ -579,9 +610,61 @@ namespace InShop.WebAPI.Controllers
             var lastColon = key.LastIndexOf(':');
             if (lastColon >= 0 && lastColon < key.Length - 1)
             {
-                return int.Parse(key.Substring(lastColon + 1));
+                if (int.TryParse(key.Substring(lastColon + 1), out var id))
+                {
+                    return id;
+                }
             }
-            throw new ArgumentException($"Невозможно извлечь ID из ключа: {key}");
+            return -1;
+        }
+
+        private List<ProductSearchResultDto> ParseFlatSearchResults(RedisResult rawResult)
+        {
+            var items = new List<ProductSearchResultDto>();
+
+            if (rawResult.Resp2Type != ResultType.Array)
+            {
+                return items;
+            }
+
+            var response = (RedisResult[])rawResult;
+            for (int i = 1; i < response.Length;)
+            {
+                if (response[i].Resp2Type != ResultType.BulkString)
+                {
+                    break;
+                }
+
+                var key = (string)response[i];
+                i++;
+
+                if (i >= response.Length || response[i].Resp2Type != ResultType.Array)
+                {
+                    break;
+                }
+
+                var fieldsArray = (RedisResult[])response[i];
+                i++;
+
+                var fieldDict = new Dictionary<string, string>();
+                for (int j = 0; j + 1 < fieldsArray.Length; j += 2)
+                {
+                    if (fieldsArray[j].Resp2Type != ResultType.BulkString || fieldsArray[j + 1].Resp2Type != ResultType.BulkString)
+                    {
+                        continue;
+                    }
+
+                    fieldDict[(string)fieldsArray[j]] = (string)fieldsArray[j + 1];
+                }
+
+                var dto = CreateDtoFromFields(key, fieldDict);
+                if (dto.Id > 0)
+                {
+                    items.Add(dto);
+                }
+            }
+
+            return items;
         }
 
         private class HybridResult

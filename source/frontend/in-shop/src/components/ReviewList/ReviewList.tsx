@@ -12,13 +12,15 @@ interface ReviewListProps {
   onRefreshTrigger: number;
   onEdit: (review: Review) => void;
   onDelete?: (reviewId: number) => void;
+  onTotalCountChange?: (count: number) => void;
 }
 
 const ReviewList: React.FC<ReviewListProps> = ({ 
   productId, 
   onRefreshTrigger, 
   onEdit, 
-  onDelete 
+  onDelete,
+  onTotalCountChange
 }) => {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -41,6 +43,7 @@ const ReviewList: React.FC<ReviewListProps> = ({
       }
       
       setTotalCount(data.totalCount);
+      onTotalCountChange?.(data.totalCount);
       setHasMore(data.reviews.length > 0 && (pageNum * pageSize) < data.totalCount);
     } catch (error) {
       console.error('Ошибка загрузки отзывов:', error);
@@ -64,8 +67,23 @@ const ReviewList: React.FC<ReviewListProps> = ({
     setPage(prev => prev + 1);
   };
 
-  const handleVoteSuccess = () => {
-    loadReviews(1, false);
+  const handleVoteSuccess = async () => {
+    if (loading) return;
+    setLoading(true);
+    try {
+      const loadedPageCount = Math.max(page, 1);
+      const loadedItemsCount = loadedPageCount * pageSize;
+      const data: ReviewsResponse = await getProductReviews(productId, 1, loadedItemsCount);
+
+      setReviews(data.reviews);
+      setTotalCount(data.totalCount);
+      onTotalCountChange?.(data.totalCount);
+      setHasMore(data.reviews.length > 0 && data.reviews.length < data.totalCount);
+    } catch (error) {
+      console.error('Ошибка обновления отзывов после голосования:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleLocalDelete = async (reviewId: number) => {

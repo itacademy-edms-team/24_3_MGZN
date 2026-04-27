@@ -7,6 +7,7 @@ import {
   UpdateReviewDto, 
   VoteDto 
 } from '../types/review';
+import { ReviewSummary } from '../types/reviewSummary'; // Импортируем новый тип
 
 const REVIEWS_BASE_URL = '/Products'; // Так как эндпоинты привязаны к ProductsController
 
@@ -51,4 +52,11 @@ export const voteReview = async (
   dto: VoteDto
 ): Promise<void> => {
   await apiClient.post(`${REVIEWS_BASE_URL}/reviews/${reviewId}/vote`, dto);
+};
+
+// === НОВЫЙ МЕТОД: Получить AI-анализ отзывов ===
+export const getReviewAiSummary = async (productId: number): Promise<ReviewSummary> => {
+  // Эндпоинт, который мы создали на бэкенде: GET /api/Products/{id}/reviews/ai-summary
+  const response = await apiClient.get<ReviewSummary>(`${REVIEWS_BASE_URL}/${productId}/reviews/ai-summary`);
+  return response.data;
 };

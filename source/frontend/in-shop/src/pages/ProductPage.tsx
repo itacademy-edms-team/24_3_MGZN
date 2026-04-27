@@ -10,6 +10,8 @@ import StarRating from '../components/StarRating/StarRating.tsx';
 import ReviewList from '../components/ReviewList/ReviewList.tsx';
 import ReviewForm from '../components/ReviewForm/ReviewForm.tsx';
 import Modal from '../components/Modal.tsx';
+import AiSummaryBlock from '../components/AiSummaryBlock/AiSummaryBlock.tsx'; // <--- 1. Импорт компонента
+
 import { createReview, updateReview, deleteReview } from '../api/reviews.ts';
 import { Review, CreateReviewDto, UpdateReviewDto } from '../types/review.ts';
 
@@ -49,11 +51,13 @@ const ProductPage = () => {
     const [editingReview, setEditingReview] = useState<Review | null>(null);
     const [refreshReviewsTrigger, setRefreshReviewsTrigger] = useState(0);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [reviewCountForDisplay, setReviewCountForDisplay] = useState<number | null>(null);
 
     const { addToCart } = useContext(CartContext);
 
     useEffect(() => {
         if (!productId) return;
+        setReviewCountForDisplay(null);
         setLoading(true);
         setSpecsLoading(true);
 
@@ -105,7 +109,6 @@ const ProductPage = () => {
             }
         } catch (error: any) {
             console.error('Ошибка удаления:', error);
-            // Если бэкенд вернул 403 или 404 (нет прав), сообщаем пользователю
             if (error.response?.status === 403 || error.response?.status === 404) {
                 alert('У вас нет прав на удаление этого отзыва.');
             } else {
@@ -155,6 +158,9 @@ const ProductPage = () => {
         return <p>Товар не найден.</p>;
     }
 
+    // Преобразуем ID в число для передачи в компоненты
+    const numericProductId = Number(productId);
+
     return (
         <div>
             <Breadcrumb
@@ -186,7 +192,7 @@ const ProductPage = () => {
                                 {product.averageRating ? product.averageRating.toFixed(1) : '—'}
                             </span>
                             <span className="reviews-count">
-                                ({product.reviewsCount || 0} отзывов)
+                                ({reviewCountForDisplay ?? product.reviewsCount ?? 0} отзывов)
                             </span>
                         </div>
 
@@ -239,15 +245,19 @@ const ProductPage = () => {
                     </div>
                 )}
 
+                {/* <--- 2. Вставка компонента AI-анализа прямо над отзывами */}
+                <AiSummaryBlock productId={numericProductId} />
+
                 <div className="product-reviews-section">
                     <ReviewList 
-                        productId={Number(productId)} 
+                        productId={numericProductId} 
                         onRefreshTrigger={refreshReviewsTrigger} 
                         onEdit={(review) => {
                             setEditingReview(review);
                             setIsModalOpen(true);
                         }}
                         onDelete={handleDeleteReview}
+                        onTotalCountChange={setReviewCountForDisplay}
                     />
                 </div>
 

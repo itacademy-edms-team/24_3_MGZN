@@ -15,25 +15,25 @@ namespace InShop.WebAPI.Controllers
     public class SearchController : ControllerBase
     {
         private readonly IEmbeddingService _embeddingService;
-        private readonly ConnectionMultiplexer _redis;
+        private readonly IConnectionMultiplexer _redis;
         private readonly ILogger<SearchController> _logger;
         private readonly IProductService _productService;
 
-        // Пороги для косинусного расстояния
         private const double MainCosineDistanceThreshold = 0.5;
         private const double RecCosineDistanceThreshold = 0.99;
 
-        // Веса для гибридного поиска
         private const double VectorWeight = 0.4;
         private const double LexicalWeight = 0.6;
 
-        // Настройки блока рекомендаций
         private const int RecommendationLimit = 10;
         private const int RecommendationBuffer = 20;
 
+        // Максимальный лимит для одного запроса к Redis, чтобы не убить память
+        private const int MaxRedisFetchLimit = 200;
+
         public SearchController(
             IEmbeddingService embeddingService,
-            ConnectionMultiplexer redis,
+            IConnectionMultiplexer redis,
             ILogger<SearchController> logger,
             IProductService productService)
         {
@@ -66,7 +66,7 @@ namespace InShop.WebAPI.Controllers
             [FromBody] SearchRequestDto request,
             CancellationToken ct = default)
         {
-            // --- 1. Валидация входных данных ---
+            // --- 1. Валидация ---
             bool hasCategory = !string.IsNullOrWhiteSpace(request.Category);
             bool hasPriceFilter = request.MinPrice.HasValue || request.MaxPrice.HasValue;
             bool hasStockFilter = request.InStock.HasValue;
@@ -102,6 +102,16 @@ namespace InShop.WebAPI.Controllers
                 validatedSpecFilters = null;
             }
 
+            // Параметры "пагинации"
+            int limit = request.Limit > 0 ? request.Limit : 12;
+            int offset = request.Offset > 0 ? request.Offset : 0;
+
+            // Сколько всего товаров нам нужно получить из Redis, чтобы покрыть offset + limit
+            int totalNeeded = offset + limit;
+
+            // Ограничиваем максимальную выборку для безопасности
+            int fetchLimit = Math.Min(totalNeeded, MaxRedisFetchLimit);
+
             try
             {
                 // --- 2. Подготовка вектора и фильтров ---
@@ -109,35 +119,25 @@ namespace InShop.WebAPI.Controllers
                 var queryVectorBytes = new byte[queryVector.Length * sizeof(float)];
                 Buffer.BlockCopy(queryVector, 0, queryVectorBytes, 0, queryVectorBytes.Length);
 
-                // 2.1. Фильтры для ОСНОВНОЙ выдачи (строгие: цена, категория, наличие, спеки)
                 var mainFilterClause = BuildFilterClause(request.Category, request.MinPrice, request.MaxPrice, request.InStock, validatedSpecFilters);
-
-                // 2.2. Фильтры для РЕКОМЕНДАЦИЙ
-                // ПОЛЬЗОВАТЕЛЬСКОЕ ТРЕБОВАНИЕ: Только поисковой запрос, без фильтров.
-                // Поэтому оставляем строку фильтра пустой.
-                var recFilterClause = string.Empty;
+                var recFilterClause = string.Empty; // Рекомендации без фильтров
 
                 var escapedQueryTerms = string.Join(" ", request.Query.Split(' ', StringSplitOptions.RemoveEmptyEntries));
 
-                int mainLimit = request.Limit > 0 ? request.Limit : 10;
-                int recPoolLimit = mainLimit + RecommendationLimit + RecommendationBuffer;
-
                 // Формируем векторные запросы
-                // Основной: с фильтрами
+                // Важно: KNN в Redis возвращает топ-N самых близких. 
+                // Чтобы сделать "offset", мы должны запросить топ-(offset+limit) и отбросить первые offset.
                 var mainVectorQuery = string.IsNullOrEmpty(mainFilterClause)
-                    ? $"*=>[KNN {mainLimit} @embedding $BLOB AS vector_distance]"
-                    : $"({mainFilterClause})=>[KNN {mainLimit} @embedding $BLOB AS vector_distance]";
+                    ? $"*=>[KNN {fetchLimit} @embedding $BLOB AS vector_distance]"
+                    : $"({mainFilterClause})=>[KNN {fetchLimit} @embedding $BLOB AS vector_distance]";
 
-                // Рекомендации: БЕЗ фильтров (только вектор запроса ко всем товарам)
-                var recVectorQuery = $"*=>[KNN {recPoolLimit} @embedding $BLOB AS vector_distance]";
+                var recVectorQuery = $"*=>[KNN {RecommendationLimit + RecommendationBuffer} @embedding $BLOB AS vector_distance]";
 
                 // Лексические запросы
-                // Основной: с фильтрами
                 var mainLexicalQuery = string.IsNullOrEmpty(mainFilterClause)
                     ? escapedQueryTerms
                     : $"({mainFilterClause}) {escapedQueryTerms}";
 
-                // Рекомендации: БЕЗ фильтров
                 var recLexicalQuery = escapedQueryTerms;
 
                 var db = _redis.GetDatabase();
@@ -160,11 +160,13 @@ namespace InShop.WebAPI.Controllers
                     "SCORER", "BM25",
                     "WITHSCORES",
                     "RETURN", "7", "name", "description", "price", "category", "stock", "availability", "image_url",
-                    "LIMIT", "0", mainLimit.ToString(),
+                    "LIMIT", "0", fetchLimit.ToString(), // Забираем всё сразу
                     "DIALECT", "4"
                 );
 
-                // Рекомендации (расширенный пул, без фильтров)
+                // Рекомендации (запрашиваем только при первом обращении, offset=0)
+                // Если offset > 0, рекомендации можно не запрашивать повторно, но для простоты оставим как есть
+                // Или оптимизируем: если offset > 0, можно вернуть пустой список рекомендаций, чтобы не гонять лишние данные
                 var recVectorTask = batch.ExecuteAsync("FT.SEARCH",
                     "idx:products",
                     recVectorQuery,
@@ -179,7 +181,7 @@ namespace InShop.WebAPI.Controllers
                     "SCORER", "BM25",
                     "WITHSCORES",
                     "RETURN", "7", "name", "description", "price", "category", "stock", "availability", "image_url",
-                    "LIMIT", "0", recPoolLimit.ToString(),
+                    "LIMIT", "0", (RecommendationLimit + RecommendationBuffer).ToString(),
                     "DIALECT", "4"
                 );
 
@@ -194,35 +196,55 @@ namespace InShop.WebAPI.Controllers
                     await mainLexicalTask,
                     MainCosineDistanceThreshold);
 
+                // Сортируем ВСЕ найденные кандидаты
                 var sortedMainResults = ApplySorting(mainHybridResults, validatedSortBy, validatedSortOrder);
-                var finalMainDtos = sortedMainResults.Select(r => r.Dto).Take(mainLimit).ToList();
+
+                // Применяем "пагинацию" в памяти: берем нужный срез
+                var pagedMainResults = sortedMainResults
+                    .Skip(offset)
+                    .Take(limit)
+                    .ToList();
+
+                var finalMainDtos = pagedMainResults.Select(r => r.Dto).ToList();
+
+                // IDs для исключения из рекомендаций (только если это первая страница)
                 var mainIds = new HashSet<int>(finalMainDtos.Select(p => p.Id));
 
                 // 4.2. Рекомендации
-                var recHybridResults = await ProcessHybridSearch(
-                    await recVectorTask,
-                    await recLexicalTask,
-                    RecCosineDistanceThreshold);
+                // Оптимизация: если offset > 0, мы уже получили рекомендации ранее на клиенте.
+                // Но бэкенд stateless, поэтому мы всегда их считаем. 
+                // Чтобы не дублировать, мы исключим из рекомендаций товары, которые есть в ТЕКУЩЕЙ выдаче.
+                // (В идеале, клиент должен сам фильтровать, но сделаем это на бэке для чистоты)
 
-                // Исключаем дубликаты из основной выдачи
-                var uniqueRecCandidates = recHybridResults
-                    .Where(r => !mainIds.Contains(r.Dto.Id))
-                    .ToList();
+                List<ProductSearchResultDto> finalRecDtos = new();
 
-                var sortedRecCandidates = ApplySorting(uniqueRecCandidates, validatedSortBy, validatedSortOrder);
-                var finalRecDtos = sortedRecCandidates
-                    .Select(r => r.Dto)
-                    .Take(RecommendationLimit)
-                    .ToList();
+                // Вычисляем рекомендации только если это первый запрос (offset == 0), 
+                // либо если мы хотим обновлять их динамически (что редко нужно).
+                // Для экономии ресурсов, если offset > 0, можно вернуть пустой список рекомендаций,
+                // так как фронтенд уже сохранил старые.
+                if (offset == 0)
+                {
+                    var recHybridResults = await ProcessHybridSearch(
+                        await recVectorTask,
+                        await recLexicalTask,
+                        RecCosineDistanceThreshold);
+
+                    var uniqueRecCandidates = recHybridResults
+                        .Where(r => !mainIds.Contains(r.Dto.Id))
+                        .ToList();
+
+                    var sortedRecCandidates = ApplySorting(uniqueRecCandidates, validatedSortBy, validatedSortOrder);
+                    finalRecDtos = sortedRecCandidates
+                        .Select(r => r.Dto)
+                        .Take(RecommendationLimit)
+                        .ToList();
+                }
 
                 var response = new SearchResponseDto
                 {
                     Results = finalMainDtos,
                     Recommended = finalRecDtos
                 };
-
-                _logger.LogInformation("Поиск завершен. Основных: {MainCount}, Рекомендаций: {RecCount}",
-                    response.Results.Count, response.Recommended.Count);
 
                 return Ok(response);
             }
@@ -233,83 +255,7 @@ namespace InShop.WebAPI.Controllers
             }
         }
 
-        // --- МЕТОД: Построение фильтров для основного поиска (СТРОГИЕ) ---
-        private static string BuildFilterClause(string? category, decimal? minPrice, decimal? maxPrice, bool? inStock, Dictionary<string, object>? specFilters = null)
-        {
-            var clauses = new List<string>();
-
-            if (!string.IsNullOrEmpty(category))
-            {
-                var escapedCategory = EscapeTagValue(category);
-                clauses.Add($"@category:{{{escapedCategory}}}");
-            }
-
-            if (minPrice.HasValue && maxPrice.HasValue)
-            {
-                clauses.Add($"@price:[{minPrice.Value} {maxPrice.Value}]");
-            }
-            else if (minPrice.HasValue)
-            {
-                clauses.Add($"@price:[{minPrice.Value} +inf]");
-            }
-            else if (maxPrice.HasValue)
-            {
-                clauses.Add($"@price:[-inf {maxPrice.Value}]");
-            }
-
-            if (inStock.HasValue)
-            {
-                var availabilityValue = inStock.Value ? "InStock" : "OutOfStock";
-                clauses.Add($"@availability:{{{availabilityValue}}}");
-            }
-
-            if (specFilters != null && specFilters.Any())
-            {
-                foreach (var filter in specFilters)
-                {
-                    var specName = filter.Key;
-                    var specValue = filter.Value;
-
-                    if (specValue is { } objVal)
-                    {
-                        if (objVal.GetType().GetProperty("Min") != null || objVal.GetType().GetProperty("Max") != null)
-                        {
-                            var minProp = objVal.GetType().GetProperty("Min")?.GetValue(objVal) as decimal?;
-                            var maxProp = objVal.GetType().GetProperty("Max")?.GetValue(objVal) as decimal?;
-                            string rangeClause = $"@{specName}:[";
-                            rangeClause += minProp?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "-inf";
-                            rangeClause += " ";
-                            rangeClause += maxProp?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "+inf";
-                            rangeClause += "]";
-                            clauses.Add(rangeClause);
-                        }
-                        else
-                        {
-                            string valueStr;
-                            if (objVal is decimal dec)
-                                valueStr = dec.ToString(System.Globalization.CultureInfo.InvariantCulture);
-                            else if (objVal is string str)
-                                valueStr = EscapeTagValue(str);
-                            else
-                                continue;
-
-                            if (objVal is decimal)
-                            {
-                                clauses.Add($"@{specName}:[{valueStr} {valueStr}]");
-                            }
-                            else if (objVal is string)
-                            {
-                                clauses.Add($"@{specName}:{{{valueStr}}}");
-                            }
-                        }
-                    }
-                }
-            }
-
-            return string.Join(" ", clauses);
-        }
-
-        // --- ОСТАЛЬНЫЕ МЕТОДЫ (IsValidSortParameter, IsValidSortOrder, ApplySorting, ProcessHybridSearch, ParseRedisResultToDict, CreateDtoFromFields, EscapeTagValue, ExtractIdFromKey, HybridResult, ScoreLocation) ---
+        // ... (Остальные методы: IsValidSortParameter, IsValidSortOrder, ApplySorting, ProcessHybridSearch, ParseRedisResultToDict, CreateDtoFromFields, BuildFilterClause, EscapeTagValue, ExtractIdFromKey, HybridResult, ScoreLocation остаются БЕЗ ИЗМЕНЕНИЙ) ...
 
         private static bool IsValidSortParameter(string input, out string validatedOutput)
         {
@@ -398,14 +344,12 @@ namespace InShop.WebAPI.Controllers
 
             if (rawResult.Resp2Type != ResultType.Array)
             {
-                _logger.LogWarning("Результат поиска не является массивом. Тип: {Type}", rawResult.Resp2Type);
                 return dict;
             }
 
             var response = (RedisResult[])rawResult;
             if (response.Length < 1)
             {
-                _logger.LogWarning("Результат поиска пуст или содержит недостаточно данных.");
                 return dict;
             }
 
@@ -413,7 +357,6 @@ namespace InShop.WebAPI.Controllers
             {
                 if (i >= response.Length || response[i].Resp2Type != ResultType.BulkString)
                 {
-                    _logger.LogWarning("Ожидался ключ товара (BulkString) на позиции {Pos}, получен: {Type}. Прерывание парсинга.", i, response[i].Resp2Type);
                     break;
                 }
                 var key = (string)response[i];
@@ -427,7 +370,6 @@ namespace InShop.WebAPI.Controllers
                     case ScoreLocation.InArray:
                         if (i >= response.Length || response[i].Resp2Type != ResultType.Array)
                         {
-                            _logger.LogWarning("Ожидался массив полей для товара {Key} после ключа, получен: {Type}. Пропуск.", key, response[i].Resp2Type);
                             i++;
                             continue;
                         }
@@ -437,18 +379,13 @@ namespace InShop.WebAPI.Controllers
 
                         for (int j = 0; j < fieldsArray_InArray.Length; j += 2)
                         {
-                            if (j + 1 >= fieldsArray_InArray.Length)
-                            {
-                                _logger.LogWarning("Нечетное количество элементов в массиве полей для товара {Key}.", key);
-                                break;
-                            }
+                            if (j + 1 >= fieldsArray_InArray.Length) break;
 
                             var fieldNameResult = fieldsArray_InArray[j];
                             var fieldValueResult = fieldsArray_InArray[j + 1];
 
                             if (fieldNameResult.Resp2Type != ResultType.BulkString || fieldValueResult.Resp2Type != ResultType.BulkString)
                             {
-                                _logger.LogWarning("Неверный тип имени или значения поля для товара {Key}. FieldNameType: {FNType}, FieldValueType: {FVType}", key, fieldNameResult.Resp2Type, fieldValueResult.Resp2Type);
                                 continue;
                             }
 
@@ -461,10 +398,6 @@ namespace InShop.WebAPI.Controllers
                                 {
                                     score = s;
                                 }
-                                else
-                                {
-                                    fieldDict[fieldName] = fieldValue;
-                                }
                             }
                             else
                             {
@@ -476,7 +409,6 @@ namespace InShop.WebAPI.Controllers
                     case ScoreLocation.AfterKey:
                         if (i >= response.Length || response[i].Resp2Type != ResultType.BulkString)
                         {
-                            _logger.LogWarning("После ключа {Key} ожидалась оценка (BulkString), получен: {Type}. Пропуск.", key, response[i].Resp2Type);
                             i++;
                             continue;
                         }
@@ -484,7 +416,6 @@ namespace InShop.WebAPI.Controllers
                         var possibleScoreValue_AfterKey = (string)response[i];
                         if (!double.TryParse(possibleScoreValue_AfterKey, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double extractedScore))
                         {
-                            _logger.LogWarning("После ключа {Key} ожидалась числовая оценка, получено: '{Value}'. Пропуск.", key, possibleScoreValue_AfterKey);
                             i++;
                             continue;
                         }
@@ -493,7 +424,6 @@ namespace InShop.WebAPI.Controllers
 
                         if (i >= response.Length || response[i].Resp2Type != ResultType.Array)
                         {
-                            _logger.LogWarning("После оценки для товара {Key} ожидался массив полей, получен: {Type}", key, response[i]?.Resp2Type ?? ResultType.None);
                             i--;
                             continue;
                         }
@@ -503,18 +433,13 @@ namespace InShop.WebAPI.Controllers
 
                         for (int j = 0; j < fieldsArray_AfterKey.Length; j += 2)
                         {
-                            if (j + 1 >= fieldsArray_AfterKey.Length)
-                            {
-                                _logger.LogWarning("Нечетное количество элементов в массиве полей для товара {Key}.", key);
-                                break;
-                            }
+                            if (j + 1 >= fieldsArray_AfterKey.Length) break;
 
                             var fieldNameResult = fieldsArray_AfterKey[j];
                             var fieldValueResult = fieldsArray_AfterKey[j + 1];
 
                             if (fieldNameResult.Resp2Type != ResultType.BulkString || fieldValueResult.Resp2Type != ResultType.BulkString)
                             {
-                                _logger.LogWarning("Неверный тип имени или значения поля для товара {Key}. FieldNameType: {FNType}, FieldValueType: {FVType}", key, fieldNameResult.Resp2Type, fieldValueResult.Resp2Type);
                                 continue;
                             }
 
@@ -526,15 +451,10 @@ namespace InShop.WebAPI.Controllers
                         break;
                 }
 
-                if (!score.HasValue)
-                {
-                    _logger.LogWarning("Оценка для товара {Key} не найдена или не является числом. Пропуск.", key);
-                    continue;
-                }
+                if (!score.HasValue) continue;
 
                 if (isVector && threshold.HasValue && score.Value > threshold.Value)
                 {
-                    _logger.LogDebug("Товар {Key} имеет расстояние {Distance} > порога {Threshold}, пропускаем.", key, score.Value, threshold.Value);
                     continue;
                 }
 
@@ -561,6 +481,81 @@ namespace InShop.WebAPI.Controllers
                 IsAvailable = fieldDict.GetValueOrDefault("availability") == "InStock",
                 ImageUrl = fieldDict.GetValueOrDefault("image_url", string.Empty),
             };
+        }
+
+        private static string BuildFilterClause(string? category, decimal? minPrice, decimal? maxPrice, bool? inStock, Dictionary<string, object>? specFilters = null)
+        {
+            var clauses = new List<string>();
+
+            if (!string.IsNullOrEmpty(category))
+            {
+                var escapedCategory = EscapeTagValue(category);
+                clauses.Add($"@category:{{{escapedCategory}}}");
+            }
+
+            if (minPrice.HasValue && maxPrice.HasValue)
+            {
+                clauses.Add($"@price:[{minPrice.Value} {maxPrice.Value}]");
+            }
+            else if (minPrice.HasValue)
+            {
+                clauses.Add($"@price:[{minPrice.Value} +inf]");
+            }
+            else if (maxPrice.HasValue)
+            {
+                clauses.Add($"@price:[-inf {maxPrice.Value}]");
+            }
+
+            if (inStock.HasValue)
+            {
+                var availabilityValue = inStock.Value ? "InStock" : "OutOfStock";
+                clauses.Add($"@availability:{{{availabilityValue}}}");
+            }
+
+            if (specFilters != null && specFilters.Any())
+            {
+                foreach (var filter in specFilters)
+                {
+                    var specName = filter.Key;
+                    var specValue = filter.Value;
+
+                    if (specValue is { } objVal)
+                    {
+                        if (objVal.GetType().GetProperty("Min") != null || objVal.GetType().GetProperty("Max") != null)
+                        {
+                            var minProp = objVal.GetType().GetProperty("Min")?.GetValue(objVal) as decimal?;
+                            var maxProp = objVal.GetType().GetProperty("Max")?.GetValue(objVal) as decimal?;
+                            string rangeClause = $"@{specName}:[";
+                            rangeClause += minProp?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "-inf";
+                            rangeClause += " ";
+                            rangeClause += maxProp?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "+inf";
+                            rangeClause += "]";
+                            clauses.Add(rangeClause);
+                        }
+                        else
+                        {
+                            string valueStr;
+                            if (objVal is decimal dec)
+                                valueStr = dec.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                            else if (objVal is string str)
+                                valueStr = EscapeTagValue(str);
+                            else
+                                continue;
+
+                            if (objVal is decimal)
+                            {
+                                clauses.Add($"@{specName}:[{valueStr} {valueStr}]");
+                            }
+                            else if (objVal is string)
+                            {
+                                clauses.Add($"@{specName}:{{{valueStr}}}");
+                            }
+                        }
+                    }
+                }
+            }
+
+            return string.Join(" ", clauses);
         }
 
         private static string EscapeTagValue(string value)

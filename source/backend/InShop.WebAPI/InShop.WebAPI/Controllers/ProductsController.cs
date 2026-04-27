@@ -1,8 +1,10 @@
-﻿using InShopBLLayer.Abstractions;
-using InShopBLLayer.Services;
-using Contracts.Dtos;
-using Microsoft.AspNetCore.Mvc;
+﻿using Contracts.Dtos;
 using InShop.WebAPI.Extensions;
+using InShopBLLayer.Abstractions;
+using InShopBLLayer.Services;
+using InShopDbModels.Abstractions;
+using InShopDbModels.Repositories;
+using Microsoft.AspNetCore.Mvc;
 
 namespace InShop.WebAPI.Controllers
 {
@@ -12,10 +14,21 @@ namespace InShop.WebAPI.Controllers
     {
         private readonly IProductService _productService;
         private readonly IReviewService _reviewService;
-        public ProductsController(IProductService productService, IReviewService reviewService)
+        private readonly IReviewCacheService _reviewCacheService;
+        private readonly IAiAnalysisService _aiAnalysisService;
+        private readonly ILogger<ProductsController> _logger;
+        public ProductsController(IProductService productService, 
+            IReviewService reviewService,
+            IReviewCacheService reviewCacheService,
+            IAiAnalysisService aiAnalysisService,
+            ILogger<ProductsController> logger)
         {
             _productService = productService;
             _reviewService = reviewService;
+            _reviewCacheService = reviewCacheService;
+            _aiAnalysisService = aiAnalysisService;
+            _logger = logger;
+
         }
         [HttpGet("{id}")]
         public async Task<IActionResult> Get(int id)
@@ -216,6 +229,73 @@ namespace InShop.WebAPI.Controllers
             catch (ArgumentException ex)
             {
                 return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpGet("{id}/reviews/ai-summary")]
+        [ProducesResponseType(typeof(ReviewSummaryDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
+        public async Task<IActionResult> GetReviewAiSummary(int id)
+        {
+            // 1. Проверка существования товара (опционально)
+            var product = await _productService.GetProduct(id); // Или твой метод получения товара
+            if (product == null) return NotFound("Product not found");
+
+            // 2. Пробуем получить из кэша
+            var cachedSummary = await _reviewCacheService.GetSummaryAsync(id);
+            if (cachedSummary != null)
+            {
+                return Ok(cachedSummary);
+            }
+
+            // 3. Пытаемся захватить блокировку
+            var lockTimeout = TimeSpan.FromSeconds(10);
+            var isLocked = await _reviewCacheService.TryAcquireLockAsync(id, lockTimeout);
+
+            if (!isLocked)
+            {
+                return StatusCode(503, "AI analysis is currently being generated. Please try again in a few seconds.");
+            }
+
+            try
+            {
+                // Double-check кэша
+                cachedSummary = await _reviewCacheService.GetSummaryAsync(id);
+                if (cachedSummary != null)
+                {
+                    return Ok(cachedSummary);
+                }
+
+                // 4. Получаем тексты отзывов ЧЕРЕЗ СЕРВИС (BLL Layer)
+                var reviewTexts = await _reviewService.GetRecentReviewTextsAsync(id, count: 50);
+
+                if (!reviewTexts.Any())
+                {
+                    return NotFound("No reviews found for this product.");
+                }
+
+                // 5. Генерируем анализ
+                var summary = await _aiAnalysisService.GenerateReviewSummaryAsync(reviewTexts);
+
+                if (summary == null)
+                {
+                    return StatusCode(500, "Failed to generate AI summary.");
+                }
+
+                // 6. Сохраняем в кэш на 24 часа
+                await _reviewCacheService.SetSummaryAsync(id, summary, TimeSpan.FromHours(24));
+
+                return Ok(summary);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error generating AI summary for product {ProductId}", id);
+                return StatusCode(500, "Internal server error during analysis generation.");
+            }
+            finally
+            {
+                await _reviewCacheService.ReleaseLockAsync(id);
             }
         }
     }

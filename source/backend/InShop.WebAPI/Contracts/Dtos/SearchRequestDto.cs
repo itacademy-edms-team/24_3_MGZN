@@ -14,6 +14,8 @@ namespace Contracts.Dtos
 
         [JsonPropertyName("limit")]
         public int Limit { get; set; } = 100;
+        // Смещение (сколько товаров уже загружено)
+        public int Offset { get; set; } = 0;
 
         [JsonPropertyName("category")]
         public string? Category { get; set; }

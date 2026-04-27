@@ -15,14 +15,14 @@ namespace InShopBLLayer.Services.Search
     public class VectorIndexingService : BackgroundService
     {
         private readonly IServiceScopeFactory _scopeFactory;
-        private readonly ConnectionMultiplexer _redis;
+        private readonly IConnectionMultiplexer _redis;
         private readonly ILogger<VectorIndexingService> _logger;
         private static readonly TimeSpan _defaultInterval = TimeSpan.FromHours(1);
         private readonly TimeSpan _interval;
 
         public VectorIndexingService(
             IServiceScopeFactory scopeFactory,
-            ConnectionMultiplexer redis,
+            IConnectionMultiplexer redis,
             ILogger<VectorIndexingService> logger)
         {
             _scopeFactory = scopeFactory;

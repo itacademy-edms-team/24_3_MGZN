@@ -13,7 +13,10 @@ namespace InShop.WebAPI
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            builder.Services.AddSingleton(ConnectionMultiplexer.Connect("localhost:6379"));
+            var redisConnectionString = builder.Configuration.GetConnectionString("Redis")
+                ?? "localhost:6379";
+            builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
+                ConnectionMultiplexer.Connect(redisConnectionString));
 
             builder.Services.AddHttpClient();
 
@@ -38,7 +41,7 @@ namespace InShop.WebAPI
             var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
             builder.Services.AddInShopRepositories(connectionString);
-            builder.Services.AddInShopServices();
+            builder.Services.AddInShopServices(builder.Configuration);
             builder.Services.AddSingleton<PaymentProcessingService>();
 
             // Add services to the container.

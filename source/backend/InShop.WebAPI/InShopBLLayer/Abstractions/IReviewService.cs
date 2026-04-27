@@ -23,5 +23,9 @@ namespace InShopBLLayer.Abstractions
 
         // Проголосовать за полезность
         Task VoteReviewAsync(int reviewId, int sessionId, int voteType);
+
+        /// Получает список текстов отзывов для AI-анализа.
+        /// Возвращает только последние N отзывов, отсортированных по дате.
+        Task<List<string>> GetRecentReviewTextsAsync(int productId, int count = 50);
     }
 }

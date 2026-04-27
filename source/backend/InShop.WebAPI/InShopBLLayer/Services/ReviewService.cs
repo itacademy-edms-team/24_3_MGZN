@@ -19,6 +19,7 @@ namespace InShopBLLayer.Services
         private readonly IReviewVoteRepository _voteRepository;
         private readonly IProductRepository _productRepository;
         private readonly IOrderItemRepository _orderItemRepository;
+        private readonly IReviewCacheService _reviewCacheService;
         private readonly IMapper _mapper;
 
         public ReviewService(
@@ -27,6 +28,7 @@ namespace InShopBLLayer.Services
             IReviewVoteRepository voteRepository,
             IProductRepository productRepository,
             IOrderItemRepository orderItemRepository,
+            IReviewCacheService reviewCacheService,
             IMapper mapper)
         {
             _context = context;
@@ -35,6 +37,7 @@ namespace InShopBLLayer.Services
             _productRepository = productRepository;
             _orderItemRepository = orderItemRepository;
             _mapper = mapper;
+            _reviewCacheService = reviewCacheService;
         }
 
         public async Task<(List<ReviewResponseDto> Reviews, int TotalCount)> GetProductReviewsAsync(int productId, int page, int pageSize, int? currentSessionId)
@@ -72,6 +75,7 @@ namespace InShopBLLayer.Services
             return (dtos, totalCount);
         }
 
+
         public async Task<ReviewResponseDto> AddReviewAsync(int productId, int sessionId, CreateReviewDto dto)
         {
             using var transaction = await _context.Database.BeginTransactionAsync();
@@ -92,6 +96,8 @@ namespace InShopBLLayer.Services
 
                 await UpdateProductStatsAsync(productId);
                 await transaction.CommitAsync();
+
+                await _reviewCacheService.InvalidateSummaryAsync(productId);
 
                 return await MapToDtoWithExtrasAsync(review, sessionId);
             }
@@ -205,6 +211,15 @@ namespace InShopBLLayer.Services
             }
         }
 
+        public async Task<List<string>> GetRecentReviewTextsAsync(int productId, int count = 50)
+        {
+            // Используем существующий репозиторий
+            var reviews = await _reviewRepository.GetByProductIdAsync(productId, skip: 0, take: count);
+
+            // Извлекаем только текст комментария
+            return reviews.Select(r => r.Comment).ToList();
+        }
+
         // --- Приватные методы ---
 
         private async Task UpdateProductStatsAsync(int productId)
@@ -239,5 +254,6 @@ namespace InShopBLLayer.Services
 
             return dto;
         }
+
     }
 }

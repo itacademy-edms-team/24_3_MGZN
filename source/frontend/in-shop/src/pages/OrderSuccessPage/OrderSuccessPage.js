@@ -5,18 +5,19 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useSessionContext } from '../../context/SessionContext.tsx';
+import { apiClient } from '../../api/client.ts';
 import './OrderSuccessPage.css';
 
 const OrderSuccessPage = () => {
     const [orderData, setOrderData] = useState(null);
     const [completedOrderId, setCompletedOrderId] = useState(null);
+    const [isPaying, setIsPaying] = useState(false);
     const navigate = useNavigate();
     const location = useLocation();
-    
-    // ✅ Используем useSession
-    const { 
-        isValid, 
-        isLoading: sessionLoading, 
+
+    const {
+        isValid,
+        isLoading: sessionLoading,
         error: sessionError
     } = useSessionContext();
 
@@ -40,7 +41,6 @@ const OrderSuccessPage = () => {
             return;
         }
 
-        // Получаем данные заказа из localStorage
         if (storedOrderData) {
             try {
                 const parsedData = JSON.parse(storedOrderData);
@@ -51,51 +51,76 @@ const OrderSuccessPage = () => {
         }
     }, [location.state]);
 
-    // Лоадер сессии
-    if (sessionLoading) {
-        return <div className="order-success-page loading">Инициализация...</div>;
-    }
-
-    // Ошибка сессии
-    if (sessionError || !isValid) {
-        return (
-            <div className="order-success-page error">
-                <p>⚠️ Ошибка сессии: {sessionError || 'Сессия не активна'}</p>
-                <button onClick={() => window.location.reload()}>Повторить</button>
-            </div>
-        );
-    }
-
-    // Нет данных заказа
-    if (!orderData) {
-        return (
-            <div className="order-success-page">
-                <p>Данные заказа не найдены.</p>
-                <button onClick={() => navigate('/')}>На главную</button>
-            </div>
-        );
-    }
-
-    const handlePayNow = () => {
+    /**
+     * ЮKassa: POST /Payment/initiate → редирект на страницу ЮKassa (без /payment).
+     * Мок: переход на /payment с формой карты.
+     */
+    const handlePayNow = async () => {
         if (!completedOrderId) {
             alert('Номер оформленного заказа не найден.');
             return;
         }
 
-        // Переход на оплату с данными заказа
-        navigate('/payment', { 
-            state: { 
-                completedOrderId,
-                orderData: {
-                    ...orderData,
+        setIsPaying(true);
+
+        try {
+            const providerResponse = await apiClient.get('/Payment/provider');
+            const provider = providerResponse.data?.provider ?? 'Mock';
+
+            if (provider.toLowerCase() === 'yookassa') {
+                const response = await apiClient.post('/Payment/initiate', {
                     orderId: completedOrderId
-                } 
-            } 
-        });
+                });
+
+                const redirectUrl = response.data?.redirectUrl;
+                if (!redirectUrl) {
+                    throw new Error('Сервер не вернул ссылку на оплату ЮKassa.');
+                }
+
+                window.location.href = redirectUrl;
+                return;
+            }
+
+            navigate('/payment', {
+                state: {
+                    completedOrderId,
+                    orderData: {
+                        ...orderData,
+                        orderId: completedOrderId
+                    }
+                }
+            });
+        } catch (error) {
+            console.error('Ошибка при инициации оплаты:', error);
+            alert(error.response?.data?.message || error.message || 'Не удалось начать оплату.');
+        } finally {
+            setIsPaying(false);
+        }
     };
 
-    // Расчёты
-    const deliveryCost = orderData.shipMethod === "Самовывоз" ? 0 : 1500;
+    if (sessionLoading) {
+        return <div className="order-success-page loading">Инициализация...</div>;
+    }
+
+    if (sessionError || !isValid) {
+        return (
+            <div className="order-success-page error">
+                <p>⚠️ Ошибка сессии: {sessionError || 'Сессия не активна'}</p>
+                <button type="button" onClick={() => window.location.reload()}>Повторить</button>
+            </div>
+        );
+    }
+
+    if (!orderData) {
+        return (
+            <div className="order-success-page">
+                <p>Данные заказа не найдены.</p>
+                <button type="button" onClick={() => navigate('/')}>На главную</button>
+            </div>
+        );
+    }
+
+    const deliveryCost = orderData.shipMethod === 'Самовывоз' ? 0 : 1500;
     const itemsTotal = orderData.orderItems?.reduce((sum, item) => sum + (item.price * item.quantityItem), 0) || 0;
     const totalAmount = itemsTotal + deliveryCost;
 
@@ -128,12 +153,6 @@ const OrderSuccessPage = () => {
                                 <div className="info-item">
                                     <span className="label">Адрес доставки</span>
                                     <span className="value">{orderData.shipAddress}</span>
-                                </div>
-                            )}
-                            {orderData.shipCompanyId && (
-                                <div className="info-item">
-                                    <span className="label">Компания доставки</span>
-                                    <span className="value">{orderData.shipCompanyName}</span>
                                 </div>
                             )}
                         </div>
@@ -198,8 +217,13 @@ const OrderSuccessPage = () => {
                             <div className="reminder-content">
                                 <h3>Требуется оплата</h3>
                                 <p>Оплатите заказ в течение 24 часов, иначе он будет отменён.</p>
-                                <button className="pay-button" onClick={handlePayNow}>
-                                    Оплатить заказ
+                                <button
+                                    type="button"
+                                    className="pay-button"
+                                    onClick={handlePayNow}
+                                    disabled={isPaying}
+                                >
+                                    {isPaying ? 'Переход к оплате...' : 'Оплатить заказ'}
                                 </button>
                             </div>
                         </div>
@@ -208,7 +232,7 @@ const OrderSuccessPage = () => {
 
                 <div className="order-success-footer">
                     <p>Спасибо за покупку! По вопросам: поддержка@магазин.ру</p>
-                    <button onClick={() => navigate('/')} className="back-to-shop">
+                    <button type="button" onClick={() => navigate('/')} className="back-to-shop">
                         Продолжить покупки
                     </button>
                 </div>

@@ -1,3 +1,4 @@
+using InShop.WebAPI.Extensions;
 using InShop.WebAPI.Services;
 using InShopBLLayer.Abstractions;
 using InShopBLLayer.Extensions;
@@ -43,6 +44,8 @@ namespace InShop.WebAPI
             builder.Services.AddInShopRepositories(connectionString);
             builder.Services.AddInShopServices(builder.Configuration);
             builder.Services.AddSingleton<PaymentProcessingService>();
+            // Оплата: мок (PaymentsAPI) или ЮKassa — см. Payment:Provider в appsettings.
+            builder.Services.AddPaymentServices(builder.Configuration);
 
             // Add services to the container.
 

@@ -27,12 +27,17 @@
 
   <ItemGroup>
     <Folder Include="wwwroot\images\" />
-    <Folder Include="Новая папка\" />
   </ItemGroup>
   <ItemGroup>
 	 <None Include="EmailTemplates\**">
 	 <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 	 </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Remove="Новая папка\**" />
+    <Content Remove="Новая папка\**" />
+    <EmbeddedResource Remove="Новая папка\**" />
+    <None Remove="Новая папка\**" />
   </ItemGroup>
   <ItemGroup>
     <Content Update="EmailTemplates\OrderConfirmationTemplate.cshtml">

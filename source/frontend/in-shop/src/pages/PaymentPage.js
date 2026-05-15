@@ -1,12 +1,25 @@
-// src/pages/PaymentPage/PaymentPage.js
-import React, { useMemo, useState } from 'react';
+// Страница оплаты для МОКА (PaymentsAPI): ввод карты на нашем сайте.
+// При Payment:Provider = YooKassa не используется — оплата с /order-success.
+import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { apiClient } from '../api/client.ts';
-import './PaymentPage.css'; // Создайте, если нужно
+import './PaymentPage.css';
 
 const PaymentPage = () => {
     const navigate = useNavigate();
     const location = useLocation();
+
+    // ЮKassa: эта страница не нужна — возвращаем на экран заказа.
+    useEffect(() => {
+        apiClient.get('/Payment/provider')
+            .then((res) => {
+                const provider = res.data?.provider ?? 'Mock';
+                if (provider.toLowerCase() === 'yookassa') {
+                    navigate('/order-success', { replace: true });
+                }
+            })
+            .catch(() => {});
+    }, [navigate]);
 
     const orderDataFromState = location.state?.orderData || null;
     const completedOrderIdFromState = location.state?.completedOrderId;
@@ -78,8 +91,16 @@ const PaymentPage = () => {
         console.log("Отправляемые данные:", paymentData);
 
         try {
-            await apiClient.post('/Payment/process', paymentData);
-            console.log("Успешный ответ, перенаправляем...");
+            const response = await apiClient.post('/Payment/process', paymentData);
+
+            // ЮKassa: бэкенд возвращает redirectUrl — уходим на страницу оплаты ЮMoney.
+            const redirectUrl = response.data?.redirectUrl;
+            if (redirectUrl) {
+                window.location.href = redirectUrl;
+                return;
+            }
+
+            console.log("Успешный ответ (мок), перенаправляем...");
             navigate('/payment-confirmation', { state: { orderId: paymentData.orderId } });
         } catch (error) {
             console.error('Ошибка при отправке данных оплаты:', error);

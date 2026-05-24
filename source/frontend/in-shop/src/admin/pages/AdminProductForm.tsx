@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import adminClient from '../api/adminClient.ts';
 import AdminImagePreview from '../components/AdminImagePreview.tsx';
+import AdminLoadingOverlay from '../components/AdminLoadingOverlay.tsx';
 import AdminNoticeModal from '../components/AdminNoticeModal.tsx';
 import { AdminProduct, CategoryDto } from '../types/adminTypes.ts';
 import { resolveProductImageUrl } from '../utils/adminUtils.ts';
@@ -107,7 +108,8 @@ const AdminProductForm: React.FC = () => {
   return (
     <div>
       <h2>{isNew ? 'Новый товар' : `Товар #${id}`}</h2>
-      <form className="admin-card admin-form" onSubmit={handleSubmit(onSubmit)}>
+      <form className="admin-card admin-form admin-form--overlay-host" onSubmit={handleSubmit(onSubmit)}>
+        {isSubmitting && <AdminLoadingOverlay message="Сохранение товара…" />}
         <label>Название</label>
         <input {...register('productName', { required: 'Обязательно', minLength: 2 })} />
         {errors.productName && <p className="admin-error">{errors.productName.message}</p>}
@@ -153,7 +155,7 @@ const AdminProductForm: React.FC = () => {
         <button type="submit" className="admin-btn" disabled={isSubmitting}>
           Сохранить
         </button>
-        <button type="button" className="admin-btn admin-btn--secondary" style={{ marginLeft: 8 }} onClick={() => navigate(-1)}>
+        <button type="button" className="admin-btn admin-btn--secondary" style={{ marginLeft: 8 }} disabled={isSubmitting} onClick={() => navigate(-1)}>
           Отмена
         </button>
       </form>

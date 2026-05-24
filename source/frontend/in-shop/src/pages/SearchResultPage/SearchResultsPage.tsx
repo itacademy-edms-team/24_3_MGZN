@@ -590,10 +590,27 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
       return 'В этой категории нет товаров по выбранным фильтрам';
     }
     if (filters.query && !filters.category && !filters.minPrice && !filters.maxPrice && !specFilters) {
-      return `По запросу "${filters.query}" ничего не найдено`;
+      return `По запросу «${filters.query}» ничего не найдено`;
     }
     return 'По выбранным фильтрам ничего не найдено';
   }, [forcedCategory, filters.query, filters.category, filters.minPrice, filters.maxPrice, specFilters]);
+
+  /** Те же критерии, что и в эффекте поиска — для корректного empty state. */
+  const hasSearchCriteria = useMemo(
+    () =>
+      Boolean(
+        debouncedFilters.query?.trim() ||
+          debouncedFilters.category ||
+          debouncedFilters.minPrice ||
+          debouncedFilters.maxPrice ||
+          debouncedFilters.inStock != null ||
+          (debouncedSpecFilters && Object.keys(debouncedSpecFilters).length > 0)
+      ),
+    [debouncedFilters, debouncedSpecFilters]
+  );
+
+  const showMainEmptyState = !loading && !error && hasSearchCriteria && adaptedProducts.length === 0;
+  const showIdleHint = !loading && !error && !hasSearchCriteria;
 
   return (
     <div className="search-results-page">
@@ -645,10 +662,20 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
             </div>
           )}
 
-          {!loading && !error && adaptedProducts.length === 0 && adaptedRecommended.length === 0 && (
+          {showIdleHint && (
+            <div className="empty-state empty-state--idle">
+              <p>Введите запрос в поиске или выберите фильтры слева</p>
+            </div>
+          )}
+
+          {showMainEmptyState && (
             <div className="empty-state">
               <p>{getEmptyStateMessage()}</p>
-              <button 
+              {adaptedRecommended.length > 0 && (
+                <p className="empty-state__hint">Ниже — похожие товары, которые могут вам подойти</p>
+              )}
+              <button
+                type="button"
                 onClick={handleClearAllFilters}
                 className="clear-filters-button"
               >

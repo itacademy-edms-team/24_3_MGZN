@@ -99,9 +99,18 @@ export const useProductSearch = (apiBaseUrl: string): UseProductSearchReturn => 
 
       if (!response.ok) throw new Error(`Ошибка сервера: ${response.status}`);
 
-      const data: SearchResponseDto = await response.json();
-      const newResults = Array.isArray(data.results) ? data.results : [];
-      const newRecommended = Array.isArray(data.recommended) ? data.recommended : [];
+      const data = await response.json();
+      // Поддержка camelCase и PascalCase (на случай других настроек сериализации API)
+      const newResults = Array.isArray(data.results)
+        ? data.results
+        : Array.isArray(data.Results)
+          ? data.Results
+          : [];
+      const newRecommended = Array.isArray(data.recommended)
+        ? data.recommended
+        : Array.isArray(data.Recommended)
+          ? data.Recommended
+          : [];
 
       if (!append) {
         setResults(newResults);
@@ -157,8 +166,12 @@ export const useProductSearch = (apiBaseUrl: string): UseProductSearchReturn => 
 
       if (!response.ok) throw new Error(`Ошибка сервера: ${response.status}`);
 
-      const data: SearchResponseDto = await response.json();
-      const newResults = Array.isArray(data.results) ? data.results : [];
+      const data = await response.json();
+      const newResults = Array.isArray(data.results)
+        ? data.results
+        : Array.isArray(data.Results)
+          ? data.Results
+          : [];
 
       setResults(prev => [...prev, ...newResults]);
       setHasMore(newResults.length >= (request.limit || 12));

@@ -90,7 +90,7 @@ namespace InShopBLLayer.Services.Admin
 
                 await _context.Entry(product).Reference(p => p.ProductCategory).LoadAsync(ct);
                 var created = _mapper.Map<AdminProductDto>(product);
-                await TriggerSearchReindexAsync(product.ProductId, ct);
+                await TriggerSearchIndexProductAsync(product.ProductId, ct);
                 return created;
             }
             catch
@@ -135,7 +135,7 @@ namespace InShopBLLayer.Services.Admin
                 await transaction.CommitAsync(ct);
 
                 var updated = _mapper.Map<AdminProductDto>(product);
-                await TriggerSearchReindexAsync(id, ct);
+                await TriggerSearchIndexProductAsync(id, ct);
                 return updated;
             }
             catch
@@ -162,7 +162,7 @@ namespace InShopBLLayer.Services.Admin
                 await transaction.CommitAsync(ct);
 
                 _logger.LogInformation("Товар {ProductId} удалён администратором", id);
-                await TriggerSearchReindexAsync(id, ct);
+                await TriggerSearchRemoveProductAsync(id, ct);
             }
             catch
             {
@@ -172,20 +172,35 @@ namespace InShopBLLayer.Services.Admin
         }
 
         /// <summary>
-        /// Перестраивает Redis Search после изменения каталога.
+        /// Точечно обновляет документ товара в Redis Search после create/update.
         /// Ошибка индексации не откатывает сохранение в SQL — только логируется.
         /// </summary>
-        private async Task TriggerSearchReindexAsync(int productId, CancellationToken ct)
+        private async Task TriggerSearchIndexProductAsync(int productId, CancellationToken ct)
         {
-            _logger.LogInformation("Товар {ProductId} сохранён, запуск переиндексации поиска", productId);
+            _logger.LogInformation("Товар {ProductId} сохранён, запуск точечной индексации", productId);
             try
             {
-                // TODO: Оптимизировать до переиндексации одного товара (IndexProductAsync).
-                await _searchIndexRebuild.RebuildFullIndexAsync(ct);
+                await _searchIndexRebuild.IndexProductAsync(productId, ct);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Переиндексация Redis не удалась для товара {ProductId}", productId);
+                _logger.LogError(ex, "Точечная индексация Redis не удалась для товара {ProductId}", productId);
+            }
+        }
+
+        /// <summary>
+        /// Удаляет документ товара из Redis Search после delete в SQL.
+        /// </summary>
+        private async Task TriggerSearchRemoveProductAsync(int productId, CancellationToken ct)
+        {
+            _logger.LogInformation("Товар {ProductId} удалён, удаление из Redis-индекса", productId);
+            try
+            {
+                await _searchIndexRebuild.RemoveProductAsync(productId, ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Удаление из Redis-индекса не удалось для товара {ProductId}", productId);
             }
         }
     }

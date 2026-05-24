@@ -5,6 +5,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace InShopDbModels.Data;
 
+/// <summary>
+/// Бизнес-контекст InShop (database-first / reverse scaffold).
+/// Identity для админки — отдельно в <see cref="AdminIdentityDbContext"/>.
+/// Кастомные сущности и маппинг — в AppDbContext.*.partial.cs.
+/// </summary>
 public partial class AppDbContext : DbContext
 {
     public AppDbContext()

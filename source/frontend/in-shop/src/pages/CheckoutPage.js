@@ -1,6 +1,5 @@
 // src/pages/CheckoutPage.js
-import React, { useContext, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useContext } from 'react';
 import { CartContext } from '../components/CartContext';
 import CheckoutItemCard from '../components/CheckoutItemCard';
 import CheckoutForm from '../components/CheckoutForm';
@@ -9,12 +8,6 @@ import '../components/CheckoutItemCard.css';
 
 const CheckoutPage = () => {
     const { cart, loading, error, changeQuantity, removeFromCart } = useContext(CartContext);
-    const navigate = useNavigate();
-
-    // Общая сумма заказа
-    const totalAmount = cart.reduce((sum, item) => sum + (item.productPrice * item.quantity), 0);
-
-    
 
     return (
         <div className="checkout-page">

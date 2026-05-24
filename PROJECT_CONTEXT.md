@@ -144,6 +144,8 @@ Contains service abstractions and implementations for:
 - review AI-summary cache (Redis)
 - AI analysis of review texts (`AiAnalysisService`, `IAiProvider`)
 - vector indexing
+- inventory reservation (`InventoryReservationService`)
+- admin order status stub (`AdminOrderService`)
 
 Important files:
 
@@ -154,6 +156,9 @@ Important files:
 - `source/backend/InShop.WebAPI/InShopBLLayer/Services/Ai/Providers/YandexGptProvider.cs`
 - `source/backend/InShop.WebAPI/InShopBLLayer/Services/Ai/Providers/NoOpAiProvider.cs`
 - `source/backend/InShop.WebAPI/InShopBLLayer/Services/Search/VectorIndexingService.cs`
+- `source/backend/InShop.WebAPI/InShopBLLayer/Services/Admin/InventoryReservationService.cs`
+- `source/backend/InShop.WebAPI/InShopBLLayer/Services/Admin/AdminOrderService.cs`
+- `source/backend/InShop.WebAPI/InShopBLLayer/Abstractions/IInventoryReservationService.cs`
 
 #### `InShopDbModels`
 
@@ -261,7 +266,7 @@ Responsibilities:
 
 Based on `AppDbContext`, the main domain entities are:
 
-- `Product` (includes denormalized `ReviewsCount` and `AverageRating`)
+- `Product` (includes denormalized `ReviewsCount` and `AverageRating`; inventory: `ProductStockQuantity`, `ReservedQuantity`, `RowVersion`)
 - `Category`
 - `Order`
 - `OrderItem`
@@ -284,6 +289,115 @@ This indicates the product catalog supports:
 - product reviews with voting (one review per session per product)
 - verified-purchase badge derived from order history
 - structured product specifications used in filtering/search
+- warehouse reservation with optimistic concurrency (`ReservedQuantity` + `RowVersion`)
+
+## 6.1 Inventory & Reservation System
+
+### Purpose
+
+Prepares safe stock deduction when order status changes (admin or payment flow). Cart/session/payment customer flows are **not** modified yet; reservation is invoked explicitly via `IInventoryReservationService` or future `AdminOrderService` integration.
+
+### Entity fields (`Product`)
+
+| Field | Role |
+|-------|------|
+| `ProductStockQuantity` | Free (unreserved) stock available for new `Reserve` calls |
+| `ReservedQuantity` | Units allocated to orders, not yet finalized |
+| `RowVersion` | SQL Server `rowversion` token for optimistic concurrency |
+
+**Invariants:**
+
+- Physical on-hand = `ProductStockQuantity + ReservedQuantity`
+- **Reserve:** `ProductStockQuantity -= n`, `ReservedQuantity += n` (physical total unchanged)
+- **Release:** reverse of Reserve (e.g. order cancelled)
+- **Finalize:** `ReservedQuantity -= n` only (sale confirmed; physical stock decreases by `n`)
+
+### Patterns
+
+- **Optimistic concurrency:** `[Timestamp]` / `IsRowVersion()` — parallel `UPDATE` on the same product row causes `DbUpdateConcurrencyException` instead of silent lost updates (race condition).
+- **Retry loop (max 3):** on conflict, rollback transaction, `ChangeTracker.Clear()`, reload product, re-apply delta.
+- **Transactions:** each public method runs inside `IDbContextTransaction` (`BeginTransactionAsync` → `SaveChangesAsync` → `Commit`).
+- **Why not pessimistic locks:** shorter lock duration, better read throughput on catalog; conflicts retried in application layer.
+
+### Key files
+
+- Model: `source/backend/InShop.WebAPI/InShopDbModels/Models/Product.cs`
+- EF config: `source/backend/InShop.WebAPI/InShopDbModels/Data/AppDbContext.cs` (`ReservedQuantity` default 0, `RowVersion` `IsRowVersion()`)
+- Interface: `source/backend/InShop.WebAPI/InShopBLLayer/Abstractions/IInventoryReservationService.cs`
+- Implementation: `source/backend/InShop.WebAPI/InShopBLLayer/Services/Admin/InventoryReservationService.cs`
+- Integration stub: `source/backend/InShop.WebAPI/InShopBLLayer/Services/Admin/AdminOrderService.cs` (`IAdminOrderService` — TODO comments for status transitions)
+- DI: `source/backend/InShop.WebAPI/InShopBLLayer/Extensions/ServiceCollectionBLLayerExtension.cs`
+- **Database migration (manual):** `source/backend/InShop.WebAPI/scripts/AddProductReservationColumns.sql` — run once per database in SSMS against `InShopDB` before starting the API (see script header for steps)
+
+### Not integrated yet
+
+- `OrderService` / cart do not call `ReserveAsync`
+- Search Redis index still uses `ProductStockQuantity` only
+- `InventoryReservationService` not yet called from `AdminOrderService` (TODO in code)
+
+## 6.2 Admin Panel
+
+### Authentication
+
+- **ASP.NET Core Identity** on `IdentityUser` + **JWT Bearer** (8h, `appsettings.json` → `Jwt`).
+- Corporate **email = UserName**; role `Admin`; policy `AdminOnly`.
+- Customer `SessionToken` / `SessionMiddleware` unchanged.
+- Temporary: `POST /api/Admin/auth/register` — only when `AspNetUsers` is empty; then **409**. Remove endpoint after first admin in production.
+- `POST /api/Admin/auth/login`, `GET /api/Admin/auth/me`.
+
+### Order status FSM (admin)
+
+Canonical: `Draft` → `Unpaid` → `Processing` → `Paid` → `Shipped` → `Delivered`; `Cancelled` from any except `Delivered`.
+
+Legacy normalization (read/validate only, customer code unchanged): `Unpayed`→`Unpaid`, `Payed`→`Paid`, etc. Admin writes canonical statuses.
+
+Audit: `OrderAuditLog` (same transaction as status change).
+
+### API (all `[Authorize(AdminOnly)]` except auth register/login)
+
+| Method | Path |
+|--------|------|
+| GET | `/api/Admin/products` |
+| POST/PUT/DELETE | `/api/Admin/products`, `/{id}` |
+| GET | `/api/Admin/orders`, `/api/Admin/orders/draft`, `/api/Admin/orders/{id}` |
+| PUT | `/api/Admin/orders/{id}/status` |
+| GET | `/api/Admin/orders/{id}/allowed-statuses` |
+
+**UX / бизнес-правила (обновлено):**
+
+- **Товар:** предпросмотр текущего `ImageUrl` в форме редактирования; чекбокс «В наличии» с увеличенным чекбоксом слева; цена с `step=1` (рубли).
+- **Заказы:** кнопка «Подробнее» → `OrderDetailsModal` (позиции, доставка, покупатель, `OrderAuditLog` timeline); смена статуса **заблокирована** для `Delivered` / `Cancelled` (UI + `AdminOrderService.ChangeOrderStatusAsync`).
+- **Пагинация:** reusable `AdminPagination` над и под таблицами (товары, заказы, черновики).
+- **Поиск Redis:** после create/update/delete товара `AdminProductService` вызывает `IVectorSearchIndexRebuildService.RebuildAsync` (try/catch — сбой индекса не откатывает сохранение товара). TODO: переиндексация одного товара вместо полной перестройки.
+
+### Key backend files
+
+- `InShopDbModels/Data/AppDbContext.cs` — `IdentityDbContext<IdentityUser>`
+- `InShopDbModels/Models/OrderAuditLog.cs`
+- `InShopBLLayer/Services/Admin/AdminAuthService.cs`, `AdminProductService.cs`, `AdminOrderService.cs`, `OrderStatusStateMachine.cs`, `ProductImageStorage.cs`
+- `InShopBLLayer/Abstractions/IAdminAuthService.cs`, `IAdminProductService.cs`, `IAdminOrderService.cs`
+- `Contracts/Admin/Dto/*`, `Contracts/Admin/Options/JwtSettings.cs`
+- `InShop.WebAPI/Extensions/AdminIdentityExtensions.cs`
+- `InShop.WebAPI/Controllers/Admin/*`
+
+### Frontend (`/admin/*`)
+
+- JWT in `sessionStorage`, `src/admin/api/adminClient.ts` → `Authorization: Bearer` for `/api/Admin/*`.
+- Routes: login, dashboard, products, orders, drafts; `AdminLayout`, `OrderStatusModal`, `OrderDetailsModal`, `AdminPagination`, React Hook Form, images Base64 ≤ **5 MB**.
+
+### Database setup (database-first / scaffold)
+
+**Два контекста, одна БД:** `AppDbContext` (бизнес, reverse scaffold) + `AdminIdentityDbContext` (AspNet*, только SQL).
+
+Порядок SQL в SSMS:
+
+1. `scripts/CreateAspNetIdentityTables.sql`
+2. `scripts/AddAdminIdentityAndAudit.sql`
+3. `scripts/AddProductReservationColumns.sql` (если нужно)
+
+Полная инструкция scaffold: `source/backend/InShop.WebAPI/scripts/SCAFFOLDING.md`
+
+Код вне scaffold: `AppDbContext.NonScaffolded.partial.cs`, `AdminIdentityDbContext.cs`
 
 ## 7. Frontend Structure
 
@@ -314,7 +428,7 @@ Behavior:
 
 #### Application shell
 
-- `App.tsx` wires routing, session provider, session initialization, cart provider, header/footer, and modal cart UI.
+- `App.tsx` wires shop routes (`/*`) and admin routes (`/admin/*`) separately; shop branch uses session provider, cart, header/footer.
 
 #### Routing
 

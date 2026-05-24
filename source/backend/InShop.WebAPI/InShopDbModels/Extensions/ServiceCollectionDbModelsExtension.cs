@@ -16,7 +16,11 @@ namespace InShopDbModels.Extensions
         public static IServiceCollection AddInShopRepositories(this IServiceCollection services, string connectionString)
         {
             services.AddDbContext<AppDbContext>(options =>
-                   options.UseSqlServer(connectionString));
+                options.UseSqlServer(connectionString));
+
+            // Identity — отдельный контекст (не scaffold), та же БД InShopDB
+            services.AddDbContext<AdminIdentityDbContext>(options =>
+                options.UseSqlServer(connectionString));
             services.AddScoped<IProductRepository, ProductRepository>();
             services.AddScoped<ICategoryRepository, CategoryRepository>();
             services.AddScoped<IShipCompanyRepository, ShipCompanyRepository>();

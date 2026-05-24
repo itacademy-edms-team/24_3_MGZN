@@ -2,6 +2,7 @@
 using InShopBLLayer.Abstractions;
 using InShopBLLayer.MappingProfiles;
 using InShopBLLayer.Services;
+using InShopBLLayer.Services.Admin;
 using InShopBLLayer.Services.Ai.Providers;
 using InShopBLLayer.Services.Search;
 using Microsoft.Extensions.Configuration;
@@ -37,6 +38,16 @@ namespace InShopBLLayer.Extensions
             services.AddScoped<IPaymentStatusService, PaymentStatusService>();
             services.AddScoped<IReviewService, ReviewService>();
             services.AddAutoMapper(config => config.AddProfile<ReviewProfile>());
+            services.AddAutoMapper(config => config.AddProfile<AdminProfile>());
+
+            // Резервирование остатков (оптимистичная блокировка)
+            services.AddScoped<IInventoryReservationService, InventoryReservationService>();
+
+            // Админ-панель (JWT, не затрагивает покупательскую сессию)
+            services.AddScoped<IAdminAuthService, AdminAuthService>();
+            services.AddScoped<IAdminProductService, AdminProductService>();
+            services.AddScoped<IAdminOrderService, AdminOrderService>();
+            services.AddScoped<ProductImageStorage>();
 
             // Добавляем регистрацию AI сервисов
             services.AddAiServices(configuration);
@@ -44,6 +55,7 @@ namespace InShopBLLayer.Extensions
             // Регистрация сервиса кэширования отзывов
             services.AddScoped<IReviewCacheService, ReviewCacheService>();
 
+            services.AddScoped<IVectorSearchIndexRebuildService, VectorSearchIndexRebuildService>();
             services.AddHostedService<VectorIndexingService>();
 
             // ЮKassa и MockPaymentService регистрируются в InShop.WebAPI (PaymentServiceExtensions),

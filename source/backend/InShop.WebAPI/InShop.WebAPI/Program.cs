@@ -1,5 +1,6 @@
 using InShop.WebAPI.Extensions;
 using InShop.WebAPI.Services;
+using Microsoft.AspNetCore.Http.Features;
 using InShopBLLayer.Abstractions;
 using InShopBLLayer.Extensions;
 using InShopBLLayer.Services.Search;
@@ -10,7 +11,7 @@ namespace InShop.WebAPI
 {
     public class Program
     {
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
 
@@ -43,6 +44,7 @@ namespace InShop.WebAPI
 
             builder.Services.AddInShopRepositories(connectionString);
             builder.Services.AddInShopServices(builder.Configuration);
+            builder.Services.AddAdminIdentityAndJwt(builder.Configuration);
             builder.Services.AddSingleton<PaymentProcessingService>();
             // Оплата: мок (PaymentsAPI) или ЮKassa — см. Payment:Provider в appsettings.
             builder.Services.AddPaymentServices(builder.Configuration);
@@ -50,11 +52,18 @@ namespace InShop.WebAPI
             // Add services to the container.
 
             builder.Services.AddControllers();
-            // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
-            builder.Services.AddSwaggerGen();
+            builder.Services.AddAdminSwaggerJwt();
+
+            // Base64-изображения товаров до 5 МБ
+            builder.Services.Configure<FormOptions>(o =>
+            {
+                o.MultipartBodyLengthLimit = 6 * 1024 * 1024;
+            });
 
             var app = builder.Build();
+
+            await app.Services.SeedAdminRoleAsync();
 
             // ���������� CORS
             app.UseCors("AllowSpecificOrigin");
@@ -68,8 +77,11 @@ namespace InShop.WebAPI
 
             app.UseHttpsRedirection();
 
+            app.UseAuthentication();
             app.UseAuthorization();
             app.UseStaticFiles();
+
+            Directory.CreateDirectory(Path.Combine(app.Environment.WebRootPath ?? "wwwroot", "uploads", "products"));
 
             app.UseCors("AllowFrontend");
 

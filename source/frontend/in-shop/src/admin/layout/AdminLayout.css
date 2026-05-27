@@ -217,6 +217,19 @@
   display: block;
 }
 
+.admin-btn--detach-image {
+  display: block;
+  margin-bottom: 1rem;
+  background: #fff;
+  color: #dc3545;
+  border: 1px solid #dc3545;
+}
+
+.admin-btn--detach-image:hover:not(:disabled) {
+  background: #dc3545;
+  color: #fff;
+}
+
 /* Кликабельная миниатюра — открывает lightbox */
 .admin-image-preview__thumb-btn {
   display: inline-block;

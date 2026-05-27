@@ -29,6 +29,9 @@ const AdminProductForm: React.FC = () => {
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   /** Текущий URL изображения при редактировании — для предпросмотра до загрузки нового файла. */
   const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null);
+  /** Пользователь открепил изображение — при сохранении уйдёт removeImage на API. */
+  const [removeImage, setRemoveImage] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   /** Сообщение об успешном сохранении — показывается в модальном окне перед переходом к списку. */
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -64,9 +67,20 @@ const AdminProductForm: React.FC = () => {
           productStockQuantity: p.productStockQuantity,
         });
         setExistingImageUrl(resolveProductImageUrl(p.imageUrl));
+        setRemoveImage(false);
       });
     }
   }, [id, isNew, reset]);
+
+  const handleDetachImage = () => {
+    setRemoveImage(true);
+    setExistingImageUrl(null);
+    setImageBase64(null);
+    setError(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -78,6 +92,7 @@ const AdminProductForm: React.FC = () => {
     const reader = new FileReader();
     reader.onload = () => {
       setImageBase64(reader.result as string);
+      setRemoveImage(false);
       setError(null);
     };
     reader.readAsDataURL(file);
@@ -88,6 +103,7 @@ const AdminProductForm: React.FC = () => {
     const body = {
       ...values,
       imageBase64: imageBase64 || undefined,
+      removeImage: !isNew && removeImage,
     };
     try {
       if (isNew) {
@@ -141,14 +157,28 @@ const AdminProductForm: React.FC = () => {
         </label>
 
         <label>Изображение (JPEG/PNG/WebP, до 5 МБ)</label>
-        {/* Предпросмотр существующего фото при редактировании */}
         {existingImageUrl && !imageBase64 && (
           <AdminImagePreview src={existingImageUrl} alt="Текущее фото товара" label="Текущее изображение" />
         )}
         {imageBase64 && (
           <AdminImagePreview src={imageBase64} alt="Новое фото" label="Новое изображение (предпросмотр)" />
         )}
-        <input type="file" accept="image/jpeg,image/png,image/webp" onChange={onFileChange} />
+        {(existingImageUrl || imageBase64) && (
+          <button
+            type="button"
+            className="admin-btn admin-btn--secondary admin-btn--detach-image"
+            onClick={handleDetachImage}
+            disabled={isSubmitting}
+          >
+            Открепить изображение
+          </button>
+        )}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          onChange={onFileChange}
+        />
 
         {error && <p className="admin-error">{error}</p>}
 

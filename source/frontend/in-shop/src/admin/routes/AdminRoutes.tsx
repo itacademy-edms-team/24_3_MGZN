@@ -2,7 +2,6 @@ import React from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AdminAuthProvider, useAdminAuth } from '../auth/AdminAuthContext.tsx';
 import AdminLayout from '../layout/AdminLayout.tsx';
-import AdminDashboard from '../pages/AdminDashboard.tsx';
 import AdminDraftOrdersList from '../pages/AdminDraftOrdersList.tsx';
 import AdminLogin from '../pages/AdminLogin.tsx';
 import AdminOrdersList from '../pages/AdminOrdersList.tsx';
@@ -32,7 +31,6 @@ const AdminRoutes: React.FC = () => (
           </RequireAdmin>
         }
       >
-        <Route index element={<AdminDashboard />} />
         <Route path="products" element={<AdminProductsList />} />
         <Route path="products/new" element={<AdminProductForm />} />
         <Route path="products/:id" element={<AdminProductForm />} />

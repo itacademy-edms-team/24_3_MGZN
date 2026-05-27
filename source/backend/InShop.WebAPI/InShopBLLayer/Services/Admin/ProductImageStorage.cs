@@ -61,6 +61,39 @@ namespace InShopBLLayer.Services.Admin
             return $"/uploads/products/{fileName}";
         }
 
+        /// <summary>
+        /// Удаляет файл с диска, если URL указывает на наш каталог uploads/products.
+        /// Внешние URL не трогаем.
+        /// </summary>
+        public bool TryDeleteProductImageFile(string? imageUrl)
+        {
+            if (string.IsNullOrWhiteSpace(imageUrl))
+            {
+                return false;
+            }
+
+            const string prefix = "/uploads/products/";
+            if (!imageUrl.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            var fileName = Path.GetFileName(imageUrl);
+            if (string.IsNullOrEmpty(fileName))
+            {
+                return false;
+            }
+
+            var fullPath = Path.Combine(_uploadRoot, fileName);
+            if (!File.Exists(fullPath))
+            {
+                return false;
+            }
+
+            File.Delete(fullPath);
+            return true;
+        }
+
         private static (string Base64Payload, string? Mime) ParseBase64Payload(string input)
         {
             var trimmed = input.Trim();

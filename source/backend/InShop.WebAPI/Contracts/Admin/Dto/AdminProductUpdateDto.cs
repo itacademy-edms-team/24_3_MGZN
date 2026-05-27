@@ -24,5 +24,8 @@ namespace Contracts.Admin.Dto
 
         public string? ImageBase64 { get; set; }
         public string? ImageUrl { get; set; }
+
+        /// <summary>Удалить привязку изображения (очистить ImageUrl в БД).</summary>
+        public bool RemoveImage { get; set; }
     }
 }

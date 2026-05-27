@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import adminClient from '../api/adminClient.ts';
 import { AdminOrderDetail } from '../types/adminTypes.ts';
+import { isPickupShipMethod } from '../utils/adminUtils.ts';
 import '../layout/AdminLayout.css';
 
 interface Props {
@@ -60,7 +61,9 @@ const OrderDetailsModal: React.FC<Props> = ({ orderId, onClose }) => {
               <h4>Доставка</h4>
               <p><strong>Способ:</strong> {details.shipMethod}</p>
               <p><strong>Адрес:</strong> {details.shipAddress || '—'}</p>
-              <p><strong>ТК:</strong> {details.shipCompanyName || '—'}</p>
+              {!isPickupShipMethod(details.shipMethod) && (
+                <p><strong>ТК:</strong> {details.shipCompanyName || '—'}</p>
+              )}
               <p><strong>Дата отгрузки:</strong> {details.shipDate || '—'}</p>
             </section>
 

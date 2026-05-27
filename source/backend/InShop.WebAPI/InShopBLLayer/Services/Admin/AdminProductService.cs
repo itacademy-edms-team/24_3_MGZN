@@ -124,7 +124,14 @@ namespace InShopBLLayer.Services.Admin
 
                 if (!string.IsNullOrWhiteSpace(dto.ImageBase64))
                 {
+                    var previousUrl = product.ImageUrl;
                     product.ImageUrl = await _imageStorage.SaveBase64ImageAsync(dto.ImageBase64, ct);
+                    _imageStorage.TryDeleteProductImageFile(previousUrl);
+                }
+                else if (dto.RemoveImage)
+                {
+                    _imageStorage.TryDeleteProductImageFile(product.ImageUrl);
+                    product.ImageUrl = null;
                 }
                 else if (!string.IsNullOrWhiteSpace(dto.ImageUrl))
                 {

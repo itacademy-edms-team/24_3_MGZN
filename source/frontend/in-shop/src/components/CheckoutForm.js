@@ -10,11 +10,11 @@ import { apiClient } from '../api/client.ts';
 import './CheckoutForm.css';
 
 const CheckoutForm = ({ onSubmit }) => {
-    const { cart, fetchCart } = useContext(CartContext);
+    const { cart } = useContext(CartContext);
     const navigate = useNavigate();
     
     // ✅ Получаем данные сессии
-    const { orderId, sessionId, isValid, isLoading: sessionLoading } = useSessionContext();
+    const { orderId, isValid, isLoading: sessionLoading } = useSessionContext();
 
     const [formData, setFormData] = useState({
         customerFullName: '',

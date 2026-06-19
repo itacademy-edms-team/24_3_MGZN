@@ -1,6 +1,6 @@
 // src/components/ReviewList.tsx
 
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Review, ReviewsResponse } from '../../types/review.ts';
 import { getProductReviews } from '../../api/reviews.ts';
 import ReviewItem from '../ReviewItem/ReviewItem.tsx';
@@ -15,6 +15,8 @@ interface ReviewListProps {
   onTotalCountChange?: (count: number) => void;
 }
 
+const PAGE_SIZE = 5;
+
 const ReviewList: React.FC<ReviewListProps> = ({ 
   productId, 
   onRefreshTrigger, 
@@ -28,13 +30,10 @@ const ReviewList: React.FC<ReviewListProps> = ({
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
 
-  const pageSize = 5;
-
-  const loadReviews = async (pageNum: number, append: boolean = false) => {
-    if (loading) return;
+  const loadReviews = useCallback(async (pageNum: number, append: boolean = false) => {
     setLoading(true);
     try {
-      const data: ReviewsResponse = await getProductReviews(productId, pageNum, pageSize);
+      const data: ReviewsResponse = await getProductReviews(productId, pageNum, PAGE_SIZE);
       
       if (append) {
         setReviews(prev => [...prev, ...data.reviews]);
@@ -44,24 +43,24 @@ const ReviewList: React.FC<ReviewListProps> = ({
       
       setTotalCount(data.totalCount);
       onTotalCountChange?.(data.totalCount);
-      setHasMore(data.reviews.length > 0 && (pageNum * pageSize) < data.totalCount);
+      setHasMore(data.reviews.length > 0 && (pageNum * PAGE_SIZE) < data.totalCount);
     } catch (error) {
       console.error('Ошибка загрузки отзывов:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [productId, onTotalCountChange]);
 
   useEffect(() => {
     setPage(1);
     loadReviews(1, false);
-  }, [productId, onRefreshTrigger]);
+  }, [productId, onRefreshTrigger, loadReviews]);
 
   useEffect(() => {
     if (page > 1) {
       loadReviews(page, true);
     }
-  }, [page]);
+  }, [page, loadReviews]);
 
   const handleLoadMore = () => {
     setPage(prev => prev + 1);
@@ -72,7 +71,7 @@ const ReviewList: React.FC<ReviewListProps> = ({
     setLoading(true);
     try {
       const loadedPageCount = Math.max(page, 1);
-      const loadedItemsCount = loadedPageCount * pageSize;
+      const loadedItemsCount = loadedPageCount * PAGE_SIZE;
       const data: ReviewsResponse = await getProductReviews(productId, 1, loadedItemsCount);
 
       setReviews(data.reviews);

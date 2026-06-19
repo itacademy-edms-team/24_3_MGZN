@@ -153,6 +153,7 @@ const FiltersPanel = memo<Props>(({
   const [availableSpecs, setAvailableSpecs] = useState<SpecificationFilterDto[]>([]);
   const [loadingSpecs, setLoadingSpecs] = useState(false);
   const prevCategoryRef = useRef<string | null>(null);
+  const specFiltersRef = useRef(specFilters);
   const isUpdatingSpecsRef = useRef(false);
 
   const [localNumberSpecs, setLocalNumberSpecs] = useState<Record<string, { Min?: string; Max?: string }>>({});
@@ -161,6 +162,10 @@ const FiltersPanel = memo<Props>(({
   useEffect(() => {
     localNumberSpecsRef.current = localNumberSpecs;
   }, [localNumberSpecs]);
+
+  useEffect(() => {
+    specFiltersRef.current = specFilters;
+  }, [specFilters]);
 
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -212,6 +217,7 @@ const FiltersPanel = memo<Props>(({
   // 🔧 FIX: Добавлен onSpecsLoaded в зависимости
   useEffect(() => {
     const currentCategory = filters.category;
+    const currentSpecFilters = specFiltersRef.current;
     const categoryChanged = prevCategoryRef.current !== currentCategory;
     prevCategoryRef.current = currentCategory;
 
@@ -244,11 +250,11 @@ const FiltersPanel = memo<Props>(({
             onSpecsLoaded(simplifiedSpecs);
           }
 
-          if (categoryChanged && specFilters && Object.keys(specFilters).length > 0) {
+          if (categoryChanged && currentSpecFilters && Object.keys(currentSpecFilters).length > 0) {
             isUpdatingSpecsRef.current = true;
 
             const validFilters = Object.fromEntries(
-              Object.entries(specFilters).filter(([key]) =>
+              Object.entries(currentSpecFilters).filter(([key]) =>
                 newAvailableSpecs.some((spec: any) => spec.name === key)
               )
             );

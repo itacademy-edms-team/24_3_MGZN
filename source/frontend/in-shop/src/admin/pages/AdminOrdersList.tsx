@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import adminClient from '../api/adminClient.ts';
 import AdminPagination from '../components/AdminPagination.tsx';
@@ -22,7 +22,7 @@ const AdminOrdersList: React.FC<Props> = ({ draftOnly }) => {
   const [selected, setSelected] = useState<AdminOrder | null>(null);
   const [detailsOrderId, setDetailsOrderId] = useState<number | null>(null);
 
-  const load = async (p: number) => {
+  const load = useCallback(async (p: number) => {
     setLoading(true);
     try {
       const url = draftOnly ? '/Admin/orders/draft' : '/Admin/orders';
@@ -33,11 +33,11 @@ const AdminOrdersList: React.FC<Props> = ({ draftOnly }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [draftOnly, statusParam]);
 
   useEffect(() => {
     load(page);
-  }, [page, draftOnly, statusParam]);
+  }, [page, load]);
 
   const paginationProps = data
     ? {

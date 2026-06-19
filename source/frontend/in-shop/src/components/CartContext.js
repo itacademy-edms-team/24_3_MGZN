@@ -15,7 +15,7 @@ export const CartProvider = ({ children }) => {
     const [error, setError] = useState(null);
     
     // ✅ Получаем данные сессии из хука
-    const { orderId, isValid, sessionId } = useSessionContext();
+    const { orderId, isValid } = useSessionContext();
 
     // Загрузка корзины из бэкенда
     const fetchCart = useCallback(async () => {

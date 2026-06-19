@@ -1,7 +1,7 @@
 // src/components/ReviewItem.tsx
 
 import React, { useState } from 'react';
-import { Review, VoteDto } from '../../types/review.ts';
+import { Review } from '../../types/review.ts';
 import { voteReview } from '../../api/reviews.ts';
 import StarRating from '../StarRating/StarRating.tsx';
 import './ReviewItem.css';

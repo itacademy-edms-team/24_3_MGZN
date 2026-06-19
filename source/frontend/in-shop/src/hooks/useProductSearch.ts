@@ -1,6 +1,6 @@
 // src/hooks/useProductSearch.ts
 import { useState, useCallback, useRef } from 'react';
-import { ProductSearchResultDto, SearchRequestDto, SearchResponseDto } from '../types/search';
+import { ProductSearchResultDto, SearchRequestDto } from '../types/search';
 
 interface BackendSearchRequest {
   q: string;

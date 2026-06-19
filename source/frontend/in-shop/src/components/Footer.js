@@ -23,10 +23,10 @@ const Footer = () => {
 
                 {/* Социальные сети */}
                 <div className="social-links">
-                    <a href="#"><i className="fab fa-facebook"></i></a>
-                    <a href="#"><i className="fab fa-twitter"></i></a>
-                    <a href="#"><i className="fab fa-instagram"></i></a>
-                    <a href="#"><i className="fab fa-youtube"></i></a>
+                    <a href="https://facebook.com" aria-label="Facebook" target="_blank" rel="noreferrer"><i className="fab fa-facebook"></i></a>
+                    <a href="https://twitter.com" aria-label="Twitter" target="_blank" rel="noreferrer"><i className="fab fa-twitter"></i></a>
+                    <a href="https://instagram.com" aria-label="Instagram" target="_blank" rel="noreferrer"><i className="fab fa-instagram"></i></a>
+                    <a href="https://youtube.com" aria-label="YouTube" target="_blank" rel="noreferrer"><i className="fab fa-youtube"></i></a>
                 </div>
 
                 {/* Авторские права */}

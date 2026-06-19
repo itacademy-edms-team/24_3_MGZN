@@ -58,7 +58,7 @@ const SearchComponent: React.FC = () => {
     if (urlQuery && query !== urlQuery) {
       setQuery(urlQuery);
     }
-  }, [urlQuery]);
+  }, [query, urlQuery]);
 
   useEffect(() => {
     const savedHistory = localStorage.getItem('searchHistory');

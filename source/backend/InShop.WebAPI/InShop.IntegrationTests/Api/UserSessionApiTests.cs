@@ -40,7 +40,8 @@ public class UserSessionApiTests : IAsyncLifetime
             UserAgent = "integration-test"
         });
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadAsStringAsync();
+        response.StatusCode.Should().Be(HttpStatusCode.OK, body);
         var result = await response.Content.ReadFromJsonAsync<SessionCreationResult>();
         result.Should().NotBeNull();
         result!.SessionId.Should().BeGreaterThan(0);
@@ -52,6 +53,7 @@ public class UserSessionApiTests : IAsyncLifetime
     {
         var response = await _client.GetAsync("/api/UserSession/validate");
 
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        var body = await response.Content.ReadAsStringAsync();
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized, body);
     }
 }

@@ -39,7 +39,7 @@ jobs:
         run: dotnet test source/backend/InShop.WebAPI/InShopBLLayer.Tests/InShopBLLayer.Tests.csproj --configuration Release --no-build --collect:"XPlat Code Coverage"
 
       - name: Run integration tests
-        run: dotnet test source/backend/InShop.WebAPI/InShop.IntegrationTests/InShop.IntegrationTests.csproj --configuration Release --no-build --collect:"XPlat Code Coverage"
+        run: dotnet test source/backend/InShop.WebAPI/InShop.IntegrationTests/InShop.IntegrationTests.csproj --configuration Debug --collect:"XPlat Code Coverage" --logger "console;verbosity=detailed"
 
   frontend:
     name: Frontend build

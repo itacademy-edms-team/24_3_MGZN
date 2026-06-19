@@ -49,7 +49,8 @@ public class OrderApiTests : IAsyncLifetime
         using var client = _factory.CreateClient();
         var response = await client.PostAsJsonAsync("/api/Order", new AddToCartDto { ProductId = _productId });
 
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        var body = await response.Content.ReadAsStringAsync();
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized, body);
     }
 
     [Fact]
@@ -57,19 +58,22 @@ public class OrderApiTests : IAsyncLifetime
     {
         var response = await _client.PostAsJsonAsync("/api/Order", new AddToCartDto { ProductId = _productId });
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadAsStringAsync();
+        response.StatusCode.Should().Be(HttpStatusCode.OK, body);
         body.Should().Contain("orderId");
     }
 
     [Fact]
     public async Task GetCart_AfterAddToCart_ReturnsItems()
     {
-        await _client.PostAsJsonAsync("/api/Order", new AddToCartDto { ProductId = _productId });
+        var addResponse = await _client.PostAsJsonAsync("/api/Order", new AddToCartDto { ProductId = _productId });
+        var addBody = await addResponse.Content.ReadAsStringAsync();
+        addResponse.StatusCode.Should().Be(HttpStatusCode.OK, addBody);
 
         var response = await _client.GetAsync("/api/Order/cart");
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadAsStringAsync();
+        response.StatusCode.Should().Be(HttpStatusCode.OK, body);
         var items = await response.Content.ReadFromJsonAsync<List<CartItemDto>>();
         items.Should().NotBeNull().And.NotBeEmpty();
     }

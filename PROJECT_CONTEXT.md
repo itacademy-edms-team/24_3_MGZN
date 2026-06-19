@@ -86,9 +86,11 @@ React frontend
 
 Vector indexing/search:
 SQL Server products
-  -> Background indexing service (VectorIndexingService)
+  -> VectorSearchIndexRebuildService (full rebuild + per-product upsert)
       -> Python EmbeddingServer
-      -> Redis index
+      -> Redis index (idx:products, product:{id})
+  -> VectorIndexingService (hosted, hourly full rebuild via scoped scope)
+  -> AdminProductService (IndexProductAsync / RemoveProductAsync after CRUD)
 
 Reviews:
 Product page
@@ -143,9 +145,9 @@ Contains service abstractions and implementations for:
 - reviews (CRUD, voting, verified-purchase check, rating sync on product)
 - review AI-summary cache (Redis)
 - AI analysis of review texts (`AiAnalysisService`, `IAiProvider`)
-- vector indexing
+- vector indexing (`VectorSearchIndexRebuildService`, `VectorIndexingService`)
+- admin panel (`AdminAuthService`, `AdminProductService`, `AdminOrderService`)
 - inventory reservation (`InventoryReservationService`)
-- admin order status stub (`AdminOrderService`)
 
 Important files:
 
@@ -156,8 +158,13 @@ Important files:
 - `source/backend/InShop.WebAPI/InShopBLLayer/Services/Ai/Providers/YandexGptProvider.cs`
 - `source/backend/InShop.WebAPI/InShopBLLayer/Services/Ai/Providers/NoOpAiProvider.cs`
 - `source/backend/InShop.WebAPI/InShopBLLayer/Services/Search/VectorIndexingService.cs`
-- `source/backend/InShop.WebAPI/InShopBLLayer/Services/Admin/InventoryReservationService.cs`
+- `source/backend/InShop.WebAPI/InShopBLLayer/Services/Search/VectorSearchIndexRebuildService.cs`
+- `source/backend/InShop.WebAPI/InShopBLLayer/Abstractions/IVectorSearchIndexRebuildService.cs`
+- `source/backend/InShop.WebAPI/InShopBLLayer/Services/Admin/AdminAuthService.cs`
+- `source/backend/InShop.WebAPI/InShopBLLayer/Services/Admin/AdminProductService.cs`
 - `source/backend/InShop.WebAPI/InShopBLLayer/Services/Admin/AdminOrderService.cs`
+- `source/backend/InShop.WebAPI/InShopBLLayer/Services/Admin/ProductImageStorage.cs`
+- `source/backend/InShop.WebAPI/InShopBLLayer/Services/Admin/InventoryReservationService.cs`
 - `source/backend/InShop.WebAPI/InShopBLLayer/Abstractions/IInventoryReservationService.cs`
 
 #### `InShopDbModels`
@@ -325,7 +332,7 @@ Prepares safe stock deduction when order status changes (admin or payment flow).
 - EF config: `source/backend/InShop.WebAPI/InShopDbModels/Data/AppDbContext.cs` (`ReservedQuantity` default 0, `RowVersion` `IsRowVersion()`)
 - Interface: `source/backend/InShop.WebAPI/InShopBLLayer/Abstractions/IInventoryReservationService.cs`
 - Implementation: `source/backend/InShop.WebAPI/InShopBLLayer/Services/Admin/InventoryReservationService.cs`
-- Integration stub: `source/backend/InShop.WebAPI/InShopBLLayer/Services/Admin/AdminOrderService.cs` (`IAdminOrderService` — TODO comments for status transitions)
+- Integration stub: `AdminOrderService` — TODO: call `InventoryReservationService` on status transitions
 - DI: `source/backend/InShop.WebAPI/InShopBLLayer/Extensions/ServiceCollectionBLLayerExtension.cs`
 - **Database migration (manual):** `source/backend/InShop.WebAPI/scripts/AddProductReservationColumns.sql` — run once per database in SSMS against `InShopDB` before starting the API (see script header for steps)
 
@@ -336,6 +343,8 @@ Prepares safe stock deduction when order status changes (admin or payment flow).
 - `InventoryReservationService` not yet called from `AdminOrderService` (TODO in code)
 
 ## 6.2 Admin Panel
+
+Админка изолирована от покупательской сессии: маршруты `/admin/*`, JWT в `sessionStorage`, не затрагивает `SessionToken` / корзину.
 
 ### Authentication
 
@@ -351,43 +360,74 @@ Canonical: `Draft` → `Unpaid` → `Processing` → `Paid` → `Shipped` → `D
 
 Legacy normalization (read/validate only, customer code unchanged): `Unpayed`→`Unpaid`, `Payed`→`Paid`, etc. Admin writes canonical statuses.
 
+Terminal statuses (`Delivered`, `Cancelled`): смена статуса запрещена в UI и в `AdminOrderService.ChangeOrderStatusAsync` (`OrderStatusStateMachine.IsTerminalStatus`).
+
 Audit: `OrderAuditLog` (same transaction as status change).
 
 ### API (all `[Authorize(AdminOnly)]` except auth register/login)
 
 | Method | Path |
 |--------|------|
-| GET | `/api/Admin/products` |
+| GET | `/api/Admin/products`, `/api/Admin/products/{id}` |
 | POST/PUT/DELETE | `/api/Admin/products`, `/{id}` |
 | GET | `/api/Admin/orders`, `/api/Admin/orders/draft`, `/api/Admin/orders/{id}` |
 | PUT | `/api/Admin/orders/{id}/status` |
 | GET | `/api/Admin/orders/{id}/allowed-statuses` |
 
-**UX / бизнес-правила (обновлено):**
+**DTO:** `AdminProductUpdateDto.RemoveImage` — открепить изображение (очистить `ImageUrl`, удалить файл из `uploads/products/`).
 
-- **Товар:** предпросмотр текущего `ImageUrl` в форме редактирования; чекбокс «В наличии» с увеличенным чекбоксом слева; цена с `step=1` (рубли).
-- **Заказы:** кнопка «Подробнее» → `OrderDetailsModal` (позиции, доставка, покупатель, `OrderAuditLog` timeline); смена статуса **заблокирована** для `Delivered` / `Cancelled` (UI + `AdminOrderService.ChangeOrderStatusAsync`).
-- **Пагинация:** reusable `AdminPagination` над и под таблицами (товары, заказы, черновики).
-- **Поиск Redis:** после create/update/delete товара `AdminProductService` вызывает `IVectorSearchIndexRebuildService.RebuildAsync` (try/catch — сбой индекса не откатывает сохранение товара). TODO: переиндексация одного товара вместо полной перестройки.
+### Product images (admin upload)
+
+- Frontend отправляет `imageBase64` (data URL или Base64, ≤ **5 MB**, JPEG/PNG/WebP).
+- `ProductImageStorage` → `InShop.WebAPI/wwwroot/uploads/products/{guid}.ext`
+- В БД: `/uploads/products/{fileName}`; статика через `UseStaticFiles()`.
+- При замене или `RemoveImage` локальный старый файл удаляется; внешние URL не трогаются.
+
+### Redis search index (admin CRUD)
+
+`IVectorSearchIndexRebuildService` / `VectorSearchIndexRebuildService`:
+
+| Method | When | Action |
+|--------|------|--------|
+| `IndexProductAsync(productId)` | create/update в админке | `HSET product:{id}`; `EnsureIndexExistsAsync` при первом save |
+| `RemoveProductAsync(productId)` | delete в админке | `DEL product:{id}` |
+| `RebuildFullIndexAsync()` | `VectorIndexingService` (~1 ч) | `FT.DROPINDEX` → все hash → `FT.CREATE` |
+
+- Общая логика — `UpsertProductHashAsync`; ошибка индексации не откатывает SQL (try/catch в `AdminProductService`).
+- `VectorIndexingService` (singleton) использует `IServiceScopeFactory` для scoped DI.
+- **Limitation:** новое spec-поле в schema может потребовать full rebuild / `FT.ALTER`.
+
+### Admin UI (frontend: `src/admin/`)
+
+| Feature | Files |
+|---------|-------|
+| Форма товара | `AdminProductForm.tsx` — чекбокс 20px слева, цена `step=1` |
+| Превью / lightbox | `AdminImagePreview.tsx`, `adminUtils.resolveProductImageUrl` |
+| Открепить фото | кнопка → `removeImage: true` |
+| Спиннер / успех | `AdminLoadingOverlay.tsx`, `AdminNoticeModal.tsx` |
+| Пагинация | `AdminPagination.tsx` — над и под таблицами |
+| Заказы | `AdminOrdersList.tsx`, `OrderDetailsModal.tsx`, `OrderStatusModal.tsx` |
+| Самовывоз | в «Подробнее» поле **ТК** скрыто (`isPickupShipMethod`) |
+
+Утилиты: `adminUtils.ts` — `isTerminalOrderStatus`, `isPickupShipMethod`, `resolveProductImageUrl`.
 
 ### Key backend files
 
-- `InShopDbModels/Data/AppDbContext.cs` — `IdentityDbContext<IdentityUser>`
+- `InShopDbModels/Data/AppDbContext.cs`, `AdminIdentityDbContext.cs`
 - `InShopDbModels/Models/OrderAuditLog.cs`
-- `InShopBLLayer/Services/Admin/AdminAuthService.cs`, `AdminProductService.cs`, `AdminOrderService.cs`, `OrderStatusStateMachine.cs`, `ProductImageStorage.cs`
-- `InShopBLLayer/Abstractions/IAdminAuthService.cs`, `IAdminProductService.cs`, `IAdminOrderService.cs`
-- `Contracts/Admin/Dto/*`, `Contracts/Admin/Options/JwtSettings.cs`
-- `InShop.WebAPI/Extensions/AdminIdentityExtensions.cs`
-- `InShop.WebAPI/Controllers/Admin/*`
+- `InShopBLLayer/Services/Admin/*`, `Services/Search/VectorSearchIndexRebuildService.cs`, `VectorIndexingService.cs`
+- `InShopBLLayer/Abstractions/IVectorSearchIndexRebuildService.cs`, `IAdmin*Service.cs`
+- `Contracts/Admin/Dto/*` (в т.ч. `AdminOrderDetailDto`)
+- `InShop.WebAPI/Controllers/Admin/*`, `Extensions/AdminIdentityExtensions.cs`
 
-### Frontend (`/admin/*`)
+### Frontend routes
 
-- JWT in `sessionStorage`, `src/admin/api/adminClient.ts` → `Authorization: Bearer` for `/api/Admin/*`.
-- Routes: login, dashboard, products, orders, drafts; `AdminLayout`, `OrderStatusModal`, `OrderDetailsModal`, `AdminPagination`, React Hook Form, images Base64 ≤ **5 MB**.
+- JWT: `src/admin/api/adminClient.ts`
+- Routes: `/admin/login`, dashboard, products, orders, drafts — `AdminRoutes.tsx`, `AdminLayout.tsx`
 
 ### Database setup (database-first / scaffold)
 
-**Два контекста, одна БД:** `AppDbContext` (бизнес, reverse scaffold) + `AdminIdentityDbContext` (AspNet*, только SQL).
+**Два контекста, одна БД:** `AppDbContext` + `AdminIdentityDbContext`.
 
 Порядок SQL в SSMS:
 
@@ -395,9 +435,8 @@ Audit: `OrderAuditLog` (same transaction as status change).
 2. `scripts/AddAdminIdentityAndAudit.sql`
 3. `scripts/AddProductReservationColumns.sql` (если нужно)
 
-Полная инструкция scaffold: `source/backend/InShop.WebAPI/scripts/SCAFFOLDING.md`
-
-Код вне scaffold: `AppDbContext.NonScaffolded.partial.cs`, `AdminIdentityDbContext.cs`
+Scaffold: `source/backend/InShop.WebAPI/scripts/SCAFFOLDING.md`  
+Partial: `AppDbContext.NonScaffolded.partial.cs`
 
 ## 7. Frontend Structure
 
@@ -510,6 +549,7 @@ Behavior:
 - supports pagination ("load more" on main results), sorting, stock filter, price filters, category filter, and spec filters
 - keeps separate `results` and `recommended` lists
 - recommendations rendered in a `Swiper` carousel below search results
+- **empty state:** message shown when main `results` is empty (even if `recommended` is non-empty); idle hint on `/search` without criteria; API JSON supports both camelCase and PascalCase property names (`useProductSearch.ts`)
 
 ## 8. Core Runtime Flows
 
@@ -579,16 +619,17 @@ Key files:
 
 ### 8.4 Search flow
 
-1. `VectorIndexingService` loads products and specifications from SQL Server.
-2. Product text is assembled from category, title, description, and specs.
-3. Text is sent to the Python embedding service.
-4. Embeddings and searchable metadata are stored in Redis hashes.
-5. Redis index `idx:products` is built/updated.
+1. **Full rebuild (hourly):** `VectorIndexingService` → scoped `RebuildFullIndexAsync` — all products from SQL → embeddings → Redis hashes → `FT.CREATE idx:products`.
+2. **Incremental (admin):** `AdminProductService` after CRUD → `IndexProductAsync` / `RemoveProductAsync` (single `product:{id}` hash, no index drop).
+3. Product text is assembled from category, title, description, and specs.
+4. Text is sent to the Python embedding service.
+5. Embeddings and searchable metadata are stored in Redis hashes (`product:{id}`).
 6. `SearchController` runs lexical and vector searches in Redis and merges scores into hybrid search results.
 7. Response includes paged `results` and up to 10 `recommended` products (vector KNN, deduplicated from main results).
 
 Key files:
 
+- `source/backend/InShop.WebAPI/InShopBLLayer/Services/Search/VectorSearchIndexRebuildService.cs`
 - `source/backend/InShop.WebAPI/InShopBLLayer/Services/Search/VectorIndexingService.cs`
 - `source/backend/InShop.WebAPI/InShop.WebAPI/Controllers/SearchController.cs`
 - `source/backend/EmbeddingServer/server.py`
@@ -656,7 +697,9 @@ Important implementation notes:
 - vector dimension is `768`
 - Redis key prefix is `product:`
 - main index name is `idx:products`
-- index rebuild is performed by a hosted background service
+- **full** index rebuild: hosted `VectorIndexingService` (~1 hour interval)
+- **incremental** upsert/delete: `AdminProductService` → `IndexProductAsync` / `RemoveProductAsync`
+- shared hash builder: `VectorSearchIndexRebuildService.UpsertProductHashAsync`
 - search recommendations are separate from the main paged result list and shown in a Swiper carousel on the frontend
 
 ## 10. Configuration and Entry Points

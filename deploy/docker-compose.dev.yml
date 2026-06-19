@@ -1,0 +1,17 @@
+services:
+  payments-api:
+    build:
+      context: ../source/backend/PaymentsAPI/PaymentsAPI
+      dockerfile: Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+    ports:
+      - "${PAYMENTS_API_PORT:-5001}:8080"
+
+  inshop-api:
+    depends_on:
+      - payments-api
+    environment:
+      Payment__Provider: Mock
+      PaymentsAPI__BaseUrl: http://payments-api:8080

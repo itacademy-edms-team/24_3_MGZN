@@ -1,3 +1,12 @@
+**/bin/
+**/obj/
+**/TestResults/
+**/.vs/
+**/.idea/
+**/*.user
+**/*.suo
+InShopBLLayer.Tests/
+InShop.IntegrationTests/
 **/.classpath
 **/.dockerignore
 **/.env

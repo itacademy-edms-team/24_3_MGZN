@@ -14,6 +14,7 @@ import AiSummaryBlock from '../components/AiSummaryBlock/AiSummaryBlock.tsx'; //
 
 import { createReview, updateReview, deleteReview } from '../api/reviews.ts';
 import { Review, CreateReviewDto, UpdateReviewDto } from '../types/review.ts';
+import { resolveApiUrl, resolveAssetUrl, PRODUCT_PLACEHOLDER_URL } from '../config/api.js';
 
 interface ProductSpecificationDto {
     specId: number;
@@ -63,9 +64,9 @@ const ProductPage = () => {
 
         const fetchProductData = async () => {
             try {
-                const productRes = await axios.get(`https://localhost:7275/api/Products/${productId}`);
+                const productRes = await axios.get(resolveApiUrl(`/Products/${productId}`));
                 setProduct(productRes.data);
-                const specsRes = await axios.get(`https://localhost:7275/api/Products/${productId}/specifications`);
+                const specsRes = await axios.get(resolveApiUrl(`/Products/${productId}/specifications`));
                 setSpecifications(specsRes.data || []);
             } catch (error) {
                 console.error('Ошибка загрузки данных:', error);
@@ -81,7 +82,7 @@ const ProductPage = () => {
         const fetchRelatedProducts = async () => {
             try {
                 const response = await axios.get(
-                    `https://localhost:7275/api/Products/products-by-category?categoryName=${encodeURIComponent(product.productCategoryName)}`
+                    resolveApiUrl(`/Products/products-by-category?categoryName=${encodeURIComponent(product.productCategoryName)}`)
                 );
                 const relatedProductsData = response.data.filter(
                     (p: any) => p.productId !== parseInt(productId)
@@ -104,7 +105,7 @@ const ProductPage = () => {
             setRefreshReviewsTrigger(prev => prev + 1);
             
             if (productId) {
-                const productRes = await axios.get(`https://localhost:7275/api/Products/${productId}`);
+                const productRes = await axios.get(resolveApiUrl(`/Products/${productId}`));
                 setProduct(productRes.data);
             }
         } catch (error: any) {
@@ -139,7 +140,7 @@ const ProductPage = () => {
             setRefreshReviewsTrigger(prev => prev + 1);
             
             if (productId) {
-                 const productRes = await axios.get(`https://localhost:7275/api/Products/${productId}`);
+                 const productRes = await axios.get(resolveApiUrl(`/Products/${productId}`));
                  setProduct(productRes.data);
             }
         } catch (error) {
@@ -171,10 +172,10 @@ const ProductPage = () => {
                 <div className="product-details">
                     <img 
                         className="product-page__img"
-                        src={`https://localhost:7275${product.imageUrl}`}
+                        src={resolveAssetUrl(product.imageUrl) ?? PRODUCT_PLACEHOLDER_URL}
                         alt={product.productName}
                         onError={(e) => {
-                            e.target.src = 'https://localhost:7275/images/placeholder.svg';
+                            e.target.src = PRODUCT_PLACEHOLDER_URL;
                         }}
                         loading="lazy"
                     />
@@ -208,6 +209,7 @@ const ProductPage = () => {
                         {product.productStockQuantity > 0 ? (
                             <button
                                 className="add-to-cart-button"
+                                data-testid="add-to-cart-button"
                                 onClick={() => addToCart(product)}
                             >
                                 Добавить в корзину

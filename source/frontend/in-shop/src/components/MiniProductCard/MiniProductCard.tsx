@@ -1,5 +1,6 @@
 import React from 'react';
 import './MiniProductCard.css'; // Создайте соответствующий CSS файл
+import { resolveAssetUrl, PRODUCT_PLACEHOLDER_URL } from '../../config/api.js';
 
 // Интерфейс для данных товара (может совпадать с ProductSearchResultDto)
 interface ProductSearchResultDto {
@@ -24,11 +25,11 @@ const MiniProductCard: React.FC<MiniProductCardProps> = ({ product, onClick }) =
 
   // Формируем правильный src
   const imageSrc = hasValidImageUrl
-    ? `https://localhost:7275${product.imageUrl.startsWith('/') ? '' : '/'}${product.imageUrl}`
+    ? resolveAssetUrl(product.imageUrl)
     : null;
 
   // URL заглушки с бэкенда
-  const placeholderSrc = 'https://localhost:7275/images/placeholder.svg';
+  const placeholderSrc = PRODUCT_PLACEHOLDER_URL;
 
   return (
     <div className="mini-product-card" onClick={onClick}>

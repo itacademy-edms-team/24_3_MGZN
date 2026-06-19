@@ -1,6 +1,7 @@
 // CartItem.js
 import React, { memo, useContext } from 'react';
 import { CartContext } from '../components/CartContext';
+import { resolveAssetUrl, PRODUCT_PLACEHOLDER_URL } from '../config/api.js';
 
 const CartItem = memo(({ item }) => {
     const { changeQuantity, removeFromCart } = useContext(CartContext);
@@ -8,10 +9,10 @@ const CartItem = memo(({ item }) => {
     return (
         <div key={item.orderItemId} className="cart-item-card">
             <img
-                src={`https://localhost:7275${item.imageUrl}`}
+                src={resolveAssetUrl(item.imageUrl) || PRODUCT_PLACEHOLDER_URL}
                 alt={item.productName}
                 onError={(e) => {
-                    e.target.src = 'https://localhost:7275/images/placeholder.svg';
+                    e.target.src = PRODUCT_PLACEHOLDER_URL;
                 }}
                 loading="lazy"
                 className="cart-item-image"
@@ -38,10 +39,11 @@ const CartItem = memo(({ item }) => {
                     </button>
                 </div>
                 
-                <button 
-                    className="remove-btn"
-                    onClick={() => removeFromCart(item.orderItemId)}
-                >
+                    <button 
+                        className="remove-btn"
+                        data-testid="cart-remove-item"
+                        onClick={() => removeFromCart(item.orderItemId)}
+                    >
                     Удалить
                 </button>
             </div>

@@ -39,7 +39,7 @@ const AdminLayout: React.FC = () => {
         <nav className={`admin-sidebar ${menuOpen ? '' : 'admin-sidebar--hidden'}`}>
           <NavLink to="/admin/products">Товары</NavLink>
           <NavLink to="/admin/orders">Заказы</NavLink>
-          <NavLink to="/admin/orders/drafts">Черновики</NavLink>
+          <NavLink to="/admin/orders/drafts">Черновики Заказов (Корзины)</NavLink>
         </nav>
         <main className="admin-content">
           <Outlet />

@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { resolveAssetUrl, PRODUCT_PLACEHOLDER_URL } from '../config/api.js';
 import './ProductCard.css'; // Импортируем стили компонента
 
 const ProductCard = ({ product }) => {
@@ -13,11 +14,11 @@ const ProductCard = ({ product }) => {
 
     // Формируем правильный src
     const imageSrc = hasValidImageUrl
-        ? `https://localhost:7275${product.imageUrl.startsWith('/') ? '' : '/'}${product.imageUrl}`
+        ? resolveAssetUrl(product.imageUrl)
         : null;
 
     // URL заглушки с бэкенда
-    const placeholderSrc = 'https://localhost:7275/images/placeholder.svg';
+    const placeholderSrc = PRODUCT_PLACEHOLDER_URL;
 
     return (
         <div className="product-card" onClick={handleClick}>

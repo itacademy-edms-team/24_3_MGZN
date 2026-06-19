@@ -9,7 +9,7 @@ using StackExchange.Redis;
 
 namespace InShop.WebAPI
 {
-    public class Program
+    public partial class Program
     {
         public static async Task Main(string[] args)
         {
@@ -24,7 +24,9 @@ namespace InShop.WebAPI
 
             builder.Services.AddHttpClient<IEmbeddingService, HttpEmbeddingService>(client =>
             {
-                client.BaseAddress = new Uri("http://localhost:8000/"); // ���������, ��� ����� ��������� � ���, �� ������� ������� FastAPI
+                var embeddingBaseUrl = builder.Configuration["Embedding:BaseUrl"]
+                    ?? "http://localhost:8000/";
+                client.BaseAddress = new Uri(embeddingBaseUrl);
             });
 
 
@@ -63,6 +65,7 @@ namespace InShop.WebAPI
 
             var app = builder.Build();
 
+            await app.Services.EnsureDatabaseCreatedForDockerAsync(app.Configuration);
             await app.Services.SeedAdminRoleAsync();
 
             // ���������� CORS
@@ -82,8 +85,6 @@ namespace InShop.WebAPI
             app.UseStaticFiles();
 
             Directory.CreateDirectory(Path.Combine(app.Environment.WebRootPath ?? "wwwroot", "uploads", "products"));
-
-            app.UseCors("AllowFrontend");
 
             app.UseMiddleware<InShop.WebAPI.Middleware.SessionMiddleware>();
 

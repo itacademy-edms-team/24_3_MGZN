@@ -1,12 +1,13 @@
 // src/components/CheckoutItemCard.js
 import React from 'react';
 import './CheckoutItemCard.css';
+import { resolveAssetUrl } from '../config/api.js';
 
 const CheckoutItemCard = ({ item, changeQuantity, removeFromCart }) => {
     return (
         <div className="checkout-item-card">
             <img
-                src={`https://localhost:7275${item.imageUrl}`}
+                src={resolveAssetUrl(item.imageUrl)}
                 alt={item.productName}
                 onError={(e) => {
                     e.target.src = '/placeholder-image.jpg';

@@ -10,6 +10,7 @@ import ActiveFiltersBar from '../../components/ActiveFiltersBar.tsx';
 import ProductCard from '../../components/ProductCard.jsx';
 import LoadingSpinner from '../../components/LoadingSpinner.tsx';
 import SortMenu, { SortOption } from '../../components/SortMenu/SortMenu.tsx';
+import { API_BASE_URL } from '../../config/api.js';
 
 // Swiper imports
 import { Swiper, SwiperSlide } from 'swiper/react';
@@ -29,7 +30,6 @@ type SpecFilterValue = string | number | { Min?: number; Max?: number } | null;
 
 const PAGE_SIZE = 12;
 const DEBOUNCE_DELAY = 400;
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'https://localhost:7275/api';
 
 // 🔧 FIX: Выносим блок рекомендаций в отдельный мемоизированный компонент
 const RecommendationsSection = memo<{

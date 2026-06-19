@@ -3,9 +3,8 @@
 // ============================================
 
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
+import { API_BASE_URL } from '../config/api.js';
 
-// ✅ Бэкенд на HTTPS
-const API_BASE_URL = 'https://localhost:7275/api';
 const STORAGE_KEY_ORDER_ID = 'currentOrderId';
 const STORAGE_KEY_SESSION_ID = 'currentSessionId';
 const SESSION_UPDATED_EVENT = 'session:updated';

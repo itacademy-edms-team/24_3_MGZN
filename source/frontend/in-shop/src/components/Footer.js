@@ -13,11 +13,11 @@ const Footer = () => {
                 {/* Категории */}
                 <div className="categories">
                     <ul>
-                        <li><a href="http://localhost:3000/category/Аудио">Аудио</a></li>
-                        <li><a href="http://localhost:3000/category/Смартфоны">Смартфоны</a></li>
-                        <li><a href="http://localhost:3000/category/Аксессуары">Аксессуары</a></li>
-                        <li><a href="http://localhost:3000/category/Планшеты">Планшеты</a></li>
-                        <li><a href="http://localhost:3000/category/Ноутбуки">Ноутбуки</a></li>
+                        <li><a href="/category/Аудио">Аудио</a></li>
+                        <li><a href="/category/Смартфоны">Смартфоны</a></li>
+                        <li><a href="/category/Аксессуары">Аксессуары</a></li>
+                        <li><a href="/category/Планшеты">Планшеты</a></li>
+                        <li><a href="/category/Ноутбуки">Ноутбуки</a></li>
                     </ul>
                 </div>
 

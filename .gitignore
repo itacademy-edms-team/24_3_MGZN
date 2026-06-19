@@ -366,3 +366,8 @@ appsettings.Docker.json
 
 appsettings.json
 
+deploy/.env
+deploy/*.bak
+deploy/*.bu
+deploy/shopBU
+

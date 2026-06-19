@@ -8,6 +8,7 @@ import AdminLoadingOverlay from '../components/AdminLoadingOverlay.tsx';
 import AdminNoticeModal from '../components/AdminNoticeModal.tsx';
 import { AdminProduct, CategoryDto } from '../types/adminTypes.ts';
 import { resolveProductImageUrl } from '../utils/adminUtils.ts';
+import { resolveApiUrl } from '../../config/api.js';
 import '../layout/AdminLayout.css';
 
 interface ProductFormValues {
@@ -18,8 +19,6 @@ interface ProductFormValues {
   productCategoryId: number;
   productStockQuantity: number;
 }
-
-const API_PUBLIC = 'https://localhost:7275/api';
 
 const AdminProductForm: React.FC = () => {
   const { id } = useParams();
@@ -51,7 +50,7 @@ const AdminProductForm: React.FC = () => {
   });
 
   useEffect(() => {
-    axios.get<CategoryDto[]>(`${API_PUBLIC}/Category`).then((r) => setCategories(r.data));
+    axios.get<CategoryDto[]>(resolveApiUrl('/Category')).then((r) => setCategories(r.data));
   }, []);
 
   useEffect(() => {

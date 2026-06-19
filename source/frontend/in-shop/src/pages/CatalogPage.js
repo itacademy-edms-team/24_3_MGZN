@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import axios from 'axios';
 import './CatalogPage.css';
 import LoadingSpinner from '../components/LoadingSpinner.tsx';
+import { resolveApiUrl, resolveAssetUrl } from '../config/api.js';
 
 const CatalogPage = () => {
     const [categories, setCategories] = useState([]);
@@ -10,7 +11,7 @@ const CatalogPage = () => {
 
     useEffect(() => {
         // Загрузка категорий из API
-        axios.get('https://localhost:7275/api/Category') 
+        axios.get(resolveApiUrl('/Category')) 
             .then((response) => {
                 console.log('Ответ от сервера:', response.data); // Логируем данные
                 setCategories(response.data);
@@ -41,7 +42,7 @@ const CatalogPage = () => {
                             <li key={category.categoryId} className="category-card">
                                 <Link to={`/category/${encodeURIComponent(category.categoryName)}`}>
                                     <img
-                                        src={`https://localhost:7275${category.imageURL}`} 
+                                        src={resolveAssetUrl(category.imageURL)} 
                                         alt={category.categoryName}
                                         onError={(e) => {
                                             e.target.src = '/placeholder-image.jpg';

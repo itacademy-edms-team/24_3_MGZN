@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import MiniProductCard from '../MiniProductCard/MiniProductCard.tsx';
 import './SearchComponent.css';
+import { API_BASE_URL } from '../../config/api.js';
 
 interface ApiProductDto {
   productId: number;
@@ -45,8 +46,6 @@ const SearchComponent: React.FC = () => {
   const isMountedRef = useRef(true);
   const isNavigatingRef = useRef(false);
   const isSyncingFromUrlRef = useRef(false);
-
-  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'https://localhost:7275/api';
 
   const urlQuery = useMemo(() => searchParams.get('q') || '', [searchParams]);
 
@@ -118,7 +117,7 @@ const SearchComponent: React.FC = () => {
     };
 
     fetchRandomSuggestions();
-  }, [API_BASE_URL]);
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

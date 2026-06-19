@@ -69,7 +69,7 @@ const CartModal = () => {
                                 </div>
                                 
                                 <div className="cart-actions">
-                                    <button onClick={clearCart} className="clear-cart-button">
+                                    <button onClick={clearCart} className="clear-cart-button" data-testid="clear-cart-button">
                                         Очистить корзину
                                     </button>
                                     <Link to="/checkout" onClick={closeCart} className="checkout-cart-button">

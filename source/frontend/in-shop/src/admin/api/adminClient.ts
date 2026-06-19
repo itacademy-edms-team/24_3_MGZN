@@ -1,6 +1,6 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import { API_BASE_URL } from '../../config/api.js';
 
-const API_BASE_URL = 'https://localhost:7275/api';
 export const ADMIN_TOKEN_KEY = 'inshop_admin_jwt';
 
 export const adminClient = axios.create({

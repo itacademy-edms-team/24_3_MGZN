@@ -1,9 +1,11 @@
+using InShopBLLayer.Abstractions;
 using InShop.WebAPI;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 
 namespace InShop.IntegrationTests.Api;
@@ -58,6 +60,17 @@ public sealed class InShopWebApplicationFactory : WebApplicationFactory<Program>
             {
                 services.Remove(descriptor);
             }
+
+            services.RemoveAll<IEmailSender>();
+            services.AddSingleton<IEmailSender, NoOpEmailSender>();
         });
+    }
+
+    private sealed class NoOpEmailSender : IEmailSender
+    {
+        public Task SendAsync(string to, string subject, string body)
+        {
+            return Task.CompletedTask;
+        }
     }
 }

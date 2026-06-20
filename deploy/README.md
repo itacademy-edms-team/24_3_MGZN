@@ -1,94 +1,112 @@
-# InShop Docker Deploy
+# Docker-запуск InShop
 
-This folder contains Docker Compose files for running the InShop stack locally and later on a server.
+Эта папка содержит Docker Compose-файлы для локального запуска стека InShop и будущего запуска на сервере.
 
-## Services
+## Сервисы
 
-- `frontend` - React app served by nginx
-- `inshop-api` - ASP.NET Core WebAPI
+- `frontend` - React-приложение, которое отдаётся через nginx
+- `inshop-api` - основной ASP.NET Core WebAPI
 - `sqlserver` - SQL Server 2025
-- `redis` - cache/search infrastructure
-- `embedding-server` - FastAPI embeddings service
+- `redis` - инфраструктура кеша и поиска
+- `embedding-server` - FastAPI-сервис для генерации embeddings
 
-`PaymentsAPI` is intentionally not part of the main compose file. It is a development-only mock payment service and is available through `docker-compose.dev.yml`.
+`PaymentsAPI` намеренно не входит в основной compose-файл. Это mock-сервис оплаты только для разработки, он подключается через `docker-compose.dev.yml`.
 
-## First Run
+## Первый запуск
 
-1. Copy the env template:
+1. Скопировать шаблон переменных окружения:
 
    ```powershell
    Copy-Item .env.example .env
    ```
 
-2. Open `.env` and replace passwords and API keys.
-   The main compose file is production-like and defaults to `PAYMENT_PROVIDER=YooKassa`,
-   so `YOOKASSA_*` values must be set explicitly. For local mock payments, use the
-   development overlay below.
+2. Открыть `.env` и заменить пароли/API-ключи.
+   Основной compose-файл настроен как production-like и по умолчанию использует `PAYMENT_PROVIDER=YooKassa`,
+   поэтому значения `YOOKASSA_*` нужно указать явно. Для локальной mock-оплаты используйте dev-overlay ниже.
 
-3. Start the main stack:
+3. Запустить основной стек:
 
    ```powershell
    docker compose up --build
    ```
 
-4. Open:
+4. Открыть:
 
    - Frontend: `http://localhost:3000`
    - API: `http://localhost:5000`
 
-The first `embedding-server` build/download can take a long time because the LaBSE model is large.
+Первая сборка/загрузка `embedding-server` может занять много времени, потому что модель LaBSE большая.
 
-## Database Bootstrap
+## Инициализация базы данных
 
-The repository currently uses a database-first EF model and does not have EF migrations. For Docker, `inshop-api` runs with:
+Сейчас проект использует database-first EF-модель и не содержит EF migrations. Для Docker `inshop-api` запускается с настройкой:
 
 ```env
 Database__EnsureCreated=true
 ```
 
-This creates the business schema from `AppDbContext` and creates ASP.NET Identity tables from `AdminIdentityDbContext` when the Docker database is empty. The API then seeds the `Admin` role at startup.
+Если Docker-база пустая, эта настройка создаёт бизнес-схему из `AppDbContext` и таблицы ASP.NET Identity из `AdminIdentityDbContext`. После этого API при старте добавляет роль `Admin`.
 
-For a real production migration strategy, add EF migrations or a full idempotent SQL schema script before relying on this for long-term database evolution.
+Для настоящей production-стратегии миграций нужно добавить EF migrations или полноценный idempotent SQL-скрипт схемы. Не стоит полагаться на `EnsureCreated` для долгосрочного развития production-БД.
 
-## Development Mock Payments
+## Mock-оплата для разработки
 
-To include the mock `PaymentsAPI` and switch the main API to `Payment__Provider=Mock`, run:
+Чтобы подключить mock-сервис `PaymentsAPI` и переключить основной API на `Payment__Provider=Mock`, выполните:
 
 ```powershell
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 ```
 
-The main compose file stays production-like and uses `YooKassa`.
+Основной compose-файл остаётся production-like и использует `YooKassa`.
 
-## SQL Server Version
+## CI/CD-образы
 
-The SQL Server image is pinned to SQL Server 2025 by digest because the local development
-backup was created by a newer SQL Server database engine and cannot be restored into SQL
-Server 2022. Keep `sqlserver` and `sqlserver-init` on the same image. If you intentionally
-upgrade SQL Server later, refresh the digest in `docker-compose.yml` and recreate the SQL
-container after taking a backup.
+Workflow GitHub Actions `.github/workflows/ci.yml` собирает и тестирует приложение перед публикацией container images.
 
-## Useful Commands
+Для pull request Docker images только собираются как проверка Dockerfile и не публикуются в registry.
 
-Stop containers:
+При push в `main`, `master` или `dev` workflow публикует эти images в GitHub Container Registry:
+
+- `ghcr.io/<owner>/inshop-api`
+- `ghcr.io/<owner>/inshop-frontend`
+- `ghcr.io/<owner>/inshop-embedding-server`
+
+Теги образов:
+
+- `latest` публикуется только из `main` или `master`
+- `dev` публикуется только из `dev`
+- `sha-<commit>` публикуется для каждой push-сборки
+
+`PaymentsAPI` не публикуется как production image. Он остаётся mock-сервисом только для разработки.
+
+Production deployment намеренно не входит в текущий workflow. Отдельная будущая задача должна определить, где будет сервер, как он будет авторизоваться в GHCR, как будут храниться `.env`-значения и будет ли деплой ручным или автоматическим.
+
+## Версия SQL Server
+
+SQL Server image закреплён на SQL Server 2025
+Держите `sqlserver` и `sqlserver-init` на одном и том же image. Если позже вы осознанно обновляете SQL Server, обновите digest в `docker-compose.yml` и пересоздайте SQL-контейнер после создания backup.
+
+## Полезные команды
+
+Остановить контейнеры:
 
 ```powershell
 docker compose down
 ```
 
-Stop and delete volumes:
+Остановить контейнеры и удалить volumes:
 
 ```powershell
 docker compose down -v
 ```
 
-View API logs:
+Посмотреть логи API:
 
 ```powershell
 docker compose logs -f inshop-api
 ```
 
-Validate compose configuration:
+Проверить compose-конфигурацию:
 
 ```powershell
 docker compose config

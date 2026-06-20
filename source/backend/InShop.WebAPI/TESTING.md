@@ -79,6 +79,39 @@ npm run cypress:open   # интерактивно
 npm run cypress:run    # headless
 ```
 
+## CI/CD в GitHub Actions
+
+Workflow находится в `.github/workflows/ci.yml`.
+
+Что выполняется автоматически:
+
+- при `push` в `main`, `master`, `dev`;
+- при `pull_request`.
+
+Этапы pipeline:
+
+- backend: `dotnet restore`, `dotnet build`, unit-тесты, integration-тесты;
+- frontend: `npm ci`, `npm run build`;
+- Docker: проверка `docker compose config`, сборка Docker images.
+
+На `pull_request` Docker images только собираются для проверки Dockerfile. В registry они не публикуются.
+
+На `push` после успешных backend/frontend проверок публикуются Docker images в GitHub Container Registry:
+
+- `ghcr.io/<owner>/inshop-api`;
+- `ghcr.io/<owner>/inshop-frontend`;
+- `ghcr.io/<owner>/inshop-embedding-server`.
+
+Теги образов:
+
+- `latest` — только для `main`/`master`;
+- `dev` — только для ветки `dev`;
+- `sha-<commit>` — для каждой сборки, чтобы можно было точно восстановить образ конкретного коммита.
+
+`PaymentsAPI` намеренно не собирается и не публикуется в CI/CD. Это dev-only mock-сервис для локальной разработки.
+
+Production deployment пока не настроен и вынесен в отдельную будущую задачу.
+
 ## Как устроен Testcontainers (подробно)
 
 ### Идея

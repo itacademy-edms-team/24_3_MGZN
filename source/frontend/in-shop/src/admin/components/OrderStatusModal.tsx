@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import adminClient from '../api/adminClient.ts';
-import { AdminOrder } from '../types/adminTypes.ts';
-import { isTerminalOrderStatus } from '../utils/adminUtils.ts';
+import adminClient from '../api/adminClient';
+import { AdminOrder } from '../types/adminTypes';
+import { isTerminalOrderStatus } from '../utils/adminUtils';
 import '../layout/AdminLayout.css';
 
 interface Props {

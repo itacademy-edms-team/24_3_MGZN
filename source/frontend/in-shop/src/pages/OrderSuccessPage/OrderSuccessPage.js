@@ -4,8 +4,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useSessionContext } from '../../context/SessionContext.tsx';
-import { apiClient } from '../../api/client.ts';
+import { useSessionContext } from '../../context/SessionContext';
+import { apiClient } from '../../api/client';
+import { redirectToPaymentProvider } from '../../utils/paymentRedirect';
+import { clearCheckoutStorage, readCompletedOrder } from '../../utils/checkoutStorage';
 import './OrderSuccessPage.css';
 
 const OrderSuccessPage = () => {
@@ -24,16 +26,12 @@ const OrderSuccessPage = () => {
     useEffect(() => {
         const stateCompletedOrderId = location.state?.completedOrderId;
         const stateOrderData = location.state?.orderData;
-        const storedCompletedOrderId = localStorage.getItem('completedOrderId');
-        const storedOrderData = localStorage.getItem('orderData');
+        const storedOrderData = readCompletedOrder();
 
         if (stateCompletedOrderId) {
             setCompletedOrderId(stateCompletedOrderId);
-        } else if (storedCompletedOrderId) {
-            const parsedCompletedOrderId = parseInt(storedCompletedOrderId, 10);
-            if (!Number.isNaN(parsedCompletedOrderId)) {
-                setCompletedOrderId(parsedCompletedOrderId);
-            }
+        } else if (storedOrderData?.orderId) {
+            setCompletedOrderId(storedOrderData.orderId);
         }
 
         if (stateOrderData) {
@@ -42,12 +40,7 @@ const OrderSuccessPage = () => {
         }
 
         if (storedOrderData) {
-            try {
-                const parsedData = JSON.parse(storedOrderData);
-                setOrderData(parsedData);
-            } catch (error) {
-                console.error('Ошибка при парсинге данных заказа:', error);
-            }
+            setOrderData(storedOrderData);
         }
     }, [location.state]);
 
@@ -77,7 +70,7 @@ const OrderSuccessPage = () => {
                     throw new Error('Сервер не вернул ссылку на оплату ЮKassa.');
                 }
 
-                window.location.href = redirectUrl;
+                redirectToPaymentProvider(redirectUrl);
                 return;
             }
 
@@ -121,8 +114,11 @@ const OrderSuccessPage = () => {
     }
 
     const deliveryCost = orderData.shipMethod === 'Самовывоз' ? 0 : 1500;
-    const itemsTotal = orderData.orderItems?.reduce((sum, item) => sum + (item.price * item.quantityItem), 0) || 0;
-    const totalAmount = itemsTotal + deliveryCost;
+    const itemsTotal = orderData.orderItems?.reduce(
+        (sum, item) => sum + ((item.price ?? item.displayPrice ?? 0) * item.quantityItem),
+        0
+    ) || 0;
+    const totalAmount = orderData.orderTotalAmount ?? orderData.displayTotalAmount ?? (itemsTotal + deliveryCost);
 
     return (
         <div className="order-success-page">
@@ -185,9 +181,11 @@ const OrderSuccessPage = () => {
                                         <span className="item-name">{item.productName || `Товар #${item.productId}`}</span>
                                         <span className="item-quantity">× {item.quantityItem}</span>
                                     </div>
-                                    <div className="item-price">
-                                        {(item.price * item.quantityItem).toFixed(2)} ₽
-                                    </div>
+                                    {(item.price != null || item.displayPrice != null) && (
+                                        <div className="item-price">
+                                            {((item.price ?? item.displayPrice) * item.quantityItem).toFixed(2)} ₽
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>
@@ -232,7 +230,14 @@ const OrderSuccessPage = () => {
 
                 <div className="order-success-footer">
                     <p>Спасибо за покупку! По вопросам: поддержка@магазин.ру</p>
-                    <button type="button" onClick={() => navigate('/')} className="back-to-shop">
+                    <button
+                        type="button"
+                        onClick={() => {
+                            clearCheckoutStorage();
+                            navigate('/');
+                        }}
+                        className="back-to-shop"
+                    >
                         Продолжить покупки
                     </button>
                 </div>

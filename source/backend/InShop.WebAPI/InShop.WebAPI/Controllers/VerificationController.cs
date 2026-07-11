@@ -35,7 +35,7 @@ namespace InShop.WebAPI.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Verification: не удалось отправить код на {Email}", request.Email);
-                return StatusCode(500, new { error = "Ошибка отправки кода.", details = ex.Message });
+                return StatusCode(500, new { error = "Ошибка отправки кода." });
             }
         }
         [HttpPost("validate-code")]

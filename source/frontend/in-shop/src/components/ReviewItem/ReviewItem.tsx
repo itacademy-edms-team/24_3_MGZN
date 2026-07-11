@@ -1,9 +1,9 @@
 // src/components/ReviewItem.tsx
 
 import React, { useState } from 'react';
-import { Review } from '../../types/review.ts';
-import { voteReview } from '../../api/reviews.ts';
-import StarRating from '../StarRating/StarRating.tsx';
+import { Review } from '../../types/review';
+import { voteReview } from '../../api/reviews';
+import StarRating from '../StarRating/StarRating';
 import './ReviewItem.css';
 
 interface ReviewItemProps {

@@ -1,8 +1,8 @@
 // src/components/ReviewForm.tsx
 
 import React, { useState, useEffect } from 'react';
-import { CreateReviewDto, UpdateReviewDto, Review } from '../types/review';
-import StarRating from '../StarRating/StarRating.tsx';
+import { CreateReviewDto, UpdateReviewDto, Review } from '../../types/review';
+import StarRating from '../StarRating/StarRating';
 import './ReviewForm.css';
 
 interface ReviewFormProps {

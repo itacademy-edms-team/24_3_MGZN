@@ -3,7 +3,7 @@
 // ============================================
 
 import React from 'react';
-import { useSessionContext } from '../context/SessionContext.tsx';
+import { useSessionContext } from '../context/SessionContext';
 
 interface SessionHandlerProps {
   children: React.ReactNode;
@@ -19,15 +19,19 @@ const SessionHandler: React.FC<SessionHandlerProps> = ({
   const { isLoading, error, recreateSession } = useSessionContext();
 
   if (isLoading) {
-    return fallback ?? <div>Загрузка...</div>;
+    return <>{fallback ?? <div>Загрузка...</div>}</>;
   }
 
   if (error) {
-    return errorFallback ?? (
-      <div>
-        <p>Ошибка: {error}</p>
-        <button onClick={recreateSession}>Повторить</button>
-      </div>
+    return (
+      <>
+        {errorFallback ?? (
+          <div>
+            <p>Ошибка: {error}</p>
+            <button onClick={recreateSession}>Повторить</button>
+          </div>
+        )}
+      </>
     );
   }
 

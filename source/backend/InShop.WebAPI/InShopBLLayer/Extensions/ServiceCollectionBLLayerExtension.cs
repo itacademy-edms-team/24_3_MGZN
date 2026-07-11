@@ -56,7 +56,10 @@ namespace InShopBLLayer.Extensions
             services.AddScoped<IReviewCacheService, ReviewCacheService>();
 
             services.AddScoped<IVectorSearchIndexRebuildService, VectorSearchIndexRebuildService>();
-            services.AddHostedService<VectorIndexingService>();
+            if (configuration.GetValue("Search:EnableVectorIndexing", true))
+            {
+                services.AddHostedService<VectorIndexingService>();
+            }
 
             // ЮKassa и MockPaymentService регистрируются в InShop.WebAPI (PaymentServiceExtensions),
             // т.к. HTTP-клиент и контроллеры живут в проекте WebAPI, а не в BLLayer.

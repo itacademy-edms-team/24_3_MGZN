@@ -2,7 +2,7 @@
 import React from 'react';
 import { useParams } from 'react-router-dom';
 import Breadcrumb from '../components/Breadcrumb.js';
-import SearchResultsPage from './SearchResultPage/SearchResultsPage.tsx';
+import SearchResultsPage from './SearchResultPage/SearchResultsPage';
 import './CategoryPage.css';
 
 const CategoryPage: React.FC = () => {
@@ -20,7 +20,7 @@ const CategoryPage: React.FC = () => {
   
   return (
     <div className="category-page">
-      <Breadcrumb categoryName={decodedCategoryName} />
+      <Breadcrumb currentPage={undefined} categoryName={decodedCategoryName} />
       
       <SearchResultsPage
         forcedCategory={decodedCategoryName}

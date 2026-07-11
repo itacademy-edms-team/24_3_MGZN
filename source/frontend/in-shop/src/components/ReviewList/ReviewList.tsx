@@ -1,10 +1,10 @@
 // src/components/ReviewList.tsx
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { Review, ReviewsResponse } from '../../types/review.ts';
-import { getProductReviews } from '../../api/reviews.ts';
-import ReviewItem from '../ReviewItem/ReviewItem.tsx';
-import LoadingSpinner from '../LoadingSpinner.tsx';
+import { Review, ReviewsResponse } from '../../types/review';
+import { getProductReviews } from '../../api/reviews';
+import ReviewItem from '../ReviewItem/ReviewItem';
+import LoadingSpinner from '../LoadingSpinner';
 import './ReviewList.css';
 
 interface ReviewListProps {

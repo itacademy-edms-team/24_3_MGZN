@@ -10,10 +10,11 @@ import Header from './components/Header.js';
 import Footer from './components/Footer.js';
 import CartModal from './components/CartModal.js';
 import { CartProvider } from './components/CartContext.js';
-import SessionHandler from './components/SessionHandler.tsx';
-import AppRoutes from './components/AppRoutes.tsx';
-import { SessionProvider } from './context/SessionContext.tsx';
-import AdminRoutes from './admin/routes/AdminRoutes.tsx';
+import SessionHandler from './components/SessionHandler';
+import AppRoutes from './components/AppRoutes';
+import ErrorBoundary from './components/ErrorBoundary';
+import { SessionProvider } from './context/SessionContext';
+import AdminRoutes from './admin/routes/AdminRoutes';
 
 /** Витрина: сессия + корзина. Покупательские потоки не изменены. */
 const ShopApp: React.FC = () => (
@@ -39,7 +40,9 @@ const ShopApp: React.FC = () => (
           <Header />
           <CartModal />
           <main>
-            <AppRoutes />
+            <ErrorBoundary title="Ошибка витрины">
+              <AppRoutes />
+            </ErrorBoundary>
           </main>
           <Footer />
         </div>
@@ -52,7 +55,7 @@ function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/admin/*" element={<AdminRoutes />} />
+        <Route path="/admin/*" element={<ErrorBoundary title="Ошибка админ-панели"><AdminRoutes /></ErrorBoundary>} />
         <Route path="/*" element={<ShopApp />} />
       </Routes>
     </Router>

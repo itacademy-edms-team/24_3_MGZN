@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import adminClient from '../api/adminClient.ts';
-import { AdminOrderDetail } from '../types/adminTypes.ts';
-import { isPickupShipMethod } from '../utils/adminUtils.ts';
+import adminClient from '../api/adminClient';
+import { AdminOrderDetail } from '../types/adminTypes';
+import { isPickupShipMethod } from '../utils/adminUtils';
 import '../layout/AdminLayout.css';
 
 interface Props {

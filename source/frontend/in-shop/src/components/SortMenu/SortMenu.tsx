@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './SortMenu.css';
 
-export type SortOption = 'name-asc' | 'name-desc' | 'price-asc' | 'price-desc';
+export type SortOption = 'relevance' | 'name-asc' | 'name-desc' | 'price-asc' | 'price-desc';
 
 interface SortMenuProps {
   currentSortOption: SortOption;
@@ -11,6 +11,7 @@ interface SortMenuProps {
 }
 
 const SORT_OPTIONS: Array<{ value: SortOption; label: string }> = [
+  { value: 'relevance', label: 'По релевантности' },
   { value: 'name-asc', label: 'Название товара ↓' },
   { value: 'name-desc', label: 'Название товара ↑' },
   { value: 'price-asc', label: 'Цена ↑' },

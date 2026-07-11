@@ -2,10 +2,11 @@
 // Файл: src/pages/EmailVerificationPage.js
 // ============================================
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useSessionContext } from '../context/SessionContext.tsx';
-import { apiClient } from '../api/client.ts';
+import { useSessionContext } from '../context/SessionContext';
+import { apiClient } from '../api/client';
+import { readCheckoutDraft, saveCompletedOrder } from '../utils/checkoutStorage';
 import './EmailVerificationPage.css';
 
 const EmailVerificationPage = () => {
@@ -15,6 +16,7 @@ const EmailVerificationPage = () => {
     
     const navigate = useNavigate();
     const location = useLocation();
+    const submittedRef = useRef(false);
     
     // ✅ Используем useSession
     const { 
@@ -52,6 +54,10 @@ const EmailVerificationPage = () => {
 
     const handleSubmit = useCallback(async (e) => {
         e.preventDefault();
+        if (submittedRef.current || loading) {
+            return;
+        }
+
         const codeString = code.join('');
 
         if (codeString.length !== 4) {
@@ -66,6 +72,7 @@ const EmailVerificationPage = () => {
 
         setLoading(true);
         setError('');
+        submittedRef.current = true;
 
         try {
             // 1. Проверка кода
@@ -75,7 +82,7 @@ const EmailVerificationPage = () => {
             });
 
             // 2. Подготовка данных заказа
-            const orderData = orderDataFromState || JSON.parse(localStorage.getItem('orderData'));
+            const orderData = orderDataFromState || readCheckoutDraft();
             
             if (!orderData) {
                 throw new Error('Данные заказа не найдены');
@@ -89,11 +96,9 @@ const EmailVerificationPage = () => {
                 customerFullname: orderData.customerFullName || orderData.customerFullname,
                 customerEmail: orderData.customerEmail || email,
                 customerPhoneNumber: orderData.customerPhoneNumber,
-                orderTotalAmount: orderData.orderTotalAmount,
                 orderItems: (orderData.orderItems || []).map(item => ({
                     productId: item.productId,
-                    quantityItem: item.quantityItem,
-                    price: parseFloat(item.price.toFixed(2))
+                    quantityItem: item.quantityItem
                 }))
             };
 
@@ -101,20 +106,18 @@ const EmailVerificationPage = () => {
             const checkoutResponse = await apiClient.post('/Order/checkout', validatedOrderData);
             const checkoutData = checkoutResponse.data;
             
-            console.log('Заказ оформлен:', checkoutData);
-
             const completedOrderId = checkoutData?.orderId;
             if (!completedOrderId) {
                 throw new Error('Сервер не вернул номер оформленного заказа.');
             }
 
             const completedOrderData = {
-                ...validatedOrderData,
+                ...orderData,
+                ...checkoutData,
                 orderId: completedOrderId,
             };
 
-            localStorage.setItem('completedOrderId', completedOrderId.toString());
-            localStorage.setItem('orderData', JSON.stringify(completedOrderData));
+            saveCompletedOrder(completedOrderData);
 
             // 4. Переход на страницу успеха
             navigate('/order-success', { 
@@ -133,10 +136,11 @@ const EmailVerificationPage = () => {
             } else {
                 setError(err.response?.data?.message || err.message || 'Не удалось оформить заказ.');
             }
+            submittedRef.current = false;
         } finally {
             setLoading(false);
         }
-    }, [code, email, orderId, isValid, orderDataFromState, navigate]);
+    }, [code, email, orderId, isValid, orderDataFromState, navigate, loading]);
 
     // Лоадер сессии
     if (sessionLoading) {

@@ -1,5 +1,7 @@
 ﻿using InShop.WebAPI.Services.Payment;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 
 namespace InShop.WebAPI.Controllers
@@ -10,15 +12,21 @@ namespace InShop.WebAPI.Controllers
     {
         private readonly InShopDbModels.Abstractions.IOrderRepository _orderRepository;
         private readonly IServiceProvider _serviceProvider;
+        private readonly IConfiguration _configuration;
+        private readonly IWebHostEnvironment _environment;
         private readonly ILogger<WebhookController> _logger;
 
         public WebhookController(
             InShopDbModels.Abstractions.IOrderRepository orderRepository,
             IServiceProvider serviceProvider,
+            IConfiguration configuration,
+            IWebHostEnvironment environment,
             ILogger<WebhookController> logger)
         {
             _orderRepository = orderRepository;
             _serviceProvider = serviceProvider;
+            _configuration = configuration;
+            _environment = environment;
             _logger = logger;
         }
 
@@ -38,6 +46,11 @@ namespace InShop.WebAPI.Controllers
         public async Task<IActionResult> HandleYooKassaWebhook([FromBody] JsonElement payload)
         {
             _logger.LogInformation("ЮKassa webhook received");
+            if (!ValidateWebhookSecret("Payment:YooKassa:WebhookSecret"))
+            {
+                _logger.LogWarning("ЮKassa webhook rejected: invalid secret");
+                return Unauthorized();
+            }
 
             var yooKassaService = _serviceProvider.GetService<YooKassaPaymentService>();
             if (yooKassaService == null)
@@ -71,6 +84,11 @@ namespace InShop.WebAPI.Controllers
         public async Task<IActionResult> HandlePaymentConfirmation([FromBody] PaymentConfirmationWebhookDto dto)
         {
             _logger.LogInformation("Мок webhook: OrderId={OrderId}, Status={Status}", dto.OrderId, dto.Status);
+            if (!ValidateWebhookSecret("Payment:Mock:WebhookSecret"))
+            {
+                _logger.LogWarning("Мок webhook rejected: invalid secret");
+                return Unauthorized();
+            }
 
             var order = await _orderRepository.GetOrderById(dto.OrderId);
 
@@ -101,6 +119,26 @@ namespace InShop.WebAPI.Controllers
             }
 
             return Ok();
+        }
+
+        private bool ValidateWebhookSecret(string configurationKey)
+        {
+            var expectedSecret = _configuration[configurationKey];
+            if (string.IsNullOrWhiteSpace(expectedSecret))
+            {
+                return _environment.IsDevelopment();
+            }
+
+            var actualSecret = Request.Headers["X-Webhook-Secret"].FirstOrDefault();
+            if (string.IsNullOrWhiteSpace(actualSecret))
+            {
+                return false;
+            }
+
+            var expectedBytes = Encoding.UTF8.GetBytes(expectedSecret);
+            var actualBytes = Encoding.UTF8.GetBytes(actualSecret);
+            return expectedBytes.Length == actualBytes.Length
+                && CryptographicOperations.FixedTimeEquals(expectedBytes, actualBytes);
         }
     }
 }

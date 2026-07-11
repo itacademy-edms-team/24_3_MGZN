@@ -1,14 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate, useParams } from 'react-router-dom';
-import axios from 'axios';
-import adminClient from '../api/adminClient.ts';
-import AdminImagePreview from '../components/AdminImagePreview.tsx';
-import AdminLoadingOverlay from '../components/AdminLoadingOverlay.tsx';
-import AdminNoticeModal from '../components/AdminNoticeModal.tsx';
-import { AdminProduct, CategoryDto } from '../types/adminTypes.ts';
-import { resolveProductImageUrl } from '../utils/adminUtils.ts';
-import { resolveApiUrl } from '../../config/api.js';
+import adminClient from '../api/adminClient';
+import { apiClient } from '../../api/client';
+import AdminImagePreview from '../components/AdminImagePreview';
+import AdminLoadingOverlay from '../components/AdminLoadingOverlay';
+import AdminNoticeModal from '../components/AdminNoticeModal';
+import { AdminProduct, CategoryDto } from '../types/adminTypes';
+import { resolveProductImageUrl } from '../utils/adminUtils';
 import '../layout/AdminLayout.css';
 
 interface ProductFormValues {
@@ -50,7 +49,7 @@ const AdminProductForm: React.FC = () => {
   });
 
   useEffect(() => {
-    axios.get<CategoryDto[]>(resolveApiUrl('/Category')).then((r) => setCategories(r.data));
+    apiClient.get<CategoryDto[]>('/Category').then((r) => setCategories(r.data));
   }, []);
 
   useEffect(() => {

@@ -30,13 +30,13 @@ namespace InShopDbModels.Repositories
             await _appDbContext.SaveChangesAsync();
             return order;
         }
-        public async Task<Order> GetDraftOrderBySessionId(int sessionId)
+        public async Task<Order?> GetDraftOrderBySessionId(int sessionId)
         {
             return await _appDbContext.Orders
                 .Where(o => o.SessionId == sessionId && o.OrderStatus == "Draft")
                 .FirstOrDefaultAsync();
         }
-        public async Task<OrderItem> GetOrderItemByOrderIdAndProductId(int orderId, int productId)
+        public async Task<OrderItem?> GetOrderItemByOrderIdAndProductId(int orderId, int productId)
         {
             return await _appDbContext.OrderItems
                 .Where(oi => oi.OrderId == orderId && oi.ProductId == productId)
@@ -55,11 +55,11 @@ namespace InShopDbModels.Repositories
         }
         public async Task<decimal> CalculateOrderTotalAmount(int orderId)
         {
-            return (decimal)await _appDbContext.OrderItems
+            return await _appDbContext.OrderItems
                 .Where(oi => oi.OrderId == orderId)
-                .SumAsync(oi => oi.TotalPrice);
+                .SumAsync(oi => oi.TotalPrice ?? oi.Price * oi.QuantityItem);
         }
-        public async Task<OrderItem> GetOrderItemById(int orderItemId)
+        public async Task<OrderItem?> GetOrderItemById(int orderItemId)
         {
             return await _appDbContext.OrderItems.FindAsync(orderItemId);
         }

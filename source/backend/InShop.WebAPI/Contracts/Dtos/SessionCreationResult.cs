@@ -11,6 +11,6 @@ namespace Contracts.Dtos
         public int SessionId { get; set; }
         public int OrderId { get; set; }
         public DateTime ExpiresAt { get; set; }
-        public string Message { get; set; }
+        public string Message { get; set; } = string.Empty;
     }
 }

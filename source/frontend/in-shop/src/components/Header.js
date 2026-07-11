@@ -2,7 +2,7 @@ import React, { useContext } from 'react';
 import { Link } from 'react-router-dom';
 import { CartContext } from '../components/CartContext';
 import './Header.css'; // Импортируем стили
-import SearchComponent from './SearchComponent/SearchComponent.tsx'; // Убедитесь в правильности пути
+import SearchComponent from './SearchComponent/SearchComponent'; // Убедитесь в правильности пути
 
 /**
  * Компонент шапки приложения

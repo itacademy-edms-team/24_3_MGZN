@@ -9,11 +9,18 @@ public static class DatabaseBootstrapExtensions
 {
     public static async Task EnsureDatabaseCreatedForDockerAsync(
         this IServiceProvider services,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IWebHostEnvironment environment)
     {
         if (!configuration.GetValue<bool>("Database:EnsureCreated"))
         {
             return;
+        }
+
+        if (!AllowsEnsureCreatedBootstrap(environment))
+        {
+            throw new InvalidOperationException(
+                "Database:EnsureCreated is disabled outside Development/Docker. Use managed migrations or SQL rollout.");
         }
 
         using var scope = services.CreateScope();
@@ -27,6 +34,9 @@ public static class DatabaseBootstrapExtensions
             await creator.CreateTablesAsync();
         }
     }
+
+    private static bool AllowsEnsureCreatedBootstrap(IWebHostEnvironment environment) =>
+        environment.IsDevelopment() || environment.IsEnvironment("Docker");
 
     private static async Task<bool> IdentityTablesExistAsync(AdminIdentityDbContext context)
     {

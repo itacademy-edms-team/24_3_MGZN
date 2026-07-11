@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import sessionService from '../services/SessionService.ts';
-import { SessionState } from '../types/session.ts';
+import sessionService from '../services/SessionService';
+import { SessionState } from '../types/session';
 
 const STORAGE_KEY_ORDER_ID = 'currentOrderId';
 const STORAGE_KEY_SESSION_ID = 'currentSessionId';
 const SESSION_UPDATED_EVENT = 'session:updated';
+const isDevelopment = process.env.NODE_ENV === 'development';
 
 export const useSession = () => {
     const [state, setState] = useState<SessionState>({
@@ -36,7 +37,9 @@ export const useSession = () => {
                 await operation(controller.signal);
             } catch (error) {
                 if (error instanceof Error && error.name === 'AbortError') {
-                    console.log('[Session] Operation aborted');
+                    if (isDevelopment) {
+                        console.log('[Session] Operation aborted');
+                    }
                 } else {
                     throw error;
                 }
@@ -81,14 +84,25 @@ export const useSession = () => {
 
                 if (signal.aborted) return;
 
-                const isValid = await sessionService.isSessionActive();
+                const validation = await sessionService.validateSession();
+                const isValid = validation.isValid;
 
                 if (signal.aborted) return;
 
                 if (isValid) {
+                    if (typeof validation.orderId === 'number') {
+                        localStorage.setItem(STORAGE_KEY_ORDER_ID, validation.orderId.toString());
+                    }
+                    if (typeof validation.sessionId === 'number') {
+                        localStorage.setItem(STORAGE_KEY_SESSION_ID, validation.sessionId.toString());
+                    }
+
                     setState(prev => ({
                         ...prev,
                         isValid: true,
+                        sessionId: validation.sessionId ?? prev.sessionId,
+                        orderId: validation.orderId ?? prev.orderId,
+                        expiresAt: validation.expiresAt ? new Date(validation.expiresAt) : prev.expiresAt,
                         isLoading: false,
                         error: null,
                     }));
@@ -197,14 +211,18 @@ export const useSession = () => {
                 error: null,
             });
 
-            console.log('[Session] Logged out');
+            if (isDevelopment) {
+                console.log('[Session] Logged out');
+            }
         }
     }, []);
 
     const updateOrderId = useCallback((orderId: number) => {
         localStorage.setItem(STORAGE_KEY_ORDER_ID, orderId.toString());
         setState(prev => ({ ...prev, orderId }));
-        console.log('[Session] OrderId updated:', orderId);
+        if (isDevelopment) {
+            console.log('[Session] OrderId updated:', orderId);
+        }
     }, []);
 
     useEffect(() => {
@@ -214,7 +232,9 @@ export const useSession = () => {
     useEffect(() => {
         const handleStorageChange = (event: StorageEvent) => {
             if (event.key === STORAGE_KEY_ORDER_ID || event.key === STORAGE_KEY_SESSION_ID) {
-                console.log('[Session] Storage changed in another tab, revalidating...');
+                if (isDevelopment) {
+                    console.log('[Session] Storage changed in another tab, revalidating...');
+                }
                 isInitialized.current = false; // <-- Сброс флага
                 initializeSession();
             }
@@ -228,7 +248,9 @@ export const useSession = () => {
     // Поэтому слушаем кастомный сигнал и повторно подтягиваем состояние.
     useEffect(() => {
         const handleSessionUpdated = () => {
-            console.log('[Session] Session updated event, revalidating...');
+            if (isDevelopment) {
+                console.log('[Session] Session updated event, revalidating...');
+            }
             isInitialized.current = false;
             initializeSession();
         };

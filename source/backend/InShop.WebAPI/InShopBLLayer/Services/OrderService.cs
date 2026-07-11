@@ -62,11 +62,16 @@ namespace InShopBLLayer.Services
             var product = await _productReposiotory.GetProduct(productId);
             if (product == null)
                 throw new InvalidOperationException("Товар не найден");
+            if (!product.ProductAvailability)
+                throw new InvalidOperationException("Товар недоступен для заказа");
 
             var existingItem = await _orderRepository.GetOrderItemByOrderIdAndProductId(order.OrderId, productId);
 
             if(existingItem != null)
             {
+                if (existingItem.QuantityItem + 1 > product.ProductStockQuantity)
+                    throw new InvalidOperationException("Недостаточно товара на складе");
+
                 existingItem.QuantityItem += 1;
                 existingItem.TotalPrice = existingItem.Price * existingItem.QuantityItem;
                 await _orderRepository.UpdateOrderItem(existingItem);
@@ -74,6 +79,9 @@ namespace InShopBLLayer.Services
             }
             else
             {
+                if (product.ProductStockQuantity < 1)
+                    throw new InvalidOperationException("Недостаточно товара на складе");
+
                 var newItem = new OrderItem
                 {
                     OrderId = order.OrderId,
@@ -103,15 +111,29 @@ namespace InShopBLLayer.Services
             var totalAmount = await _orderRepository.CalculateOrderTotalAmount(orderItem.OrderId);
 
             var order = await _orderRepository.GetOrderById(orderItem.OrderId);
+            if (order == null)
+                throw new InvalidOperationException("Заказ не найден");
+
             order.OrderTotalAmount = totalAmount;
             await _orderRepository.UpdateOrder(order);
         }
         public async Task UpdateOrderItemQuantity(int orderItemId, int quantity)
         {
+            if (quantity <= 0)
+                throw new InvalidOperationException("Количество должно быть больше нуля");
+
             var orderItem = await _orderRepository.GetOrderItemById(orderItemId);
 
             if (orderItem == null)
                 throw new InvalidOperationException("Товар не найден в корзине");
+
+            var product = await _productReposiotory.GetProduct(orderItem.ProductId);
+            if (product == null)
+                throw new InvalidOperationException("Товар не найден");
+            if (!product.ProductAvailability)
+                throw new InvalidOperationException("Товар недоступен для заказа");
+            if (quantity > product.ProductStockQuantity)
+                throw new InvalidOperationException("Недостаточно товара на складе");
 
             orderItem.QuantityItem = quantity;
             orderItem.TotalPrice = orderItem.Price * quantity;
@@ -121,6 +143,9 @@ namespace InShopBLLayer.Services
             var totalAmount = await _orderRepository.CalculateOrderTotalAmount(orderItem.OrderId);
 
             var order = await _orderRepository.GetOrderById(orderItem.OrderId);
+            if (order == null)
+                throw new InvalidOperationException("Заказ не найден");
+
             order.OrderTotalAmount = totalAmount;
             await _orderRepository.UpdateOrder(order);
         }
@@ -171,6 +196,11 @@ namespace InShopBLLayer.Services
 
             if (existingOrder != null)
             {
+                if (!existingOrder.OrderItems.Any())
+                {
+                    throw new InvalidOperationException("Нельзя оформить пустую корзину.");
+                }
+
                 // Обновляем поля заказа
                 existingOrder.ShipCompanyId = requestDto.ShipCompanyId;
                 existingOrder.ShipAddress = requestDto.ShipAddress;
@@ -180,21 +210,34 @@ namespace InShopBLLayer.Services
                 existingOrder.CustomerEmail = requestDto.CustomerEmail;
                 existingOrder.CustomerPhoneNumber = requestDto.CustomerPhoneNumber;
 
-                // Обновляем OrderItems, если нужно (например, заменить)
-                existingOrder.OrderItems.Clear();
-                foreach (var item in requestDto.OrderItems)
+                foreach (var item in existingOrder.OrderItems)
                 {
-                    existingOrder.OrderItems.Add(new OrderItem
+                    if (item.QuantityItem <= 0)
                     {
-                        ProductId = item.ProductId,
-                        QuantityItem = item.QuantityItem,
-                        Price = item.Price,
-                        TotalPrice = item.QuantityItem * item.Price
-                    });
+                        throw new InvalidOperationException("Количество товара должно быть больше нуля.");
+                    }
+
+                    var product = item.Product ?? await _productReposiotory.GetProduct(item.ProductId);
+                    if (product == null)
+                    {
+                        throw new InvalidOperationException($"Товар {item.ProductId} не найден.");
+                    }
+
+                    if (!product.ProductAvailability)
+                    {
+                        throw new InvalidOperationException($"Товар {product.ProductName} недоступен для заказа.");
+                    }
+
+                    if (item.QuantityItem > product.ProductStockQuantity)
+                    {
+                        throw new InvalidOperationException($"Недостаточно товара {product.ProductName} на складе.");
+                    }
+
+                    item.Price = product.ProductPrice;
+                    item.TotalPrice = item.QuantityItem * item.Price;
                 }
 
-                // Пересчитываем итоговую сумму
-                existingOrder.OrderTotalAmount = existingOrder.OrderItems.Sum(oi => oi.TotalPrice).GetValueOrDefault();
+                existingOrder.OrderTotalAmount = existingOrder.OrderItems.Sum(oi => oi.Price * oi.QuantityItem);
 
                 // Меняем статус
                 existingOrder.OrderStatus = "Unpayed";
@@ -248,13 +291,10 @@ namespace InShopBLLayer.Services
             try
             {
                 await _emailSender.SendAsync(customerEmail, subject, body);
-                Console.WriteLine("=== ТЕЛО ПИСЬМА ===");
-                Console.WriteLine(body);
-                Console.WriteLine("=== КОНЕЦ ТЕЛА ===");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Ошибка отправки письма: {ex.Message}");
+                _ = ex;
             }
         }
 
@@ -280,7 +320,7 @@ namespace InShopBLLayer.Services
                         ProductName = item.Product?.ProductName ?? "Товар не найден",
                         QuantityItem = item.QuantityItem,
                         Price = item.Price.ToString("C"),
-                        TotalPrice = item.TotalPrice.ToString(),
+                        TotalPrice = (item.TotalPrice ?? item.Price * item.QuantityItem).ToString("C"),
                     }).ToList()
                 };
 
@@ -290,7 +330,7 @@ namespace InShopBLLayer.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Ошибка генерации письма: {ex.Message}");
+                _ = ex;
                 return "<p>Ошибка генерации письма.</p>";
             }
         }

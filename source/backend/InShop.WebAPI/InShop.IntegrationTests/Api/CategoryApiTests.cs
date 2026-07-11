@@ -1,4 +1,6 @@
 using System.Net;
+using System.Net.Http.Json;
+using Contracts.Dtos;
 using FluentAssertions;
 using InShop.IntegrationTests.Infrastructure;
 using InShopDbModels.Models;
@@ -58,6 +60,17 @@ public class CategoryApiTests : IAsyncLifetime
         var response = await _client.GetAsync($"/api/Category/{_seededCategoryId}");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task CreateCategory_WithoutAdminJwt_ReturnsUnauthorized()
+    {
+        var response = await _client.PostAsJsonAsync("/api/Category", new CategoryCreateDto
+        {
+            CategoryName = "Anonymous Category"
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 }
 

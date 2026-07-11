@@ -12,7 +12,12 @@ export const adminClient = axios.create({
 adminClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const token = sessionStorage.getItem(ADMIN_TOKEN_KEY);
   const url = config.url ?? '';
-  if (token && url.includes('/Admin/')) {
+  const method = (config.method ?? 'get').toLowerCase();
+  const needsAdminToken =
+    url.includes('/Admin/') ||
+    (['post', 'put', 'patch', 'delete'].includes(method) &&
+      (url.startsWith('/Category') || url.startsWith('/ShipCompany')));
+  if (token && needsAdminToken) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;

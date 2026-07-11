@@ -1,7 +1,8 @@
 // src/components/FiltersPanel/FiltersPanel.tsx
 import React, { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
-import { SpecificationFilterDto, FiltersState } from '../../types/search.ts';
-import { validateNumberRange } from '../../utils/filters.ts';
+import { apiClient } from '../../api/client';
+import { SpecificationFilterDto, FiltersState } from '../../types/search';
+import { validateNumberRange } from '../../utils/filters';
 import './FiltersPanel.css';
 
 interface CategoryDto {
@@ -20,7 +21,6 @@ interface Props {
   onBasicFilterChange: (changes: Partial<FiltersState>) => void;
   onSpecFilterChange: (specName: string, value: SpecFilterValue) => void;
   onClearSpecFilters: () => void;
-  apiBaseUrl: string;
   isCategoryForced?: boolean;
   // 🔧 FIX: NEW - Callback для отправки маппинга specName → displayName
   onSpecsLoaded?: (specs: Array<{ name: string; displayName: string }>) => void;
@@ -144,7 +144,6 @@ const FiltersPanel = memo<Props>(({
   onBasicFilterChange,
   onSpecFilterChange,
   onClearSpecFilters,
-  apiBaseUrl,
   isCategoryForced = false,
   onSpecsLoaded, // 🔧 FIX: Деструктуризация нового пропа
 }) => {
@@ -195,23 +194,23 @@ const FiltersPanel = memo<Props>(({
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const res = await fetch(`${apiBaseUrl}/Category`);
-        if (res.ok) {
-          const data = await res.json();
-          const normalized = Array.isArray(data)
-            ? data.map((cat: any) => ({
-                categoryId: cat?.categoryId ?? cat?.id ?? Math.random(),
+        const res = await apiClient.get('/Category');
+        const data = res.data;
+        const normalized = Array.isArray(data)
+          ? data
+              .map((cat: any) => ({
+                categoryId: cat?.categoryId ?? cat?.id,
                 categoryName: cat?.categoryName ?? cat?.name ?? String(cat),
               }))
-            : [];
-          setCategories(normalized);
-        }
+              .filter((cat) => cat.categoryId != null && cat.categoryName)
+          : [];
+        setCategories(normalized);
       } catch (e) {
         console.error('Ошибка загрузки категорий:', e);
       }
     };
     fetchCategories();
-  }, [apiBaseUrl]);
+  }, []);
 
   // --- Загрузка спецификаций ---
   // 🔧 FIX: Добавлен onSpecsLoaded в зависимости
@@ -231,11 +230,11 @@ const FiltersPanel = memo<Props>(({
     const fetchSpecs = async () => {
       setLoadingSpecs(true);
       try {
-        const res = await fetch(
-          `${apiBaseUrl}/search/specifications/filters?categoryName=${encodeURIComponent(currentCategory)}`
-        );
-        if (res.ok) {
-          const data = await res.json();
+        const res = await apiClient.get('/search/specifications/filters', {
+          params: { categoryName: currentCategory }
+        });
+        if (res.status === 200) {
+          const data = res.data;
           const newAvailableSpecs = data.filters || [];
           setAvailableSpecs(newAvailableSpecs);
 
@@ -273,13 +272,6 @@ const FiltersPanel = memo<Props>(({
               isUpdatingSpecsRef.current = false;
             }, 0);
           }
-        } else if (res.status === 404) {
-          setAvailableSpecs([]);
-          // 🔧 FIX: Очищаем мапу при 404
-          if (onSpecsLoaded) onSpecsLoaded([]);
-          if (categoryChanged) {
-            onClearSpecFilters();
-          }
         }
       } catch (e) {
         console.error('Ошибка загрузки спецификаций:', e);
@@ -292,7 +284,7 @@ const FiltersPanel = memo<Props>(({
     };
 
     fetchSpecs();
-  }, [filters.category, apiBaseUrl, onSpecFilterChange, onClearSpecFilters, onSpecsLoaded]);
+  }, [filters.category, onSpecFilterChange, onClearSpecFilters, onSpecsLoaded]);
 
   // --- Обработчик числовых спецификаций ---
   const handleNumberSpecChange = useCallback((specName: string, field: 'Min' | 'Max', rawValue: string) => {
@@ -404,7 +396,7 @@ const FiltersPanel = memo<Props>(({
     return Object.values(specFilters).some(v => {
       if (v == null || v === '') return false;
       if (typeof v === 'object' && v !== null) {
-        return Object.values(v).some(x => x != null && x !== '');
+        return Object.values(v as Record<string, unknown>).some(x => x != null && x !== '');
       }
       return true;
     });

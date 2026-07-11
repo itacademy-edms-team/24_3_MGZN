@@ -24,7 +24,7 @@ namespace Contracts.Dtos
         public string CustomerEmail { get; set; } = string.Empty;
         public string CustomerPhoneNumber { get; set; } = string.Empty;
 
-        // Состав заказа (новый или обновлённый)
-        public List<CreateOrderItemRequest> OrderItems { get; set; } = new();
+        // Состав заказа берётся из серверной draft-корзины текущей сессии.
+        // Клиент не передаёт цены или позиции при checkout.
     }
 }

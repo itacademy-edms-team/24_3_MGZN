@@ -25,7 +25,7 @@ public class EmailVerificationServiceTests
 
         var code = await _sut.GenerateAndSendCodeAsync(email);
 
-        code.Should().MatchRegex(@"^\d{4}$");
+        code.Should().MatchRegex(@"^\d{6}$");
         _cache.TryGetValue(email, out EmailVerificationCode stored).Should().BeTrue();
         stored!.Code.Should().Be(code);
         stored.IsValid.Should().BeTrue();
@@ -37,17 +37,16 @@ public class EmailVerificationServiceTests
     }
 
     [Fact]
-    public void ValidateCode_WhenCodeMatches_ReturnsTrueAndMarksUsed()
+    public void ValidateCode_WhenCodeMatches_ReturnsTrueAndRemovesCode()
     {
         const string email = "user@example.com";
-        var stored = new EmailVerificationCode(email, "1234", TimeSpan.FromMinutes(5));
+        var stored = new EmailVerificationCode(email, "123456", TimeSpan.FromMinutes(5));
         _cache.Set(email, stored);
 
-        var result = _sut.ValidateCode(email, "1234");
+        var result = _sut.ValidateCode(email, "123456");
 
         result.Should().BeTrue();
-        _cache.TryGetValue(email, out EmailVerificationCode updated).Should().BeTrue();
-        updated!.IsUsed.Should().BeTrue();
+        _cache.TryGetValue(email, out EmailVerificationCode _).Should().BeFalse();
     }
 
     [Fact]

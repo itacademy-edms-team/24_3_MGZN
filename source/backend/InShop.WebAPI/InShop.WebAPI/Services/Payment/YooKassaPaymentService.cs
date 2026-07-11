@@ -136,8 +136,6 @@ namespace InShop.WebAPI.Services.Payment
         /// </summary>
         public async Task ProcessWebhookAsync(WebhookPayload payload)
         {
-            // TODO: добавить проверку подписи вебхука в продакшене (WebhookSecret из конфига).
-
             if (!string.Equals(payload.Event, "payment.succeeded", StringComparison.OrdinalIgnoreCase))
             {
                 _logger.LogInformation("ЮKassa webhook: событие {Event} пропущено", payload.Event);
@@ -153,6 +151,12 @@ namespace InShop.WebAPI.Services.Payment
                 return;
             }
 
+            if (string.IsNullOrWhiteSpace(paymentObject.Id))
+            {
+                _logger.LogWarning("ЮKassa webhook: пустой payment id для заказа {OrderId}", orderId);
+                return;
+            }
+
             var order = await _orderRepository.GetOrderById(orderId);
             if (order == null)
             {
@@ -160,7 +164,48 @@ namespace InShop.WebAPI.Services.Payment
                 return;
             }
 
+            if (!string.IsNullOrEmpty(order.YooKassaPaymentId) &&
+                !string.Equals(order.YooKassaPaymentId, paymentObject.Id, StringComparison.Ordinal))
+            {
+                _logger.LogWarning(
+                    "ЮKassa webhook: заказ {OrderId} ожидал платёж {Expected}, пришёл {Actual}",
+                    orderId, order.YooKassaPaymentId, paymentObject.Id);
+                return;
+            }
+
+            var paymentStatus = await _client.GetPaymentStatusAsync(paymentObject.Id);
+            if (!string.Equals(paymentStatus.Status, "succeeded", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogWarning(
+                    "ЮKassa webhook: платёж {PaymentId} не succeeded при сверке API (статус {Status})",
+                    paymentObject.Id, paymentStatus.Status);
+                return;
+            }
+
+            if (!PaymentAmountMatchesOrder(paymentStatus, order))
+            {
+                _logger.LogWarning(
+                    "ЮKassa webhook: сумма платежа {PaymentAmount} {Currency} не совпадает с заказом {OrderId} ({OrderAmount})",
+                    paymentStatus.Amount.Value, paymentStatus.Amount.Currency, orderId, order.OrderTotalAmount);
+                return;
+            }
+
             await TryMarkOrderAsPaidAsync(order, paymentObject.Id);
+        }
+
+        private static bool PaymentAmountMatchesOrder(Clients.PaymentStatusResponse paymentStatus, Order order)
+        {
+            if (!string.Equals(paymentStatus.Amount.Currency, "RUB", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            return decimal.TryParse(
+                    paymentStatus.Amount.Value,
+                    System.Globalization.NumberStyles.Number,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    out var paymentAmount)
+                && paymentAmount == decimal.Round(order.OrderTotalAmount, 2);
         }
 
         /// <summary>

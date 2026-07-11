@@ -4,6 +4,7 @@ using InShopBLLayer.Abstractions;
 using InShopBLLayer.Services;
 using InShopDbModels.Abstractions;
 using InShopDbModels.Repositories;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
 
@@ -44,18 +45,21 @@ namespace InShop.WebAPI.Controllers
             return Ok(products);
         }
         [HttpPost]
+        [Authorize(Policy = AdminIdentityExtensions.AdminOnlyPolicy)]
         public async Task<IActionResult> Create([FromBody] ProductCreateDto productDto)
         {
             await _productService.CreateProduct(productDto);
             return Ok("Товар Создан");
         }
         [HttpPut]
+        [Authorize(Policy = AdminIdentityExtensions.AdminOnlyPolicy)]
         public async Task<IActionResult> Update([FromBody] ProductDto productDto)
         {
             await _productService.UpdateProduct(productDto);
             return Ok("Информация о товаре обновлена");
         }
         [HttpDelete("{id}")]
+        [Authorize(Policy = AdminIdentityExtensions.AdminOnlyPolicy)]
         public async Task<IActionResult> Delete(int id)
         {
             await _productService.DeleteProduct(id);

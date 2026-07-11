@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { getReviewAiSummary } from '../../api/reviews.ts';
+import { getReviewAiSummary } from '../../api/reviews';
 import { ReviewSummary } from '../../types/reviewSummary';
 import './AiSummaryBlock.css';
 

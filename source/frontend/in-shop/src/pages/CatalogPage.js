@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
 import './CatalogPage.css';
-import LoadingSpinner from '../components/LoadingSpinner.tsx';
-import { resolveApiUrl, resolveAssetUrl } from '../config/api.js';
+import LoadingSpinner from '../components/LoadingSpinner';
+import { apiClient } from '../api/client';
+import { resolveAssetUrl } from '../config/api.js';
 
 const CatalogPage = () => {
     const [categories, setCategories] = useState([]);
@@ -11,9 +11,8 @@ const CatalogPage = () => {
 
     useEffect(() => {
         // Загрузка категорий из API
-        axios.get(resolveApiUrl('/Category')) 
+        apiClient.get('/Category') 
             .then((response) => {
-                console.log('Ответ от сервера:', response.data); // Логируем данные
                 setCategories(response.data);
                 setLoading(false);
             })

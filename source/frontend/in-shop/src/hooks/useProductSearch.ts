@@ -1,6 +1,9 @@
 // src/hooks/useProductSearch.ts
 import { useState, useCallback, useRef } from 'react';
+import { apiClient } from '../api/client';
 import { ProductSearchResultDto, SearchRequestDto } from '../types/search';
+
+const isDevelopment = process.env.NODE_ENV === 'development';
 
 interface BackendSearchRequest {
   q: string;
@@ -59,7 +62,7 @@ interface UseProductSearchReturn {
   clear: () => void;
 }
 
-export const useProductSearch = (apiBaseUrl: string): UseProductSearchReturn => {
+export const useProductSearch = (): UseProductSearchReturn => {
   const [results, setResults] = useState<ProductSearchResultDto[]>([]);
   const [recommended, setRecommended] = useState<ProductSearchResultDto[]>([]);
   const [loading, setLoading] = useState(false);
@@ -83,23 +86,22 @@ export const useProductSearch = (apiBaseUrl: string): UseProductSearchReturn => 
     
     try {
       const backendRequest = toBackendRequest(request);
-      console.log('📤 Search request:', backendRequest, append ? '(APPEND)' : '(REPLACE)');
+      if (isDevelopment) {
+        console.log('Search request:', backendRequest, append ? '(APPEND)' : '(REPLACE)');
+      }
 
-      const response = await fetch(`${apiBaseUrl}/search/search`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(backendRequest),
+      const response = await apiClient.post('/search/search', backendRequest, {
         signal: abortController.signal,
       });
 
       if (currentRequestId !== requestIdRef.current) {
-        console.log('🔄 Request cancelled, ignoring response');
+        if (isDevelopment) {
+          console.log('Request cancelled, ignoring response');
+        }
         return;
       }
 
-      if (!response.ok) throw new Error(`Ошибка сервера: ${response.status}`);
-
-      const data = await response.json();
+      const data = response.data;
       // Поддержка camelCase и PascalCase (на случай других настроек сериализации API)
       const newResults = Array.isArray(data.results)
         ? data.results
@@ -123,7 +125,9 @@ export const useProductSearch = (apiBaseUrl: string): UseProductSearchReturn => 
 
     } catch (e) {
       if (e instanceof Error && e.name === 'AbortError') {
-        console.log('Request aborted');
+        if (isDevelopment) {
+          console.log('Request aborted');
+        }
         return;
       }
       
@@ -138,7 +142,7 @@ export const useProductSearch = (apiBaseUrl: string): UseProductSearchReturn => 
         setLoading(false);
       }
     }
-  }, [apiBaseUrl]);
+  }, []);
 
   const loadMore = useCallback(async (request: SearchRequestDto) => {
     const currentRequestId = ++requestIdRef.current;
@@ -150,23 +154,22 @@ export const useProductSearch = (apiBaseUrl: string): UseProductSearchReturn => 
     
     try {
       const backendRequest = toBackendRequest(request);
-      console.log('📤 LoadMore request:', backendRequest);
+      if (isDevelopment) {
+        console.log('LoadMore request:', backendRequest);
+      }
 
-      const response = await fetch(`${apiBaseUrl}/search/search`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(backendRequest),
+      const response = await apiClient.post('/search/search', backendRequest, {
         signal: abortController.signal,
       });
 
       if (currentRequestId !== requestIdRef.current) {
-        console.log('🔄 LoadMore request cancelled');
+        if (isDevelopment) {
+          console.log('LoadMore request cancelled');
+        }
         return;
       }
 
-      if (!response.ok) throw new Error(`Ошибка сервера: ${response.status}`);
-
-      const data = await response.json();
+      const data = response.data;
       const newResults = Array.isArray(data.results)
         ? data.results
         : Array.isArray(data.Results)
@@ -178,7 +181,9 @@ export const useProductSearch = (apiBaseUrl: string): UseProductSearchReturn => 
 
     } catch (e) {
       if (e instanceof Error && e.name === 'AbortError') {
-        console.log('LoadMore request aborted');
+        if (isDevelopment) {
+          console.log('LoadMore request aborted');
+        }
         return;
       }
       
@@ -189,7 +194,7 @@ export const useProductSearch = (apiBaseUrl: string): UseProductSearchReturn => 
         setLoading(false);
       }
     }
-  }, [apiBaseUrl]);
+  }, []);
 
   const clear = useCallback(() => {
     if (abortControllerRef.current) {

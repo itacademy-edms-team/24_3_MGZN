@@ -1,20 +1,20 @@
 import React, { useEffect, useState, useContext } from 'react';
 import { useParams } from 'react-router-dom';
-import axios from 'axios';
 import Breadcrumb from '../components/Breadcrumb.js';
 import { CartContext } from '../components/CartContext.js';
 import './ProductPage.css';
 import ProductCard from '../components/ProductCard.jsx';
-import LoadingSpinner from '../components/LoadingSpinner.tsx';
-import StarRating from '../components/StarRating/StarRating.tsx'; 
-import ReviewList from '../components/ReviewList/ReviewList.tsx';
-import ReviewForm from '../components/ReviewForm/ReviewForm.tsx';
-import Modal from '../components/Modal.tsx';
-import AiSummaryBlock from '../components/AiSummaryBlock/AiSummaryBlock.tsx'; // <--- 1. Импорт компонента
+import LoadingSpinner from '../components/LoadingSpinner';
+import StarRating from '../components/StarRating/StarRating'; 
+import ReviewList from '../components/ReviewList/ReviewList';
+import ReviewForm from '../components/ReviewForm/ReviewForm';
+import Modal from '../components/Modal';
+import AiSummaryBlock from '../components/AiSummaryBlock/AiSummaryBlock'; // <--- 1. Импорт компонента
 
-import { createReview, updateReview, deleteReview } from '../api/reviews.ts';
-import { Review, CreateReviewDto, UpdateReviewDto } from '../types/review.ts';
-import { resolveApiUrl, resolveAssetUrl, PRODUCT_PLACEHOLDER_URL } from '../config/api.js';
+import { apiClient } from '../api/client';
+import { createReview, updateReview, deleteReview } from '../api/reviews';
+import { Review, CreateReviewDto, UpdateReviewDto } from '../types/review';
+import { resolveAssetUrl, PRODUCT_PLACEHOLDER_URL } from '../config/api.js';
 
 interface ProductSpecificationDto {
     specId: number;
@@ -47,6 +47,7 @@ const ProductPage = () => {
     const [specifications, setSpecifications] = useState<ProductSpecificationDto[]>([]);
     const [loading, setLoading] = useState(true);
     const [specsLoading, setSpecsLoading] = useState(false);
+    const [productError, setProductError] = useState<string | null>(null);
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingReview, setEditingReview] = useState<Review | null>(null);
@@ -61,17 +62,21 @@ const ProductPage = () => {
         setReviewCountForDisplay(null);
         setLoading(true);
         setSpecsLoading(true);
+        setProductError(null);
 
         const fetchProductData = async () => {
             try {
-                const productRes = await axios.get(resolveApiUrl(`/Products/${productId}`));
+                const productRes = await apiClient.get(`/Products/${productId}`);
                 setProduct(productRes.data);
-                const specsRes = await axios.get(resolveApiUrl(`/Products/${productId}/specifications`));
+                const specsRes = await apiClient.get(`/Products/${productId}/specifications`);
                 setSpecifications(specsRes.data || []);
             } catch (error) {
                 console.error('Ошибка загрузки данных:', error);
+                setProduct(null);
+                setProductError('Не удалось загрузить товар.');
             } finally {
                 setSpecsLoading(false);
+                setLoading(false);
             }
         };
         fetchProductData();
@@ -81,17 +86,15 @@ const ProductPage = () => {
         if (!product?.productCategoryName || !productId) return;
         const fetchRelatedProducts = async () => {
             try {
-                const response = await axios.get(
-                    resolveApiUrl(`/Products/products-by-category?categoryName=${encodeURIComponent(product.productCategoryName)}`)
-                );
+                const response = await apiClient.get(`/Products/products-by-category`, {
+                    params: { categoryName: product.productCategoryName }
+                });
                 const relatedProductsData = response.data.filter(
                     (p: any) => p.productId !== parseInt(productId)
                 );
                 setRelatedProducts(relatedProductsData);
             } catch (error) {
                 console.error('Ошибка загрузки связанных товаров:', error);
-            } finally {
-                setLoading(false); 
             }
         };
         fetchRelatedProducts();
@@ -105,7 +108,7 @@ const ProductPage = () => {
             setRefreshReviewsTrigger(prev => prev + 1);
             
             if (productId) {
-                const productRes = await axios.get(resolveApiUrl(`/Products/${productId}`));
+                const productRes = await apiClient.get(`/Products/${productId}`);
                 setProduct(productRes.data);
             }
         } catch (error: any) {
@@ -140,7 +143,7 @@ const ProductPage = () => {
             setRefreshReviewsTrigger(prev => prev + 1);
             
             if (productId) {
-                 const productRes = await axios.get(resolveApiUrl(`/Products/${productId}`));
+                 const productRes = await apiClient.get(`/Products/${productId}`);
                  setProduct(productRes.data);
             }
         } catch (error) {
@@ -153,6 +156,10 @@ const ProductPage = () => {
 
     if (loading) {
         return <LoadingSpinner message="Загрузка товаров..." />;
+    }
+
+    if (productError) {
+        return <p>{productError}</p>;
     }
 
     if (!product) {
@@ -175,7 +182,7 @@ const ProductPage = () => {
                         src={resolveAssetUrl(product.imageUrl) ?? PRODUCT_PLACEHOLDER_URL}
                         alt={product.productName}
                         onError={(e) => {
-                            e.target.src = PRODUCT_PLACEHOLDER_URL;
+                            e.currentTarget.src = PRODUCT_PLACEHOLDER_URL;
                         }}
                         loading="lazy"
                     />

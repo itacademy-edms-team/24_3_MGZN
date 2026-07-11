@@ -2,7 +2,6 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from sentence_transformers import SentenceTransformer
 import logging
-import uvicorn
 
 # --- Настройка логирования ---
 logging.basicConfig(level=logging.INFO)
@@ -46,6 +45,8 @@ async def get_embedding(input_data: TextInput):
 
 # --- Точка входа для запуска сервера ---
 if __name__ == "__main__":
+    import uvicorn
+
     # uvicorn запускает сервер
     # host и port можно изменить
     uvicorn.run(app, host="127.0.0.1", port=8000, log_level="info")

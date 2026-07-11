@@ -1,4 +1,6 @@
 using System.Net;
+using System.Net.Http.Json;
+using Contracts.Dtos;
 using FluentAssertions;
 using InShop.IntegrationTests.Infrastructure;
 
@@ -51,5 +53,17 @@ public class ShipCompanyApiTests : IAsyncLifetime
         var response = await _client.GetAsync($"/api/ShipCompany/{_companyId}");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task AddShipCompany_WithoutAdminJwt_ReturnsUnauthorized()
+    {
+        var response = await _client.PostAsJsonAsync("/api/ShipCompany", new ShipCompanyCreateDto
+        {
+            ShipCompanyName = "Anonymous Company",
+            Contact = "anonymous"
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 }

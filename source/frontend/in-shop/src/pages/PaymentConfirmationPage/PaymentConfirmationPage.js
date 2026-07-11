@@ -1,11 +1,12 @@
 // Страница после return_url ЮKassa: синхронизация статуса на бэкенде + короткий polling.
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { apiClient } from '../../api/client.ts';
+import { apiClient } from '../../api/client';
 import './PaymentConfirmationPage.css';
 
 const MAX_POLL_ATTEMPTS = 15;
 const POLL_INTERVAL_MS = 2000;
+const isDevelopment = process.env.NODE_ENV === 'development';
 
 const PaymentConfirmationPage = () => {
     const navigate = useNavigate();
@@ -47,7 +48,9 @@ const PaymentConfirmationPage = () => {
             try {
                 await apiClient.post('/Payment/confirm-yookassa', { orderId });
             } catch (err) {
-                console.warn('confirm-yookassa:', err.response?.data || err.message);
+                if (isDevelopment) {
+                    console.warn('confirm-yookassa:', err.response?.data || err.message);
+                }
             }
         };
 

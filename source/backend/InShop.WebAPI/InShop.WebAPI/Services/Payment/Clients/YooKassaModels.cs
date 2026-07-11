@@ -74,5 +74,8 @@ namespace InShop.WebAPI.Services.Payment.Clients
 
         [JsonPropertyName("status")]
         public string Status { get; set; } = string.Empty;
+
+        [JsonPropertyName("amount")]
+        public YooKassaAmount Amount { get; set; } = new();
     }
 }

@@ -127,19 +127,33 @@ namespace InShop.WebAPI.Controllers
                 {
                     var fallbackFilterClause = BuildFilterClause(request.Category, request.MinPrice, request.MaxPrice, request.InStock, validatedSpecFilters);
                     var filterOnlyQuery = string.IsNullOrEmpty(fallbackFilterClause) ? "*" : fallbackFilterClause;
+                    var filterOnlyFetchLimit = Math.Max(fetchLimit, limit);
 
                     var filterOnlyResult = await _redis.GetDatabase().ExecuteAsync("FT.SEARCH",
                         "idx:products",
                         filterOnlyQuery,
                         "RETURN", "7", "name", "description", "price", "category", "stock", "availability", "image_url",
-                        "LIMIT", offset.ToString(), limit.ToString(),
+                        "LIMIT", "0", filterOnlyFetchLimit.ToString(),
                         "DIALECT", "4"
                     );
 
                     var fallbackProducts = ParseFlatSearchResults(filterOnlyResult);
+                    var sortedFallbackProducts = ApplySorting(
+                            fallbackProducts.Select((product, index) => new HybridResult
+                            {
+                                Dto = product,
+                                HybridScore = fallbackProducts.Count - index,
+                            }).ToList(),
+                            validatedSortBy,
+                            validatedSortOrder)
+                        .Skip(offset)
+                        .Take(limit)
+                        .Select(r => r.Dto)
+                        .ToList();
+
                     return Ok(new SearchResponseDto
                     {
-                        Results = fallbackProducts,
+                        Results = sortedFallbackProducts,
                         Recommended = new List<ProductSearchResultDto>() // Без query рекомендации не имеют смысла
                     });
                 }
@@ -277,6 +291,17 @@ namespace InShop.WebAPI.Controllers
             }
             catch (Exception ex)
             {
+                if (ex is RedisConnectionException or RedisServerException or RedisTimeoutException)
+                {
+                    _logger.LogWarning(ex, "Redis search unavailable; falling back to SQL catalog search.");
+                    var fallbackResults = await BuildSqlFallbackResultsAsync(request, limit, offset);
+                    return Ok(new SearchResponseDto
+                    {
+                        Results = fallbackResults,
+                        Recommended = new List<ProductSearchResultDto>()
+                    });
+                }
+
                 _logger.LogError(ex, "Ошибка при выполнении гибридного поиска для запроса: '{Query}'", request.Query);
                 return StatusCode(500, "Внутренняя ошибка сервера при выполнении поиска.");
             }
@@ -665,6 +690,64 @@ namespace InShop.WebAPI.Controllers
             }
 
             return items;
+        }
+
+        private async Task<List<ProductSearchResultDto>> BuildSqlFallbackResultsAsync(
+            SearchRequestDto request,
+            int limit,
+            int offset)
+        {
+            var products = await _productService.GetProducts();
+            var query = products.AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(request.Query))
+            {
+                var normalizedQuery = request.Query.Trim();
+                query = query.Where(p =>
+                    p.ProductName.Contains(normalizedQuery, StringComparison.OrdinalIgnoreCase)
+                    || (p.ProductDescription?.Contains(normalizedQuery, StringComparison.OrdinalIgnoreCase) ?? false));
+            }
+
+            if (!string.IsNullOrWhiteSpace(request.Category))
+            {
+                query = query.Where(p => string.Equals(
+                    p.ProductCategoryName,
+                    request.Category,
+                    StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (request.MinPrice.HasValue)
+            {
+                query = query.Where(p => p.ProductPrice >= request.MinPrice.Value);
+            }
+
+            if (request.MaxPrice.HasValue)
+            {
+                query = query.Where(p => p.ProductPrice <= request.MaxPrice.Value);
+            }
+
+            if (request.InStock.HasValue)
+            {
+                query = request.InStock.Value
+                    ? query.Where(p => p.ProductStockQuantity > 0)
+                    : query.Where(p => p.ProductStockQuantity == 0);
+            }
+
+            return query
+                .Skip(offset)
+                .Take(limit)
+                .Select(p => new ProductSearchResultDto
+                {
+                    Id = p.ProductId,
+                    Name = p.ProductName,
+                    Description = p.ProductDescription ?? string.Empty,
+                    Price = p.ProductPrice,
+                    Category = p.ProductCategoryName,
+                    StockQuantity = p.ProductStockQuantity,
+                    IsAvailable = p.ProductAvailability,
+                    ImageUrl = p.ImageUrl ?? string.Empty
+                })
+                .ToList();
         }
 
         private class HybridResult

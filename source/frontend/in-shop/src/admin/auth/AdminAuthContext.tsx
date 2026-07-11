@@ -1,12 +1,12 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import adminClient, { ADMIN_TOKEN_KEY } from '../api/adminClient.ts';
-import { AdminAuthResponse, AdminMe } from '../types/adminTypes.ts';
+import adminClient, { ADMIN_TOKEN_KEY } from '../api/adminClient';
+import { AdminAuthResponse, AdminMe } from '../types/adminTypes';
 
 interface AdminAuthContextValue {
   user: AdminMe | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   isAuthenticated: boolean;
 }
 
@@ -44,9 +44,15 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     await loadMe();
   };
 
-  const logout = () => {
-    sessionStorage.removeItem(ADMIN_TOKEN_KEY);
-    setUser(null);
+  const logout = async () => {
+    try {
+      await adminClient.post('/Admin/auth/logout', {});
+    } catch {
+      // Backend may not support token revocation yet; still clear client state.
+    } finally {
+      sessionStorage.removeItem(ADMIN_TOKEN_KEY);
+      setUser(null);
+    }
   };
 
   return (

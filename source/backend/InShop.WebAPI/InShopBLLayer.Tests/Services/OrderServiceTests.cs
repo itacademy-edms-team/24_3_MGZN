@@ -31,7 +31,13 @@ public class OrderServiceTests
     {
         const int sessionId = 42;
         const int productId = 7;
-        var product = new Product { ProductId = productId, ProductPrice = 1000m };
+        var product = new Product
+        {
+            ProductId = productId,
+            ProductPrice = 1000m,
+            ProductAvailability = true,
+            ProductStockQuantity = 10
+        };
 
         _orderRepository.Setup(r => r.GetDraftOrderBySessionId(sessionId))
             .ReturnsAsync((Order?)null);
@@ -71,7 +77,13 @@ public class OrderServiceTests
 
         _orderRepository.Setup(r => r.GetDraftOrderBySessionId(sessionId)).ReturnsAsync(order);
         _productRepository.Setup(r => r.GetProduct(productId))
-            .ReturnsAsync(new Product { ProductId = productId, ProductPrice = 500m });
+            .ReturnsAsync(new Product
+            {
+                ProductId = productId,
+                ProductPrice = 500m,
+                ProductAvailability = true,
+                ProductStockQuantity = 10
+            });
         _orderRepository.Setup(r => r.GetOrderItemByOrderIdAndProductId(10, productId))
             .ReturnsAsync(existingItem);
         _orderRepository.Setup(r => r.CalculateOrderTotalAmount(10)).ReturnsAsync(1500m);
@@ -135,11 +147,19 @@ public class OrderServiceTests
             OrderItemId = 8,
             OrderId = 2,
             QuantityItem = 1,
-            Price = 200m
+            Price = 200m,
+            ProductId = 3
         };
         var order = new Order { OrderId = 2 };
 
         _orderRepository.Setup(r => r.GetOrderItemById(8)).ReturnsAsync(orderItem);
+        _productRepository.Setup(r => r.GetProduct(3)).ReturnsAsync(new Product
+        {
+            ProductId = 3,
+            ProductPrice = 200m,
+            ProductAvailability = true,
+            ProductStockQuantity = 10
+        });
         _orderRepository.Setup(r => r.CalculateOrderTotalAmount(2)).ReturnsAsync(600m);
         _orderRepository.Setup(r => r.GetOrderById(2)).ReturnsAsync(order);
 
@@ -198,6 +218,68 @@ public class OrderServiceTests
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*Черновик заказа*");
+    }
+
+    [Fact]
+    public async Task CreateOrder_RepricesDraftItemsFromServerProductPrice()
+    {
+        var product = new Product
+        {
+            ProductId = 11,
+            ProductName = "Server priced product",
+            ProductPrice = 2500m,
+            ProductAvailability = true,
+            ProductStockQuantity = 5
+        };
+        var order = new Order
+        {
+            OrderId = 77,
+            SessionId = 10,
+            OrderStatus = "Draft",
+            CustomerEmail = "old@example.test",
+            CustomerFullname = "draft",
+            CustomerPhoneNumber = "draft",
+            PayMethod = "draft",
+            PayStatus = "Unpayed",
+            ShipMethod = "draft",
+            OrderItems = new List<OrderItem>
+            {
+                new()
+                {
+                    OrderItemId = 1,
+                    OrderId = 77,
+                    ProductId = product.ProductId,
+                    QuantityItem = 2,
+                    Price = 1m,
+                    TotalPrice = 2m,
+                    Product = product
+                }
+            }
+        };
+
+        _orderRepository.Setup(r => r.GetDraftOrderBySessionIdAsync(10)).ReturnsAsync(order);
+        _orderRepository.Setup(r => r.UpdateOrder(order)).ReturnsAsync(order);
+        _orderRepository.Setup(r => r.GetOrderById(77)).ReturnsAsync(order);
+        _mapper.Setup(m => m.Map<OrderResponseDto>(order)).Returns(new OrderResponseDto
+        {
+            OrderId = 77,
+            OrderTotalAmount = 5000m
+        });
+
+        var response = await _sut.CreateOrder(new CreateOrderRequestDto
+        {
+            SessionId = 10,
+            CustomerEmail = "customer@example.test",
+            CustomerFullname = "Customer",
+            CustomerPhoneNumber = "+100000000",
+            PayMethod = "card",
+            ShipAddress = "Address",
+            ShipMethod = "courier"
+        });
+
+        order.OrderTotalAmount.Should().Be(5000m);
+        order.OrderItems.Single().Price.Should().Be(2500m);
+        response.OrderTotalAmount.Should().Be(5000m);
     }
 
     [Theory]

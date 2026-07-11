@@ -45,8 +45,7 @@ public class UserSessionController : ControllerBase
             // 2. Вызов сервиса
             var (result, sessionToken) = await _userSessionService.CreateUserSessionAsync(userSessionDto);
 
-            _logger.LogDebug("Session created: SessionId={SessionId}, Token={Token}",
-                result.SessionId, sessionToken);
+            _logger.LogDebug("Session created: SessionId={SessionId}", result.SessionId);
 
             // 3. Создание заказа-черновика
             var orderDto = new OrderDto
@@ -87,17 +86,7 @@ public class UserSessionController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "CreateSession: Unhandled exception");
-
-#if DEBUG
-            return StatusCode(500, new
-            {
-                error = ex.Message,
-                stackTrace = ex.StackTrace,
-                innerException = ex.InnerException?.Message
-            });
-#else
-    return StatusCode(500, new { error = "Internal server error" });
-#endif
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -134,15 +123,8 @@ public class UserSessionController : ControllerBase
         {
             var sessionToken = Request.Cookies["SessionToken"];
 
-            // ✅ БЕЗОПАСНОЕ логирование (без Substring)
-            _logger.LogInformation("=== ValidateSession DEBUG ===");
             _logger.LogInformation("Cookie header present: {HasCookie}",
                 Request.Headers.ContainsKey("Cookie"));
-
-            var rawCookieHeader = Request.Headers["Cookie"].FirstOrDefault();
-            _logger.LogInformation("Raw Cookie header: {Header}",
-                string.IsNullOrEmpty(rawCookieHeader) ? "N/A" :
-                rawCookieHeader.Length > 100 ? rawCookieHeader.Substring(0, 100) + "..." : rawCookieHeader);
 
             _logger.LogInformation("SessionToken present: {Present}, Length: {Length}",
                 !string.IsNullOrEmpty(sessionToken),
@@ -160,7 +142,7 @@ public class UserSessionController : ControllerBase
                 return Unauthorized(new { isValid = false, message = "Invalid token format" });
             }
 
-            _logger.LogDebug("Token parsed successfully: {Token}", sessionToken);
+            _logger.LogDebug("Session token parsed successfully.");
 
             var result = await _userSessionService.ValidateSessionAsync(tokenGuid);
 

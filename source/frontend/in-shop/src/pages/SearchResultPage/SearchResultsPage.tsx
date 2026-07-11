@@ -1,16 +1,15 @@
 // src/components/SearchResultsPage/SearchResultsPage.tsx
 import React, { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useDebounce } from '../../hooks/useDebounce.ts';
-import { useProductSearch } from '../../hooks/useProductSearch.ts';
-import { parseFiltersFromUrl } from '../../utils/filters.ts';
-import { FiltersState, SearchRequestDto } from '../../types/search.ts';
-import FiltersPanel from '../../components/FiltersPanel/FiltersPanel.tsx';
-import ActiveFiltersBar from '../../components/ActiveFiltersBar.tsx';
+import { useDebounce } from '../../hooks/useDebounce';
+import { useProductSearch } from '../../hooks/useProductSearch';
+import { parseFiltersFromUrl } from '../../utils/filters';
+import { FiltersState, SearchRequestDto } from '../../types/search';
+import FiltersPanel from '../../components/FiltersPanel/FiltersPanel';
+import ActiveFiltersBar from '../../components/ActiveFiltersBar';
 import ProductCard from '../../components/ProductCard.jsx';
-import LoadingSpinner from '../../components/LoadingSpinner.tsx';
-import SortMenu, { SortOption } from '../../components/SortMenu/SortMenu.tsx';
-import { API_BASE_URL } from '../../config/api.js';
+import LoadingSpinner from '../../components/LoadingSpinner';
+import SortMenu, { SortOption } from '../../components/SortMenu/SortMenu';
 
 // Swiper imports
 import { Swiper, SwiperSlide } from 'swiper/react';
@@ -30,10 +29,11 @@ type SpecFilterValue = string | number | { Min?: number; Max?: number } | null;
 
 const PAGE_SIZE = 12;
 const DEBOUNCE_DELAY = 400;
+const isDevelopment = process.env.NODE_ENV === 'development';
 
 // 🔧 FIX: Выносим блок рекомендаций в отдельный мемоизированный компонент
 const RecommendationsSection = memo<{
-  products: Array<{ productId: string; productName: string; productPrice: number; imageUrl?: string }>;
+  products: Array<{ productId: number; productName: string; productPrice: number; imageUrl?: string }>;
 }>(({ products }) => {
   const [swiperInstance, setSwiperInstance] = useState<any>(null);
   const [showNavigationButtons, setShowNavigationButtons] = useState(false);
@@ -149,7 +149,7 @@ RecommendationsSection.displayName = 'RecommendationsSection';
 
 // 🔧 FIX: Выносим сетку товаров в отдельный компонент
 const ProductsGrid = memo<{
-  products: Array<{ productId: string; productName: string; productPrice: number; imageUrl?: string }>;
+  products: Array<{ productId: number; productName: string; productPrice: number; imageUrl?: string }>;
 }>(({ products }) => {
   // 🔧 FIX: Стабилизируем продукты через useMemo
   const productElements = useMemo(() => {
@@ -180,7 +180,7 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   
-  const { results, recommended, loading, error, hasMore, search, clear, loadMore } = useProductSearch(API_BASE_URL);
+  const { results, recommended, loading, error, hasMore, search, clear, loadMore } = useProductSearch();
   
   const isInitialMount = useRef(true);
   const prevForcedCategory = useRef(forcedCategory);
@@ -393,7 +393,9 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
     const maxPrice = debouncedFilters.maxPrice ? parseFloat(debouncedFilters.maxPrice) : null;
     
     if (minPrice !== null && maxPrice !== null && minPrice > maxPrice) {
-      console.warn('Min price больше Max price');
+      if (isDevelopment) {
+        console.warn('Min price больше Max price');
+      }
       return;
     }
 
@@ -452,7 +454,7 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
       const isEmpty = (val: SpecFilterValue): boolean => {
         if (val == null || val === '') return true;
         if (typeof val === 'object') {
-          const hasValue = Object.values(val).some(v => v != null && v !== '');
+          const hasValue = Object.values(val as Record<string, unknown>).some(v => v != null && v !== '');
           return !hasValue;
         }
         return false;
@@ -634,7 +636,6 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
           onBasicFilterChange={handleBasicFilterChange}
           onSpecFilterChange={handleSpecFilterChange}
           onClearSpecFilters={handleClearSpecFilters}
-          apiBaseUrl={API_BASE_URL}
           isCategoryForced={forcedCategory !== undefined}
           onSpecsLoaded={handleSpecsLoaded}
         />

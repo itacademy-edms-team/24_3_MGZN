@@ -45,6 +45,22 @@ export interface AdminOrder {
 export interface CategoryDto {
   categoryId: number;
   categoryName: string;
+  imageURL?: string;
+}
+
+export interface CategoryCreateDto {
+  categoryName: string;
+}
+
+export interface ShipCompanyDto {
+  shipCompanyId: number;
+  shipCompanyName: string;
+  contact: string;
+}
+
+export interface ShipCompanyCreateDto {
+  shipCompanyName: string;
+  contact: string;
 }
 
 export interface AdminOrderItemDetail {

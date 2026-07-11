@@ -14,6 +14,7 @@ public class OrderApiTests : IAsyncLifetime
     private HttpClient _client = null!;
     private int _productId;
     private Guid _sessionToken;
+    private int _otherOrderId;
 
     public OrderApiTests(SqlServerFixture fixture)
     {
@@ -26,9 +27,12 @@ public class OrderApiTests : IAsyncLifetime
         {
             var (_, product) = await TestDataSeeder.SeedCatalogAsync(context);
             var session = await TestDataSeeder.SeedSessionAsync(context);
+            var otherSession = await TestDataSeeder.SeedSessionAsync(context);
+            var otherOrder = await TestDataSeeder.SeedOrderAsync(context, otherSession.SessionId, "Unpayed");
 
             _productId = product.ProductId;
             _sessionToken = session.SessionToken;
+            _otherOrderId = otherOrder.OrderId;
             return 0;
         });
 
@@ -76,5 +80,13 @@ public class OrderApiTests : IAsyncLifetime
         response.StatusCode.Should().Be(HttpStatusCode.OK, body);
         var items = await response.Content.ReadFromJsonAsync<List<CartItemDto>>();
         items.Should().NotBeNull().And.NotBeEmpty();
+    }
+
+    [Fact]
+    public async Task GetOrderById_WhenOrderBelongsToAnotherSession_ReturnsForbidden()
+    {
+        var response = await _client.GetAsync($"/api/Order/{_otherOrderId}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 }

@@ -1,9 +1,9 @@
 // src/components/SearchComponent/SearchComponent.tsx
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-import MiniProductCard from '../MiniProductCard/MiniProductCard.tsx';
+import MiniProductCard from '../MiniProductCard/MiniProductCard';
 import './SearchComponent.css';
-import { API_BASE_URL } from '../../config/api.js';
+import { apiClient } from '../../api/client';
 
 interface ApiProductDto {
   productId: number;
@@ -42,7 +42,7 @@ const SearchComponent: React.FC = () => {
 
   const inputRef = useRef<HTMLInputElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
-  const closeTimeoutRef = useRef<NodeJS.Timeout>();
+  const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isMountedRef = useRef(true);
   const isNavigatingRef = useRef(false);
   const isSyncingFromUrlRef = useRef(false);
@@ -82,18 +82,13 @@ const SearchComponent: React.FC = () => {
   useEffect(() => {
     const fetchRandomSuggestions = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/Products/random-products`, {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
-        });
-
-        if (!response.ok) throw new Error(`Ошибка: ${response.status}`);
+        const response = await apiClient.get<ApiProductDto[]>('/Products/random-products');
         if (response.status === 204) {
           setRandomSuggestions([]);
           return;
         }
 
-        const rawData: ApiProductDto[] = await response.json();
+        const rawData: ApiProductDto[] = response.data;
         const convertedData: ProductSearchResultDto[] = rawData.map(item => ({
           id: item.productId,
           name: item.productName,

@@ -14,6 +14,7 @@ export interface SessionCreationResult {
 export interface SessionValidationResult {
     isValid: boolean;
     sessionId?: number;
+    orderId?: number;
     expiresAt?: string;
     message?: string;
 }

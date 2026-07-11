@@ -15,11 +15,16 @@ namespace InShop.WebAPI.Controllers.Admin
     {
         private readonly IAdminAuthService _adminAuthService;
         private readonly ILogger<AdminAuthController> _logger;
+        private readonly IHostEnvironment _environment;
 
-        public AdminAuthController(IAdminAuthService adminAuthService, ILogger<AdminAuthController> logger)
+        public AdminAuthController(
+            IAdminAuthService adminAuthService,
+            ILogger<AdminAuthController> logger,
+            IHostEnvironment environment)
         {
             _adminAuthService = adminAuthService;
             _logger = logger;
+            _environment = environment;
         }
 
         /// <summary>
@@ -32,6 +37,12 @@ namespace InShop.WebAPI.Controllers.Admin
         [ProducesResponseType(StatusCodes.Status409Conflict)]
         public async Task<IActionResult> Register([FromBody] AdminRegisterDto dto, CancellationToken ct)
         {
+            if (_environment.IsProduction())
+            {
+                _logger.LogWarning("Admin registration endpoint was called in Production and blocked.");
+                return NotFound();
+            }
+
             try
             {
                 await _adminAuthService.RegisterFirstAdminAsync(dto, ct);
@@ -75,6 +86,14 @@ namespace InShop.WebAPI.Controllers.Admin
         public IActionResult Me()
         {
             return Ok(_adminAuthService.GetMe(User));
+        }
+
+        [HttpPost("logout")]
+        [Authorize(Policy = AdminIdentityExtensions.AdminOnlyPolicy)]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        public IActionResult Logout()
+        {
+            return NoContent();
         }
     }
 }

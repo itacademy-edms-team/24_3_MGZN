@@ -10,15 +10,15 @@ namespace InShopDbModels.Abstractions
     public interface IOrderRepository
     {
         Task<int> CreateNewOrder(Order order);
-        Task<Order> GetDraftOrderBySessionId(int sessionId);
-        Task<OrderItem> GetOrderItemByOrderIdAndProductId(int orderId, int productId);
+        Task<Order?> GetDraftOrderBySessionId(int sessionId);
+        Task<OrderItem?> GetOrderItemByOrderIdAndProductId(int orderId, int productId);
         Task<int> CreateOrderItem(OrderItem orderItem);
         Task UpdateOrderItem(OrderItem orderItem);
         Task<Order> UpdateOrder(Order order);
         Task<decimal> CalculateOrderTotalAmount(int orderId);
-        Task<OrderItem> GetOrderItemById(int orderItemId);
+        Task<OrderItem?> GetOrderItemById(int orderItemId);
         Task DeleteOrderItem(int orderItemId);
-        Task<Order> GetOrderById(int orderId);
+        Task<Order?> GetOrderById(int orderId);
         Task DeleteAllOrderItems(int orderId);
         Task<List<OrderItem>> GetOrderItemsByOrderId(int orderId);
         Task<List<ShipCompany>> GetAllShipCompanies();

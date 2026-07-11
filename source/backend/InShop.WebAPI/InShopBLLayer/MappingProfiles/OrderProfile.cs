@@ -15,7 +15,8 @@ namespace InShopBLLayer.MappingProfiles
         {
             this.CreateMap<OrderDto, Order>().ReverseMap();
             CreateMap<CreateOrderRequestDto, Order>()
-            .ForMember(dest => dest.OrderItems, opt => opt.MapFrom(src => src.OrderItems));
+                .ForMember(dest => dest.OrderItems, opt => opt.Ignore())
+                .ForMember(dest => dest.OrderTotalAmount, opt => opt.Ignore());
 
             CreateMap<CreateOrderItemRequest, OrderItem>();
 

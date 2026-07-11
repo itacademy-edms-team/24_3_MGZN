@@ -1,5 +1,5 @@
 import React, { createContext, useContext } from 'react';
-import useSession from '../hooks/useSession.ts';
+import useSession from '../hooks/useSession';
 
 type SessionContextValue = ReturnType<typeof useSession>;
 

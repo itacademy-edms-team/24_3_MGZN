@@ -170,6 +170,7 @@ namespace InShopBLLayer.Services.Admin
                 }
 
                 var oldRaw = order.OrderStatus;
+                var oldCanonical = OrderStatusStateMachine.Normalize(oldRaw);
 
                 if (OrderStatusStateMachine.IsTerminalStatus(oldRaw))
                 {
@@ -179,13 +180,7 @@ namespace InShopBLLayer.Services.Admin
 
                 OrderStatusStateMachine.ValidateTransition(oldRaw, canonicalNew);
 
-                // TODO: Интегрировать InventoryReservationService (см. отдельную задачу).
-                // Пример при подключении резерва в той же транзакции:
-                // foreach (var item in order.OrderItems) {
-                //   if (canonicalNew == Processing) await _inventoryReservationService.ReserveAsync(item.ProductId, item.QuantityItem, ct);
-                //   if (canonicalNew == Cancelled) await _inventoryReservationService.ReleaseAsync(...);
-                //   if (canonicalNew == Paid) await _inventoryReservationService.FinalizeAsync(...);
-                // }
+                await ApplyInventoryTransitionAsync(order, oldCanonical, canonicalNew, ct);
 
                 order.OrderStatus = canonicalNew;
 
@@ -228,6 +223,87 @@ namespace InShopBLLayer.Services.Admin
             dto.OrderStatus = OrderStatusStateMachine.Normalize(order.OrderStatus);
             dto.ItemsCount = order.OrderItems?.Count ?? 0;
             return dto;
+        }
+
+        private async Task ApplyInventoryTransitionAsync(
+            Order order,
+            string oldStatus,
+            string newStatus,
+            CancellationToken ct)
+        {
+            if (order.OrderItems.Count == 0)
+            {
+                return;
+            }
+
+            if (string.Equals(newStatus, OrderStatusStateMachine.Processing, StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(oldStatus, OrderStatusStateMachine.Processing, StringComparison.OrdinalIgnoreCase))
+            {
+                foreach (var item in order.OrderItems)
+                {
+                    var product = await LoadProductForInventoryAsync(item.ProductId, ct);
+                    if (product.ProductStockQuantity < item.QuantityItem)
+                    {
+                        throw new InvalidOperationException(
+                            $"Недостаточно свободного остатка для товара {product.ProductId}: " +
+                            $"запрошено {item.QuantityItem}, доступно {product.ProductStockQuantity}.");
+                    }
+
+                    product.ProductStockQuantity -= item.QuantityItem;
+                    product.ReservedQuantity += item.QuantityItem;
+                }
+
+                return;
+            }
+
+            if (string.Equals(newStatus, OrderStatusStateMachine.Cancelled, StringComparison.OrdinalIgnoreCase)
+                && IsReservedStatus(oldStatus))
+            {
+                foreach (var item in order.OrderItems)
+                {
+                    var product = await LoadProductForInventoryAsync(item.ProductId, ct);
+                    if (product.ReservedQuantity < item.QuantityItem)
+                    {
+                        throw new InvalidOperationException(
+                            $"Нельзя освободить резерв товара {product.ProductId}: " +
+                            $"зарезервировано {product.ReservedQuantity}, требуется {item.QuantityItem}.");
+                    }
+
+                    product.ReservedQuantity -= item.QuantityItem;
+                    product.ProductStockQuantity += item.QuantityItem;
+                }
+
+                return;
+            }
+
+            if (string.Equals(newStatus, OrderStatusStateMachine.Delivered, StringComparison.OrdinalIgnoreCase))
+            {
+                foreach (var item in order.OrderItems)
+                {
+                    var product = await LoadProductForInventoryAsync(item.ProductId, ct);
+                    if (product.ReservedQuantity < item.QuantityItem)
+                    {
+                        throw new InvalidOperationException(
+                            $"Нельзя списать резерв товара {product.ProductId}: " +
+                            $"зарезервировано {product.ReservedQuantity}, требуется {item.QuantityItem}.");
+                    }
+
+                    product.ReservedQuantity -= item.QuantityItem;
+                }
+            }
+        }
+
+        private async Task<Product> LoadProductForInventoryAsync(int productId, CancellationToken ct)
+        {
+            var product = await _context.Products.FirstOrDefaultAsync(p => p.ProductId == productId, ct);
+            return product ?? throw new InvalidOperationException($"Товар с идентификатором {productId} не найден.");
+        }
+
+        private static bool IsReservedStatus(string status)
+        {
+            return string.Equals(status, OrderStatusStateMachine.Processing, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(status, OrderStatusStateMachine.Paid, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(status, OrderStatusStateMachine.Shipped, StringComparison.OrdinalIgnoreCase);
         }
     }
 }

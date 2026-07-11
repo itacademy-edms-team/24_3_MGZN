@@ -1,4 +1,6 @@
 using System.Net;
+using System.Net.Http.Json;
+using Contracts.Dtos;
 using FluentAssertions;
 using InShop.IntegrationTests.Infrastructure;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -82,5 +84,19 @@ public class ProductsApiTests : IAsyncLifetime
             "/api/Products/products-by-category?categoryName=Ноутбуки&sortBy=InvalidColumn");
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task CreateProduct_WithoutAdminJwt_ReturnsUnauthorized()
+    {
+        var response = await _client.PostAsJsonAsync("/api/Products", new ProductCreateDto
+        {
+            ProductName = "Anonymous Product",
+            ProductPrice = 1m,
+            ProductCategoryId = 1,
+            ProductStockQuantity = 1
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 }

@@ -23,7 +23,7 @@ namespace InShopDbModels.Repositories
             return await _appDbContext.Products
                          .ToListAsync();
         }
-        public async Task<Product> GetProduct(int id)
+        public async Task<Product?> GetProduct(int id)
         {
             return await _appDbContext.Products
                                 .Include(p => p.ProductCategory)
@@ -33,6 +33,11 @@ namespace InShopDbModels.Repositories
         public async Task DeleteProduct(int id)
         {
             var product = await GetProduct(id);
+            if (product is null)
+            {
+                return;
+            }
+
             _appDbContext.Products.Remove(product);
             await _appDbContext.SaveChangesAsync();
         }
@@ -65,31 +70,14 @@ namespace InShopDbModels.Repositories
             string sortBy,
             string sortOrder)
         {
-            Console.WriteLine($"DEBUG REPO: Input categoryName: '{categoryName}', Type: {categoryName.GetType()}, Length: {categoryName.Length}");
-            Console.WriteLine($"DEBUG REPO: Input price filters - Min: {minPrice}, Max: {maxPrice}");
-            Console.WriteLine($"DEBUG REPO: Input inStock filter: {inStock}");
-            Console.WriteLine($"DEBUG REPO: Input categoryName Bytes: [{string.Join(", ", System.Text.Encoding.UTF8.GetBytes(categoryName))}]");
-
-            // Запрос категории
             var categoryQuery = _appDbContext.Categories.Where(c => c.CategoryName == categoryName);
-            var sql = categoryQuery.ToQueryString();
-            Console.WriteLine($"DEBUG REPO: Category SQL Query: {sql}");
 
             var categoryId = await categoryQuery
                 .Select(c => c.CategoryId)
                 .FirstOrDefaultAsync();
 
-            Console.WriteLine($"DEBUG REPO: Query result categoryId: {categoryId}");
-
             if (categoryId == 0)
             {
-                Console.WriteLine("DEBUG REPO: Category not found or CategoryId is 0. Fetching all categories for comparison.");
-                var allCategories = await _appDbContext.Categories.ToListAsync();
-                foreach (var cat in allCategories)
-                {
-                    Console.WriteLine($"DEBUG REPO: DB CategoryName: '{cat.CategoryName}', CategoryId: {cat.CategoryId}, Length: {cat.CategoryName.Length}");
-                    Console.WriteLine($"DEBUG REPO: DB CategoryName Bytes: [{string.Join(", ", System.Text.Encoding.UTF8.GetBytes(cat.CategoryName))}]");
-                }
                 return Enumerable.Empty<Product>();
             }
 
@@ -101,14 +89,12 @@ namespace InShopDbModels.Repositories
             if (minPrice.HasValue)
             {
                 query = query.Where(p => p.ProductPrice >= minPrice.Value);
-                Console.WriteLine($"DEBUG REPO: Applied min price filter: >= {minPrice.Value}");
             }
 
             // Применяем фильтр по максимальной цене
             if (maxPrice.HasValue)
             {
                 query = query.Where(p => p.ProductPrice <= maxPrice.Value);
-                Console.WriteLine($"DEBUG REPO: Applied max price filter: <= {maxPrice.Value}");
             }
 
             // Применяем фильтр по наличию
@@ -118,19 +104,13 @@ namespace InShopDbModels.Repositories
                 {
                     // Только товары в наличии (stock > 0)
                     query = query.Where(p => p.ProductStockQuantity > 0);
-                    Console.WriteLine($"DEBUG REPO: Applied in stock filter (stock > 0)");
                 }
                 else
                 {
                     // Только товары не в наличии (stock = 0)
                     query = query.Where(p => p.ProductStockQuantity == 0);
-                    Console.WriteLine($"DEBUG REPO: Applied out of stock filter (stock = 0)");
                 }
             }
-
-            // Логируем количество после всех фильтров
-            var countAfterFilters = await query.CountAsync();
-            Console.WriteLine($"DEBUG REPO: Products after all filters: {countAfterFilters}");
 
             // Применяем сортировку
             query = sortBy.ToLower() switch
@@ -144,20 +124,7 @@ namespace InShopDbModels.Repositories
                 _ => query.OrderBy(p => p.ProductName)
             };
 
-            Console.WriteLine($"DEBUG REPO: Applied sorting: {sortBy} {sortOrder}");
-
-            var products = await query.ToListAsync();
-            Console.WriteLine($"DEBUG REPO: Found {products.Count} products for categoryId {categoryId} with all filters");
-
-            // Дополнительная информация о наличии для отладки
-            if (products.Any())
-            {
-                var inStockCount = products.Count(p => p.ProductStockQuantity > 0);
-                var outOfStockCount = products.Count(p => p.ProductStockQuantity == 0);
-                Console.WriteLine($"DEBUG REPO: In stock: {inStockCount}, Out of stock: {outOfStockCount}");
-            }
-
-            return products;
+            return await query.ToListAsync();
         }
 
         public async Task<List<(int SpecId, string Name, string DisplayName, string DataType, string? TextValue, decimal? NumberValue)>?> GetProductSpecificationsAsync(int id)

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { useAdminAuth } from '../auth/AdminAuthContext.tsx';
+import { useAdminAuth } from '../auth/AdminAuthContext';
 import './AdminLayout.css';
 
 const AdminLayout: React.FC = () => {
@@ -8,8 +8,8 @@ const AdminLayout: React.FC = () => {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(true);
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     navigate('/admin/login');
   };
 
@@ -38,6 +38,8 @@ const AdminLayout: React.FC = () => {
       <div className="admin-body">
         <nav className={`admin-sidebar ${menuOpen ? '' : 'admin-sidebar--hidden'}`}>
           <NavLink to="/admin/products">Товары</NavLink>
+          <NavLink to="/admin/categories">Категории</NavLink>
+          <NavLink to="/admin/ship-companies">Транспортные компании</NavLink>
           <NavLink to="/admin/orders">Заказы</NavLink>
           <NavLink to="/admin/orders/drafts">Черновики Заказов (Корзины)</NavLink>
         </nav>

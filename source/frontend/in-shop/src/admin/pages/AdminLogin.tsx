@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
-import { useAdminAuth } from '../auth/AdminAuthContext.tsx';
+import { useAdminAuth } from '../auth/AdminAuthContext';
 import '../layout/AdminLayout.css';
 
 interface LoginForm {

@@ -30,6 +30,9 @@ const ProductCard = ({ product }) => {
                         alt={product.productName}
                         className="product-image"
                         loading="lazy"
+                        onError={(e) => {
+                            e.currentTarget.src = placeholderSrc;
+                        }}
                     />
                 ) : (
                     // Показываем заглушку с бэкенда

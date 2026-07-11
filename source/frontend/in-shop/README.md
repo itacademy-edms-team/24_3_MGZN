@@ -30,7 +30,14 @@ npm run build
 
 Команда создаёт оптимизированную сборку в папке `build`.
 
-В GitHub Actions переменная `CI=true` включена автоматически, поэтому ESLint warnings считаются ошибками сборки. Если локально `npm run build` проходит, а в CI падает, проверьте предупреждения ESLint.
+### Проверки качества
+
+```powershell
+npm run typecheck
+npm run test:ci
+```
+
+В GitHub Actions frontend job запускает `typecheck`, `test:ci` и `build`. Переменная `CI=true` включена автоматически, поэтому ESLint warnings считаются ошибками сборки. Если локально `npm run build` проходит, а в CI падает, проверьте предупреждения ESLint.
 
 ## API URL
 
@@ -65,3 +72,13 @@ Headless-запуск:
 ```powershell
 npm run cypress:run
 ```
+
+Из корня frontend-пакета можно запустить тот же headless-прогон командой:
+
+```powershell
+npm run cypress:run
+```
+
+## Tooling debt
+
+Проект пока остаётся на Create React App (`react-scripts`). Миграцию на Vite/RSBuild лучше делать отдельным PR после security/runtime исправлений: потребуется проверить React Router, env-переменные, Docker build и Cypress запуск.

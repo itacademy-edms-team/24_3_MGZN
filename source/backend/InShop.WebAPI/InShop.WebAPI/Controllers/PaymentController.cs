@@ -144,6 +144,12 @@ namespace InShop.WebAPI.Controllers
                 });
             }
 
+            var sessionId = GetSessionIdFromContext();
+            if (!sessionId.HasValue)
+            {
+                return Unauthorized(new { message = "Session required." });
+            }
+
             if (string.IsNullOrWhiteSpace(request.CardNumber) ||
                 string.IsNullOrWhiteSpace(request.ExpiryDate) ||
                 string.IsNullOrWhiteSpace(request.Cvv) ||
@@ -160,6 +166,11 @@ namespace InShop.WebAPI.Controllers
                 return BadRequest(new { message = "Order not found." });
             }
 
+            if (order.SessionId != sessionId.Value)
+            {
+                return Forbid();
+            }
+
             if (order.OrderStatus != "Unpayed")
             {
                 return BadRequest(new { message = "Order is not in 'Unpayed' status." });
@@ -172,7 +183,25 @@ namespace InShop.WebAPI.Controllers
         [HttpGet("status/{orderId}")]
         public async Task<IActionResult> GetPaymentStatus(int orderId)
         {
+            var sessionId = GetSessionIdFromContext();
+            if (!sessionId.HasValue)
+            {
+                return Unauthorized(new { message = "Session required." });
+            }
+
             using var scope = _serviceProvider.CreateScope();
+            var orderRepository = scope.ServiceProvider.GetRequiredService<IOrderRepository>();
+            var order = await orderRepository.GetOrderById(orderId);
+            if (order == null)
+            {
+                return NotFound(new { error = "Order not found" });
+            }
+
+            if (order.SessionId != sessionId.Value)
+            {
+                return Forbid();
+            }
+
             var paymentStatusService = scope.ServiceProvider.GetRequiredService<InShopBLLayer.Abstractions.IPaymentStatusService>();
 
             var status = await paymentStatusService.GetOrderSatusAsync(orderId);

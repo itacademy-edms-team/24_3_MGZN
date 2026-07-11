@@ -1,5 +1,5 @@
 // src/pages/CheckoutPage.js
-import React, { useContext } from 'react';
+import React, { useContext, useEffect } from 'react';
 import { CartContext } from '../components/CartContext';
 import CheckoutItemCard from '../components/CheckoutItemCard';
 import CheckoutForm from '../components/CheckoutForm';
@@ -7,7 +7,13 @@ import './CheckoutPage.css';
 import '../components/CheckoutItemCard.css';
 
 const CheckoutPage = () => {
-    const { cart, loading, error, changeQuantity, removeFromCart } = useContext(CartContext);
+    const { cart, loading, error, changeQuantity, removeFromCart, fetchCart, isValid } = useContext(CartContext);
+
+    useEffect(() => {
+        if (isValid) {
+            fetchCart();
+        }
+    }, [isValid, fetchCart]);
 
     return (
         <div className="checkout-page">
@@ -17,7 +23,13 @@ const CheckoutPage = () => {
                 {/* Левая колонка: Форма и список товаров */}
                 <div className="checkout-left">
                     {/* Форма оформления заказа */}
-                    <CheckoutForm />
+                    {loading ? (
+                        <p>Загрузка корзины...</p>
+                    ) : cart.length === 0 ? (
+                        <p className="empty-cart">Корзина пуста. Добавьте товары перед оформлением заказа.</p>
+                    ) : (
+                        <CheckoutForm />
+                    )}
                     
                 </div>
                 {/* Правая колонка: Итоговая стоимость */}

@@ -1,6 +1,6 @@
 // src/api/reviews.ts
 
-import apiClient from './client.ts';
+import apiClient from './client';
 import { 
   ReviewsResponse, 
   CreateReviewDto, 

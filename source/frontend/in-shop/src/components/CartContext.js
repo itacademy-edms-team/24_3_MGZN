@@ -3,10 +3,12 @@
 // ============================================
 
 import React, { createContext, useState, useEffect, useCallback } from 'react';
-import { apiClient } from '../api/client.ts';
-import { useSessionContext } from '../context/SessionContext.tsx';
+import { apiClient } from '../api/client';
+import { useSessionContext } from '../context/SessionContext';
 
 export const CartContext = createContext();
+
+const isDevelopment = process.env.NODE_ENV === 'development';
 
 export const CartProvider = ({ children }) => {
     const [cart, setCart] = useState([]);
@@ -15,13 +17,15 @@ export const CartProvider = ({ children }) => {
     const [error, setError] = useState(null);
     
     // ✅ Получаем данные сессии из хука
-    const { orderId, isValid } = useSessionContext();
+    const { orderId, isValid, updateOrderId } = useSessionContext();
 
     // Загрузка корзины из бэкенда
     const fetchCart = useCallback(async () => {
-        // Если сессия не валидна или нет orderId — не загружаем
-        if (!isValid || !orderId) {
-            console.log('[Cart] Session not ready, skipping fetch');
+        // Бэкенд определяет текущую корзину по HttpOnly cookie сессии.
+        if (!isValid) {
+            if (isDevelopment) {
+                console.log('[Cart] Session not ready, skipping fetch');
+            }
             return;
         }
         
@@ -30,9 +34,7 @@ export const CartProvider = ({ children }) => {
             setError(null);
             
             // ✅ SessionId НЕ передаём — бэкенд берёт из cookie
-            const response = await apiClient.get(`/Order/cart`, {
-                params: { orderId } // Если бэкенд поддерживает фильтр по orderId
-            });
+            const response = await apiClient.get(`/Order/cart`);
             
             setCart(response.data);
         } catch (err) {
@@ -41,12 +43,14 @@ export const CartProvider = ({ children }) => {
             
             // Если 401 — сессия истекла, хук useSession автоматически пересоздаст
             if (err.response?.status === 401) {
-                console.log('[Cart] Session expired, will be recreated by useSession hook');
+                if (isDevelopment) {
+                    console.log('[Cart] Session expired, will be recreated by useSession hook');
+                }
             }
         } finally {
             setLoading(false);
         }
-    }, [isValid, orderId]);
+    }, [isValid]);
 
     // Открытие модального окна корзины
     const openCart = useCallback(() => {
@@ -61,8 +65,8 @@ export const CartProvider = ({ children }) => {
 
     // Добавление товара в корзину
     const addToCart = useCallback(async (product) => {
-        if (!isValid || !orderId) {
-            alert('Пожалуйста, подождите инициализации сессии');
+        if (!isValid) {
+            setError('Пожалуйста, подождите инициализации сессии');
             return;
         }
         
@@ -70,9 +74,12 @@ export const CartProvider = ({ children }) => {
             // ✅ SessionId НЕ передаём — бэкенд берёт из cookie
             const response = await apiClient.post('/Order', {
                 productId: product.productId,
-                orderId: orderId, // Если бэкенд принимает orderId вместо sessionId
                 quantity: 1
             });
+
+            if (typeof response.data?.orderId === 'number') {
+                updateOrderId(response.data.orderId);
+            }
 
             // Перезагружаем корзину
             await fetchCart();
@@ -82,20 +89,19 @@ export const CartProvider = ({ children }) => {
             console.error('[Cart] Error adding to cart:', error);
             
             if (error.response?.status === 401) {
-                alert('Сессия истекла, страница будет перезагружена...');
-                window.location.reload();
+                setError('Сессия истекла. Обновите страницу и попробуйте снова.');
             } else {
-                alert('Не удалось добавить товар.');
+                setError('Не удалось добавить товар.');
             }
             
             throw error;
         }
-    }, [isValid, orderId, fetchCart]);
+    }, [isValid, fetchCart, updateOrderId]);
 
     // Изменение количества товара
     const changeQuantity = useCallback(async (orderItemId, newQuantity) => {
         if (!isValid) {
-            alert('Сессия не активна');
+            setError('Сессия не активна');
             return;
         }
         
@@ -118,10 +124,9 @@ export const CartProvider = ({ children }) => {
             console.error('[Cart] Error updating quantity:', error);
             
             if (error.response?.status === 401) {
-                alert('Сессия истекла, страница будет перезагружена...');
-                window.location.reload();
+                setError('Сессия истекла. Обновите страницу и попробуйте снова.');
             } else {
-                alert('Не удалось обновить количество.');
+                setError('Не удалось обновить количество.');
             }
         }
     }, [isValid]);
@@ -129,7 +134,7 @@ export const CartProvider = ({ children }) => {
     // Удаление товара из корзины
     const removeFromCart = useCallback(async (orderItemId) => {
         if (!isValid) {
-            alert('Сессия не активна');
+            setError('Сессия не активна');
             return;
         }
         
@@ -143,46 +148,42 @@ export const CartProvider = ({ children }) => {
             console.error('[Cart] Error removing item:', error);
             
             if (error.response?.status === 401) {
-                alert('Сессия истекла, страница будет перезагружена...');
-                window.location.reload();
+                setError('Сессия истекла. Обновите страницу и попробуйте снова.');
             } else {
-                alert('Не удалось удалить товар.');
+                setError('Не удалось удалить товар.');
             }
         }
     }, [isValid]);
 
     // Очистка корзины
     const clearCart = useCallback(async () => {
-        if (!isValid || !orderId) {
-            alert('Сессия не активна');
+        if (!isValid) {
+            setError('Сессия не активна');
             return;
         }
         
         try {
             // ✅ SessionId НЕ передаём
-            await apiClient.delete(`/Order/clear`, {
-                params: { orderId }
-            });
+            await apiClient.delete(`/Order/clear`);
 
             setCart([]);
         } catch (error) {
             console.error('[Cart] Error clearing cart:', error);
             
             if (error.response?.status === 401) {
-                alert('Сессия истекла, страница будет перезагружена...');
-                window.location.reload();
+                setError('Сессия истекла. Обновите страницу и попробуйте снова.');
             } else {
-                alert('Не удалось очистить корзину.');
+                setError('Не удалось очистить корзину.');
             }
         }
-    }, [isValid, orderId]);
+    }, [isValid]);
 
-    // Эффект: загружаем корзину при изменении orderId
+    // Эффект: загружаем корзину при готовой сессии, чтобы checkout и badge были актуальны.
     useEffect(() => {
-        if (isValid && orderId && isCartOpen) {
+        if (isValid) {
             fetchCart();
         }
-    }, [isValid, orderId, isCartOpen, fetchCart]);
+    }, [isValid, fetchCart]);
 
     return (
         <CartContext.Provider

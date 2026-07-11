@@ -366,6 +366,10 @@ appsettings.Docker.json
 
 appsettings.json
 
+# Environment files with secrets (keep templates)
+**/.env
+!**/.env.example
+
 deploy/.env
 deploy/*.bak
 deploy/*.bu

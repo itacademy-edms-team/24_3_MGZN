@@ -15,10 +15,16 @@ namespace InShop.WebAPI
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            var redisConnectionString = builder.Configuration.GetConnectionString("Redis")
-                ?? "localhost:6379";
+            builder.Configuration.ValidateRequiredConfiguration(builder.Environment);
+
+            var redisConnectionString = builder.Configuration.GetConnectionString("Redis");
+            if (string.IsNullOrWhiteSpace(redisConnectionString) && builder.Environment.IsDevelopment())
+            {
+                redisConnectionString = "localhost:6379";
+            }
+
             builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
-                ConnectionMultiplexer.Connect(redisConnectionString));
+                ConnectionMultiplexer.Connect(redisConnectionString!));
 
             builder.Services.AddHttpClient();
 
@@ -30,19 +36,24 @@ namespace InShop.WebAPI
             });
 
 
-            //CORS
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("AllowSpecificOrigin", policy =>
                 {
-                    policy.WithOrigins("http://localhost:3000") // ��������� ������� ������ � ����� ������
-                          .AllowAnyHeader()                    // ��������� ����� ���������
-                          .AllowAnyMethod()                   // ��������� ����� HTTP-������
+                    var allowedOrigins = builder.Configuration
+                        .GetSection("Cors:AllowedOrigins")
+                        .Get<string[]>()
+                        ?? new[] { "http://localhost:3000" };
+
+                    policy.WithOrigins(allowedOrigins)
+                          .AllowAnyHeader()
+                          .AllowAnyMethod()
                           .AllowCredentials();
                 });
             });
 
-            var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+            var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+                ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection is required.");
 
             builder.Services.AddInShopRepositories(connectionString);
             builder.Services.AddInShopServices(builder.Configuration);
@@ -54,8 +65,10 @@ namespace InShop.WebAPI
             // Add services to the container.
 
             builder.Services.AddControllers();
+            builder.Services.AddProblemDetails();
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddAdminSwaggerJwt();
+            builder.Services.AddHealthChecks();
 
             // Base64-изображения товаров до 5 МБ
             builder.Services.Configure<FormOptions>(o =>
@@ -65,7 +78,7 @@ namespace InShop.WebAPI
 
             var app = builder.Build();
 
-            await app.Services.EnsureDatabaseCreatedForDockerAsync(app.Configuration);
+            await app.Services.EnsureDatabaseCreatedForDockerAsync(app.Configuration, app.Environment);
             await app.Services.SeedAdminRoleAsync();
 
             // ���������� CORS
@@ -77,6 +90,10 @@ namespace InShop.WebAPI
                 app.UseSwagger();
                 app.UseSwaggerUI();
             }
+            else
+            {
+                app.UseExceptionHandler();
+            }
 
             app.UseHttpsRedirection();
 
@@ -86,8 +103,10 @@ namespace InShop.WebAPI
 
             Directory.CreateDirectory(Path.Combine(app.Environment.WebRootPath ?? "wwwroot", "uploads", "products"));
 
+            app.UseMiddleware<InShop.WebAPI.Middleware.SessionCsrfMiddleware>();
             app.UseMiddleware<InShop.WebAPI.Middleware.SessionMiddleware>();
 
+            app.MapHealthChecks("/health");
             app.MapControllers();
 
             app.Run();

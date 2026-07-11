@@ -5,8 +5,9 @@
 import React, { useState, useEffect, useContext, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CartContext } from './CartContext.js';
-import { useSessionContext } from '../context/SessionContext.tsx';
-import { apiClient } from '../api/client.ts';
+import { useSessionContext } from '../context/SessionContext';
+import { apiClient } from '../api/client';
+import { saveCheckoutDraft } from '../utils/checkoutStorage';
 import './CheckoutForm.css';
 
 const CheckoutForm = ({ onSubmit }) => {
@@ -128,14 +129,28 @@ const CheckoutForm = ({ onSubmit }) => {
         }
 
         if (!isValid || !orderId) {
-            alert('Сессия не активна. Пожалуйста, подождите.');
+            setError('Сессия не активна. Пожалуйста, подождите.');
+            return;
+        }
+
+        if (cart.length === 0) {
+            setError('Корзина пуста. Добавьте товары перед оформлением заказа.');
             return;
         }
 
         setLoading(true);
         setError(null);
 
-        // Подготовка данных заказа
+        // Клиентские суммы нужны только для предпросмотра; backend обязан пересчитать заказ сам.
+        const displayItems = cart.map(item => ({
+            productId: item.productId,
+            productName: item.productName,
+            quantityItem: item.quantity,
+            displayPrice: Number(item.productPrice || 0)
+        }));
+        const displayItemsTotal = displayItems.reduce((sum, item) => sum + (item.displayPrice * item.quantityItem), 0);
+        const displayDeliveryCost = formData.shipMethod === 'Служба доставки' ? 1500 : 0;
+
         const orderData = {
             shipCompanyId: formData.shipMethod === 'Служба доставки' ? parseInt(formData.shipCompanyId) : 1,
             shipAddress: formData.shipMethod === 'Самовывоз' ? 'Самовывоз' : formData.shipAddress,
@@ -144,24 +159,16 @@ const CheckoutForm = ({ onSubmit }) => {
             customerFullname: formData.customerFullName,
             customerEmail: formData.customerEmail,
             customerPhoneNumber: formData.customerPhoneNumber,
-            orderTotalAmount: parseFloat((
-                cart.reduce((sum, item) => sum + (item.productPrice * item.quantity), 0) + 
-                (formData.shipMethod === 'Служба доставки' ? 1500 : 0)
-            ).toFixed(2)),
-            orderItems: cart.map(item => ({
-                productId: item.productId,
-                productName: item.productName,
-                quantityItem: item.quantity,
-                price: parseFloat(item.productPrice.toFixed(2))
-            })),
+            displayTotalAmount: parseFloat((displayItemsTotal + displayDeliveryCost).toFixed(2)),
+            orderItems: displayItems,
             shipCompanyName: formData.shipMethod === 'Служба доставки' ? 
                 shipCompanies.find(c => c.shipCompanyId === parseInt(formData.shipCompanyId))?.shipCompanyName : 
                 'Самовывоз'
         };
 
         try {
-            // Сохраняем в localStorage для отображения на странице успеха
-            localStorage.setItem('orderData', JSON.stringify(orderData));
+            // Временный checkout draft живёт только в текущей вкладке и имеет TTL.
+            saveCheckoutDraft(orderData);
             
             // Отправка кода подтверждения на email
             // Отправка письма через SMTP на бэкенде часто дольше 10 с — общий timeout в apiClient её обрывает
@@ -183,14 +190,11 @@ const CheckoutForm = ({ onSubmit }) => {
             console.error('Ошибка при оформлении:', err);
             
             if (err.response?.status === 401) {
-                alert('Сессия истекла. Страница будет перезагружена.');
-                window.location.reload();
+                setError('Сессия истекла. Обновите страницу и попробуйте снова.');
             } else if (err.code === 'ECONNABORTED') {
                 setError('Сервер не ответил вовремя. Попробуйте ещё раз — часто со второй попытки отправка быстрее.');
-                alert('Превышено время ожидания. Повторите отправку кода.');
             } else {
                 setError(err.response?.data?.message || 'Не удалось отправить код подтверждения.');
-                alert('Не удалось отправить код подтверждения. Проверьте соединение.');
             }
         } finally {
             setLoading(false);

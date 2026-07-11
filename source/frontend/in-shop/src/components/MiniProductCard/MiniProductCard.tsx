@@ -16,7 +16,7 @@ interface ProductSearchResultDto {
 
 interface MiniProductCardProps {
   product: ProductSearchResultDto;
-  onClick: () => void; // Обработчик клика на карточку
+  onClick: (event: React.MouseEvent<HTMLDivElement>) => void; // Обработчик клика на карточку
 }
 
 const MiniProductCard: React.FC<MiniProductCardProps> = ({ product, onClick }) => {

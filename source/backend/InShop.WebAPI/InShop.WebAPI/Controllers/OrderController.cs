@@ -271,9 +271,7 @@ namespace InShop.WebAPI.Controllers
 
             try
             {
-                _logger.LogInformation(
-                    "CreateOrder: Received {ItemCount} items for SessionId={SessionId}",
-                    request.OrderItems?.Count ?? 0, sessionId);
+                _logger.LogInformation("CreateOrder: checkout requested for SessionId={SessionId}", sessionId);
 
                 // ✅ Передаём валидированный SessionId в сервис
                 request.SessionId = sessionId.Value;
@@ -293,7 +291,7 @@ namespace InShop.WebAPI.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "CreateOrder: Unexpected error");
-                return StatusCode(500, new { error = "Ошибка при оформлении заказа.", details = ex.Message });
+                return StatusCode(500, new { error = "Ошибка при оформлении заказа." });
             }
         }
 
@@ -304,6 +302,12 @@ namespace InShop.WebAPI.Controllers
         [HttpGet("{id}")]
         public async Task<IActionResult> GetOrderById(int id)
         {
+            var (success, sessionId, error) = await GetValidatedSessionIdAsync();
+            if (!success || !sessionId.HasValue)
+            {
+                return Unauthorized(new { error = error });
+            }
+
             try
             {
                 var order = await _orderService.GetOrderByIdAsync(id);
@@ -311,8 +315,10 @@ namespace InShop.WebAPI.Controllers
                 if (order == null)
                     return NotFound(new { error = "Order not found" });
 
-                // Опционально: проверить, что заказ принадлежит текущей сессии
-                // if (order.SessionId != sessionId) return Forbid();
+                if (order.SessionId != sessionId.Value)
+                {
+                    return Forbid();
+                }
 
                 return Ok(order);
             }

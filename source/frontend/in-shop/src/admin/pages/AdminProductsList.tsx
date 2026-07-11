@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import adminClient from '../api/adminClient.ts';
-import AdminPagination from '../components/AdminPagination.tsx';
-import { AdminProduct, PagedResult } from '../types/adminTypes.ts';
+import adminClient from '../api/adminClient';
+import AdminPagination from '../components/AdminPagination';
+import { AdminProduct, PagedResult } from '../types/adminTypes';
 
 const AdminProductsList: React.FC = () => {
   const [data, setData] = useState<PagedResult<AdminProduct> | null>(null);
@@ -56,6 +56,7 @@ const AdminProductsList: React.FC = () => {
                 <th>Название</th>
                 <th>Цена</th>
                 <th>Склад</th>
+                <th>Резерв</th>
                 <th></th>
               </tr>
             </thead>
@@ -68,6 +69,7 @@ const AdminProductsList: React.FC = () => {
                   <td>
                     {p.productStockQuantity}
                   </td>
+                  <td>{p.reservedQuantity}</td>
                   <td>
                     <Link to={`/admin/products/${p.productId}`}>Изменить</Link>
                     {' | '}

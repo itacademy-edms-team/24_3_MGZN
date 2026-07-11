@@ -7,14 +7,14 @@ import { Routes, Route } from 'react-router-dom';
 
 // Pages
 import CatalogPage from '../pages/CatalogPage.js';
-import CategoryPage from '../pages/CategoryPage.tsx';
-import ProductPage from '../pages/ProductPage.tsx';
+import CategoryPage from '../pages/CategoryPage';
+import ProductPage from '../pages/ProductPage';
 import CheckoutPage from '../pages/CheckoutPage.js';
 import EmailVerificationPage from '../pages/EmailVerificationPage.js';
 import OrderSuccessPage from '../pages/OrderSuccessPage/OrderSuccessPage.js';
 import PaymentPage from '../pages/PaymentPage.js';
 import PaymentConfirmationPage from '../pages/PaymentConfirmationPage/PaymentConfirmationPage.js';
-import SearchResultsPage from '../pages/SearchResultPage/SearchResultsPage.tsx';
+import SearchResultsPage from '../pages/SearchResultPage/SearchResultsPage';
 
 const AppRoutes: React.FC = () => {
   return (

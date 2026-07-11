@@ -1,6 +1,6 @@
 // src/components/FiltersPanel/SpecFilterItem.tsx
 import React from 'react';
-import { SpecificationFilterDto } from '../../types/search';
+import { SpecificationFilterDto } from '../types/search';
 
 interface Props {
   spec: SpecificationFilterDto;

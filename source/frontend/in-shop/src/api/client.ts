@@ -2,12 +2,26 @@
 // Файл: src/api/client.ts
 // ============================================
 
-import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
+import axios, { AxiosInstance, AxiosError, AxiosRequestConfig, InternalAxiosRequestConfig } from 'axios';
 import { API_BASE_URL } from '../config/api.js';
 
 const STORAGE_KEY_ORDER_ID = 'currentOrderId';
 const STORAGE_KEY_SESSION_ID = 'currentSessionId';
 const SESSION_UPDATED_EVENT = 'session:updated';
+const isDevelopment = process.env.NODE_ENV === 'development';
+
+type RetriableRequestConfig = InternalAxiosRequestConfig & {
+    _retry?: boolean;
+    _skipSessionRetry?: boolean;
+};
+
+type SessionRetryRequestConfig = AxiosRequestConfig & {
+    _skipSessionRetry?: boolean;
+};
+
+let sessionRecreatePromise: Promise<void> | null = null;
+
+const isUserSessionEndpoint = (url?: string) => Boolean(url?.includes('/UserSession'));
 
 // Создаём инстанс axios
 export const apiClient: AxiosInstance = axios.create({
@@ -25,7 +39,9 @@ export const apiClient: AxiosInstance = axios.create({
 // Request interceptor - логирование запросов
 apiClient.interceptors.request.use(
     (config: InternalAxiosRequestConfig) => {
-        console.log(`[API Request] ${config.method?.toUpperCase()} ${config.url}`);
+        if (isDevelopment) {
+            console.log(`[API Request] ${config.method?.toUpperCase()} ${config.url}`);
+        }
         // Для отладки куки (в консоли видно только не-HttpOnly куки):
         // console.log('[API] Cookies:', document.cookie);
         return config;
@@ -39,20 +55,28 @@ apiClient.interceptors.request.use(
 // Response interceptor - обработка ошибок и авто-повтор сессии
 apiClient.interceptors.response.use(
     (response) => {
-        console.log(`[API Response] ${response.status} ${response.config.url}`);
+        if (isDevelopment) {
+            console.log(`[API Response] ${response.status} ${response.config.url}`);
+        }
         return response;
     },
     async (error: AxiosError) => {
-        const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+        const originalRequest = error.config as RetriableRequestConfig | undefined;
         
         // 401 - сессия истекла или невалидна
-        if (error.response?.status === 401) {
-            console.warn('[API] Session expired (401)');
+        if (
+            error.response?.status === 401 &&
+            originalRequest &&
+            !originalRequest._skipSessionRetry &&
+            !isUserSessionEndpoint(originalRequest.url)
+        ) {
+            if (isDevelopment) {
+                console.warn('[API] Session expired (401)');
+            }
             
             // Защита от бесконечного цикла повторных попыток
             if (originalRequest._retry) {
-                console.error('[API] Retry limit reached, reloading page');
-                window.location.reload();
+                console.error('[API] Retry limit reached');
                 return Promise.reject(error);
             }
             
@@ -61,39 +85,43 @@ apiClient.interceptors.response.use(
                 originalRequest._retry = true;
                 
                 try {
-                    console.log('[API] Attempting to recreate session...');
-                    
-                    // Создаём новую сессию (кука установится автоматически)
-                    const recreateResponse = await apiClient.post('/UserSession', {}, {
-                        // Важно: не добавляем withCredentials здесь — он уже в инстансе
-                    });
-
-                    // Если API вернул orderId/sessionId — сохраняем, чтобы фронт не жил "вслепую"
-                    // (создание через интерцептор происходило без записи в localStorage)
-                    const data = recreateResponse?.data as
-                        | { orderId?: number; sessionId?: number }
-                        | undefined;
-
-                    if (typeof data?.orderId === 'number') {
-                        localStorage.setItem(STORAGE_KEY_ORDER_ID, data.orderId.toString());
+                    if (isDevelopment) {
+                        console.log('[API] Attempting to recreate session...');
                     }
-                    if (typeof data?.sessionId === 'number') {
-                        localStorage.setItem(STORAGE_KEY_SESSION_ID, data.sessionId.toString());
+                    
+                    if (!sessionRecreatePromise) {
+                        sessionRecreatePromise = apiClient
+                            .post('/UserSession', {}, { _skipSessionRetry: true } as SessionRetryRequestConfig)
+                            .then((recreateResponse) => {
+                                const data = recreateResponse?.data as
+                                    | { orderId?: number; sessionId?: number }
+                                    | undefined;
+
+                                if (typeof data?.orderId === 'number') {
+                                    localStorage.setItem(STORAGE_KEY_ORDER_ID, data.orderId.toString());
+                                }
+                                if (typeof data?.sessionId === 'number') {
+                                    localStorage.setItem(STORAGE_KEY_SESSION_ID, data.sessionId.toString());
+                                }
+
+                                window.dispatchEvent(new Event(SESSION_UPDATED_EVENT));
+                            })
+                            .finally(() => {
+                                sessionRecreatePromise = null;
+                            });
                     }
 
-                    // Сообщаем хукам в этой вкладке, что сессия обновилась
-                    window.dispatchEvent(new Event(SESSION_UPDATED_EVENT));
+                    await sessionRecreatePromise;
                     
-                    console.log('[API] Session recreated, retrying original request');
+                    if (isDevelopment) {
+                        console.log('[API] Session recreated, retrying original request');
+                    }
                     
                     // Повторяем оригинальный запрос с обновлённой кукой
                     return apiClient(originalRequest);
                     
                 } catch (retryError) {
                     console.error('[API] Failed to recreate session', retryError);
-                    
-                    // Если не удалось создать сессию — перезагружаем страницу
-                    window.location.reload();
                     return Promise.reject(retryError);
                 }
             }

@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import './App.css';
+import './styles/pageReveal.css';
 
 import Header from './components/Header.js';
 import Footer from './components/Footer.js';
@@ -11,6 +12,7 @@ import AppRoutes from './components/AppRoutes';
 import ErrorBoundary from './components/ErrorBoundary';
 import { SessionProvider } from './context/SessionContext';
 import AdminRoutes from './admin/routes/AdminRoutes';
+import ScrollToTopButton from './components/ScrollToTopButton/ScrollToTopButton';
 
 /** Витрина: сессия + корзина. Покупательские потоки не изменены. */
 const ShopApp: React.FC = () => (
@@ -41,6 +43,7 @@ const ShopApp: React.FC = () => (
             </ErrorBoundary>
           </main>
           <Footer />
+          <ScrollToTopButton />
         </div>
       </CartProvider>
     </SessionHandler>

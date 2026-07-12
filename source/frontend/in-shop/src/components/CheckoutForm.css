@@ -1,157 +1,254 @@
-/* Форма оформления заказа */
+/* CheckoutForm — тема витрины */
+
 .checkout-form {
-    display:flex;
-    flex-direction: column;
-    gap:20px;
-    background-color: #fff;
-    padding: 30px;
-    border-radius: 20px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  background: #fff;
+  padding: 24px;
+  border: 2px solid #000;
+  box-shadow: 3px 3px 0 #000;
+  box-sizing: border-box;
 }
 
 .checkout-form h2 {
-    margin-top: 0;
-    font-size: 1.5em;
-    color: #333;
+  margin: 0 0 4px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #000;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #000;
 }
 
 .form-group {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    flex-direction: column;
-    gap: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .form-group label {
-    font-weight: 500;
-    color: #666;
+  font-size: 11px;
+  font-weight: 700;
+  color: #000;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.65;
 }
 
 .form-group input,
 .form-group textarea,
 .form-group select {
-    width: 80%;
-    padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 20px;
-    font-size: 1em;
-    transition: border-color 0.2s ease;
+  width: 100%;
+  padding: 12px 14px;
+  border: 2px solid #000;
+  border-radius: 0;
+  background: #fff;
+  color: #000;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  box-sizing: border-box;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
-
-.form-group input:focus,
-.form-group textarea:focus,
-.form-group select:focus {
-    border-color: #000;
-    outline: none;
+.form-group textarea {
+  min-height: 88px;
+  resize: vertical;
 }
 
-/* Стили для сообщений об ошибках */
-.error-message {
-    color: #ff4d4d; /* Красный цвет текста */
-    font-size: 0.9em; /* Уменьшенный размер шрифта */
-    margin: 5px 0 0 0; /* Отступ сверху */
-    text-align: left; /* Выравнивание текста по левому краю */
-    font-weight: 500; /* Полужирный текст */
-}
-
-/* Стили для полей ввода с ошибками */
-.form-group input,
-.form-group textarea,
 .form-group select {
-    width: 100%; /* Занимает всю ширину контейнера */
-    padding: 10px; /* Внутренние отступы */
-    border: 1px solid #ddd; /* Серая граница */
-    border-radius: 8px; /* Скругленные углы */
-    font-size: 1em; /* Размер шрифта */
-    transition: border-color 0.2s ease; /* Анимация при фокусе */
+  cursor: pointer;
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, #000 50%),
+    linear-gradient(135deg, #000 50%, transparent 50%);
+  background-position: calc(100% - 18px) calc(50% - 3px), calc(100% - 12px) calc(50% - 3px);
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+  padding-right: 36px;
+}
+
+.form-group input::placeholder,
+.form-group textarea::placeholder {
+  color: #000;
+  opacity: 0.4;
+  font-weight: 500;
 }
 
 .form-group input:focus,
 .form-group textarea:focus,
 .form-group select:focus {
-    border-color: #000; /* Черная граница при фокусе */
-    outline: none; /* Убираем стандартный outline */
+  outline: none;
+  background: #000;
+  color: #fff;
 }
 
-/* Стили для полей ввода с ошибками */
-.form-group input:invalid,
-.form-group textarea:invalid,
-.form-group select:invalid {
-    border-color: #ff4d4d; /* Красная граница при ошибке */
+.form-group input:focus::placeholder,
+.form-group textarea:focus::placeholder {
+  color: #fff;
+  opacity: 0.55;
 }
 
-.form-group input.valid,
-.form-group textarea.valid,
-.form-group select.valid {
-    border-color: #4caf50; /* Зеленая граница при корректном вводе */
+.form-group select:focus {
+  background-image: linear-gradient(45deg, transparent 50%, #fff 50%),
+    linear-gradient(135deg, #fff 50%, transparent 50%);
+  background-position: calc(100% - 18px) calc(50% - 3px), calc(100% - 12px) calc(50% - 3px);
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
 }
 
-.checkout-button {
-    display:flex;
-    align-items: center;
-    justify-content: center;
-    background-color: #000;
-    padding: 20px;
-    border-radius: 20px;
-    font-size: 18px;
+.checkout-form .error-message {
+  margin: 0;
+  color: #000;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
-.checkout-button:hover {
-    background-color: #333;
+.checkout-form .error-message.global {
+  border: 2px solid #000;
+  background: #000;
+  color: #fff;
+  padding: 12px 14px;
 }
 
-.submit-button {
-    background-color: #000; /* Черный фон */
-    color: #fff; /* Белый текст */
-    border: none; /* Убираем границу */
-    display:flex;
-    align-items: center;
-    justify-content: center;
-    background-color: #000;
-    padding: 20px;
-    border-radius: 20px;
-    font-size: 18px;
-    font-size: 1em; /* Размер шрифта */
-    cursor: pointer; /* Курсор указателя */
-    transition: background-color 0.3s ease; /* Анимация при наведении */
-    font-weight: 500; /* Полужирный текст */
-    margin-top: 20px; /* Отступ сверху */
-    width: 100%; /* Занимает всю ширину контейнера */
+.checkout-form .order-summary {
+  margin: 4px 0 0;
+  padding: 16px;
+  background: #fff;
+  border: 2px solid #000;
+  box-shadow: 2px 2px 0 #000;
 }
 
-.submit-button:hover {
-    background-color: #333; /* Темно-серый фон при наведении */
+.checkout-form .order-total {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
-.order-summary {
-    margin: 20px 0;
-    padding: 15px;
-    background-color: #f8f9fa;
-    border-radius: 8px;
-    border: 1px solid #e9ecef;
+.checkout-form .order-total:last-child {
+  margin: 12px 0 0;
+  padding-top: 12px;
+  border-top: 2px solid #000;
+  font-size: 16px;
+  font-weight: 800;
 }
 
-.order-total {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 8px;
+.checkout-form .order-total span:first-child {
+  color: #000;
+  opacity: 0.6;
+}
+
+.checkout-form .order-total span:last-child {
+  color: #000;
+}
+
+.checkout-form .submit-button {
+  width: 100%;
+  margin-top: 4px;
+  padding: 16px 24px;
+  border: 2px solid #000;
+  border-radius: 0;
+  background: #000;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  font-family: inherit;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  box-shadow: 4px 4px 0 #000;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.checkout-form .submit-button:hover:not(:disabled) {
+  background: #fff;
+  color: #000;
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 #000;
+}
+
+.checkout-form .submit-button:active:not(:disabled) {
+  transform: translate(0, 0);
+  box-shadow: 2px 2px 0 #000;
+}
+
+.checkout-form .submit-button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+  box-shadow: 2px 2px 0 #000;
+}
+
+.checkout-loading,
+.checkout-error {
+  border: 2px solid #000;
+  box-shadow: 3px 3px 0 #000;
+  padding: 24px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: center;
+}
+
+.checkout-error button {
+  margin-top: 12px;
+  padding: 10px 18px;
+  border: 2px solid #000;
+  background: #fff;
+  color: #000;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.checkout-error button:hover {
+  background: #000;
+  color: #fff;
+}
+
+@media (max-width: 768px) {
+  .checkout-form {
+    padding: 16px;
+    box-shadow: 2px 2px 0 #000;
+  }
+
+  .form-group input,
+  .form-group textarea,
+  .form-group select {
     font-size: 16px;
+    min-height: var(--touch-min, 44px);
+  }
+
+  .form-group textarea {
+    min-height: 100px;
+  }
+
+  .checkout-form .submit-button {
+    min-height: var(--touch-min, 44px);
+    padding: 14px 20px;
+  }
+
+  .checkout-error button {
+    min-height: var(--touch-min, 44px);
+    width: 100%;
+  }
 }
 
-.order-total:last-child {
-    font-weight: bold;
-    font-size: 18px;
-    margin-top: 10px;
-    padding-top: 10px;
-    border-top: 1px solid #dee2e6;
-}
+@media (max-width: 480px) {
+  .checkout-form {
+    padding: 14px 12px;
+  }
 
-.order-total span:first-child {
-    color: #495057;
-}
-
-.order-total span:last-child {
-    color: #212529;
+  .checkout-form h2 {
+    font-size: 1rem;
+  }
 }

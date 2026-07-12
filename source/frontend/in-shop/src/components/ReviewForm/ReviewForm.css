@@ -117,3 +117,25 @@
   box-shadow: none;
   transform: none;
 }
+
+@media (max-width: 768px) {
+  .review-form h3 {
+    font-size: clamp(1rem, 4vw, 20px);
+  }
+
+  .form-group textarea {
+    font-size: 16px;
+    min-height: 120px;
+  }
+
+  .form-actions {
+    flex-direction: column-reverse;
+    gap: 10px;
+  }
+
+  .form-actions button {
+    width: 100%;
+    min-height: var(--touch-min, 44px);
+    box-sizing: border-box;
+  }
+}

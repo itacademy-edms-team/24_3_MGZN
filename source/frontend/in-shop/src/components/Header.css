@@ -2,105 +2,216 @@
 
 /* Блок header */
 .header {
-    background-color: #000000; /* Цвет фона */
-    color: #ffffff; /* Цвет текста */
-    width: 100%; /* Занимает всю ширину */
+    background-color: #000000;
+    color: #ffffff;
+    width: 100%;
     position: sticky;
+    top: 0;
     z-index: 1000;
+    padding-top: env(safe-area-inset-top, 0px);
 }
 
 /* Контейнер внутри шапки */
 .header__container {
-    display: flex; /* Используем flexbox для расположения дочерних элементов */
-    align-items: center; /* Выравнивание по вертикали по центру */
-    justify-content: space-between; /* Распределяем пространство: логотип слева, корзина справа, поиск - по центру или между ними */
-    padding: 20px 20px; /* Внутренние отступы */
-    margin: 0 auto; /* Центрируем контейнер, если задана max-width */
-    max-width: 1200px; /* (Опционально) Ограничиваем максимальную ширину */
-    gap: 20px; /* Отступ между элементами (может использоваться вместо margin) */
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 20px;
+    margin: 0 auto;
+    max-width: 1200px;
+    gap: 20px;
+}
+
+.header__container--home {
+    justify-content: space-between;
 }
 
 /* Логотип */
 .header__logo {
-    margin: 0; /* Убираем стандартные отступы заголовка */
-    font-size: 1.5em; /* Размер шрифта */
-    color: inherit; /* Наследуем цвет текста от .header */
-    text-decoration: none; /* Убираем подчеркивание ссылки */
+    margin: 0;
+    font-size: 1.5em;
+    color: inherit;
+    text-decoration: none;
 }
 
 /* Ссылка логотипа */
 .header__logo-link {
-    color: inherit; /* Наследуем цвет текста */
-    text-decoration: none; /* Убираем подчеркивание */
-    display: block; /* Делаем ссылку блочной для удобства */
+    color: inherit;
+    text-decoration: none;
+    display: block;
 }
 
+/* На главной слот шапки невидим, пока логотип «летит»; после settle — снова виден */
+body.home-logo-morph-active:not(.home-logo-morph-settled) .header__logo-link--morph {
+    opacity: 0;
+    pointer-events: none;
+}
+
+body.home-logo-morph-active.home-logo-morph-settled .header__logo-link--morph {
+    opacity: 1;
+    pointer-events: auto;
+    transition: opacity 0.15s ease;
+}
+
+.home-logo-morph {
+    font-family: inherit;
+    user-select: none;
+}
+
+/* Hero-бренд на главной — только якорь под morph (скрыт) */
+body.home-logo-morph-active .catalog-hero__brand {
+    visibility: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    body.home-logo-morph-active .catalog-hero__brand {
+        visibility: visible;
+    }
+
+    body.home-logo-morph-active .header__logo-link--morph {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .home-logo-morph {
+        display: none !important;
+    }
+
+    .header__container {
+        animation: none !important;
+        opacity: 1 !important;
+        transform: none !important;
+    }
+}
 
 /* Кнопка корзины */
 .header__cart-button {
     background: none;
     border: none;
-    padding: 0;
-    cursor: pointer; /* Курсор указывает на кликабельность */
+    padding: 6px;
+    min-width: var(--touch-min, 44px);
+    min-height: var(--touch-min, 44px);
+    cursor: pointer;
     position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
 }
 
 /* Иконка корзины */
 .header__cart-icon-img {
     width: 2.5rem;
-    height: 2.5rem; 
+    height: 2.5rem;
     display: block;
 }
 
 /* Счётчик товаров в корзине */
 .header__cart-count {
-    position: absolute; /* Абсолютное позиционирование относительно .header__cart-button */
-    top: -5px; /* Позиция сверху (можно регулировать) */
-    right: -5px; /* Позиция справа (можно регулировать) */
-    background-color: #ff4d4d; /* Цвет фона счётчика */
-    color: #fff; /* Цвет текста счётчика */
-    font-size: 0.8em; /* Размер шрифта */
-    font-weight: bold; /* Жирность шрифта */
-    border-radius: 50%; /* Делаем круглым */
-    width: 1rem; /* Ширина */
-    height: 1rem; /* Высота */
-    display: flex; /* Используем flex для центрирования текста */
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    background-color: #ff4d4d;
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: bold;
+    border-radius: 50%;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    display: flex;
     justify-content: center;
     align-items: center;
-    text-align: center; /* Выравнивание текста по центру */
-    line-height: 1; /* Высота строки для лучшего центрирования */
-    box-sizing: border-box; /* Включаем границу в размеры */
+    text-align: center;
+    line-height: 1;
+    box-sizing: border-box;
+    border: 2px solid #000000;
 }
 
 /* --- Адаптивность (медиа-запросы) --- */
 
 @media (max-width: 768px) {
     .header__container {
-        padding: 8px 15px; /* Уменьшаем отступы на мобильных */
-        gap: 15px; /* Уменьшаем отступ между элементами */
+        animation: page-reveal-fade-up 0.45s ease-out both;
+        padding: 10px var(--space-edge, 16px);
+        gap: 8px 12px;
+        max-width: none;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    /* Главная: одна строка — логотип и корзина */
+    .header__container--home {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: calc(var(--touch-min, 44px) + 20px);
+    }
+
+    /* Внутренние страницы: одна строка — логотип, компактный поиск, корзина */
+    .header__container:not(.header__container--home) {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+    }
+
+    .header__logo-link {
+        flex-shrink: 0;
+    }
+
+    .header__search {
+        flex: 1 1 auto;
+        min-width: 0;
+        max-width: 11.5rem;
+    }
+
+    .header__cart-button {
+        flex-shrink: 0;
     }
 
     .header__logo {
-        font-size: 1.3em; /* Уменьшаем размер логотипа */
+        font-size: clamp(1.1rem, 4.5vw, 1.25rem);
+        white-space: nowrap;
+        letter-spacing: -0.02em;
     }
 
-    .header__search-wrapper {
-        max-width: 200px;
-        flex-grow: 0; 
+    .header .search-component-wrapper {
+        max-width: 100%;
+        width: 100%;
     }
 
     .header__cart-icon-img {
-        width: 35px; /* Уменьшаем иконку корзины */
-        height: 35px;
+        width: 2.125rem;
+        height: 2.125rem;
     }
 
     .header__cart-count {
-        width: 18px;
-        height: 18px;
-        font-size: 0.7em;
+        top: 0;
+        right: 0;
+        min-width: 19px;
+        height: 19px;
+        font-size: 0.72rem;
     }
 }
 
+@media (max-width: 480px) {
+    .header__container {
+        padding: 8px var(--space-edge, 14px);
+        gap: 8px 10px;
+    }
+
+    .header__container--home {
+        min-height: calc(var(--touch-min, 44px) + 16px);
+    }
+
+    .header__search {
+        max-width: 9.5rem;
+    }
+
+    .header__cart-icon-img {
+        width: 2rem;
+        height: 2rem;
+    }
+}

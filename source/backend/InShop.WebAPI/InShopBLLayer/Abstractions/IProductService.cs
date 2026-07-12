@@ -23,6 +23,8 @@ namespace InShopBLLayer.Abstractions
             string sortBy = "ProductName",
             string sortOrder = "asc");
         Task<IEnumerable<ProductDto>> GetRandomProducts();
+  /// <summary>По одному товару в наличии из каждой категории (выбор стабилен в пределах минуты UTC).</summary>
+  Task<IEnumerable<ProductDto>> GetPicksForYouAsync();
         Task<List<ProductSpecDto>?> GetProductSpecificationsAsync(int id);
         Task<CategorySpecificationFiltersDto?> GetSpecificationFiltersForCategoryAsync(string categoryName);
         Task<Dictionary<string, object>?> ValidateSpecFiltersAsync(Dictionary<string, object> specFilters, string category);

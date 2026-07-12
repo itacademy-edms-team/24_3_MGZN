@@ -62,3 +62,50 @@
 .social-links a:hover {
     color: #ff4d4d;
 }
+
+@media (max-width: 768px) {
+    .footer {
+        padding: 24px var(--space-edge, 16px);
+        padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    }
+
+    .categories {
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 16px;
+        width: 100%;
+    }
+
+    .categories ul li a {
+        display: inline-flex;
+        align-items: center;
+        min-height: var(--touch-min, 44px);
+        padding: 4px 8px;
+        font-size: 0.95em;
+    }
+
+    .social-links {
+        gap: 16px;
+        margin-bottom: 16px;
+    }
+
+    .social-links a {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: var(--touch-min, 44px);
+        min-height: var(--touch-min, 44px);
+    }
+}
+
+@media (max-width: 480px) {
+    .footer {
+        padding: 20px var(--space-edge, 14px);
+        padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    }
+
+    .logo img {
+        width: 64px;
+    }
+}

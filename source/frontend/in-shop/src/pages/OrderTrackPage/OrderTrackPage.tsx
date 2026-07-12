@@ -177,7 +177,7 @@ const OrderTrackPage: React.FC = () => {
   if (error || !order) {
     return (
       <div className="order-track-page">
-        <div className="order-track-container order-track-container--error">
+        <div className="order-track-container order-track-container--error page-reveal">
           <h1>Не удалось открыть заказ</h1>
           <p>{error || 'Заказ не найден.'}</p>
           <Link to="/" className="order-track-home-link">
@@ -190,7 +190,7 @@ const OrderTrackPage: React.FC = () => {
 
   return (
     <div className="order-track-page">
-      <div className="order-track-container">
+      <div className="order-track-container page-reveal">
         <header
           className={`order-track-header ${timeline.cancelled ? 'order-track-header--cancelled' : ''}`}
         >

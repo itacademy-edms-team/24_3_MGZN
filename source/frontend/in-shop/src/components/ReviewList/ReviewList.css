@@ -62,3 +62,27 @@
   box-shadow: none;
   transform: none;
 }
+
+@media (max-width: 768px) {
+  .review-list-container {
+    margin-top: 28px;
+    padding-top: 28px;
+  }
+
+  .review-list-container h3 {
+    font-size: clamp(1.1rem, 4vw, 24px);
+    margin-bottom: 20px;
+  }
+
+  .no-reviews {
+    font-size: 14px;
+    padding: 16px;
+  }
+
+  .load-more-container button {
+    width: 100%;
+    max-width: 320px;
+    min-height: var(--touch-min, 44px);
+    box-sizing: border-box;
+  }
+}

@@ -1,4 +1,4 @@
-﻿using Contracts.Dtos;
+using Contracts.Dtos;
 using InShopBLLayer.Abstractions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -132,7 +132,7 @@ namespace InShop.WebAPI.Controllers
                     var filterOnlyResult = await _redis.GetDatabase().ExecuteAsync("FT.SEARCH",
                         "idx:products",
                         filterOnlyQuery,
-                        "RETURN", "7", "name", "description", "price", "category", "stock", "availability", "image_url",
+                        "RETURN", "9", "name", "description", "price", "category", "stock", "availability", "image_url", "average_rating", "reviews_count",
                         "LIMIT", "0", filterOnlyFetchLimit.ToString(),
                         "DIALECT", "4"
                     );
@@ -201,7 +201,7 @@ namespace InShop.WebAPI.Controllers
                     "idx:products",
                     mainVectorQuery,
                     "PARAMS", "2", "BLOB", (RedisValue)queryVectorBytes,
-                    "RETURN", "8", "name", "description", "price", "category", "stock", "availability", "image_url", "vector_distance",
+                    "RETURN", "10", "name", "description", "price", "category", "stock", "availability", "image_url", "average_rating", "reviews_count", "vector_distance",
                     "DIALECT", "4"
                 );
 
@@ -210,7 +210,7 @@ namespace InShop.WebAPI.Controllers
                     mainLexicalQuery,
                     "SCORER", "BM25",
                     "WITHSCORES",
-                    "RETURN", "7", "name", "description", "price", "category", "stock", "availability", "image_url",
+                    "RETURN", "9", "name", "description", "price", "category", "stock", "availability", "image_url", "average_rating", "reviews_count",
                     "LIMIT", "0", fetchLimit.ToString(),
                     "DIALECT", "4"
                 );
@@ -220,7 +220,7 @@ namespace InShop.WebAPI.Controllers
                     "idx:products",
                     recVectorQuery,
                     "PARAMS", "2", "BLOB", (RedisValue)queryVectorBytes,
-                    "RETURN", "8", "name", "description", "price", "category", "stock", "availability", "image_url", "vector_distance",
+                    "RETURN", "10", "name", "description", "price", "category", "stock", "availability", "image_url", "average_rating", "reviews_count", "vector_distance",
                     "DIALECT", "4"
                 );
 
@@ -229,7 +229,7 @@ namespace InShop.WebAPI.Controllers
                     recLexicalQuery,
                     "SCORER", "BM25",
                     "WITHSCORES",
-                    "RETURN", "7", "name", "description", "price", "category", "stock", "availability", "image_url",
+                    "RETURN", "9", "name", "description", "price", "category", "stock", "availability", "image_url", "average_rating", "reviews_count",
                     "LIMIT", "0", (RecommendationLimit + RecommendationBuffer).ToString(),
                     "DIALECT", "4"
                 );
@@ -536,6 +536,12 @@ namespace InShop.WebAPI.Controllers
                 StockQuantity = int.TryParse(fieldDict.GetValueOrDefault("stock", ""), out var stock) ? stock : 0,
                 IsAvailable = fieldDict.GetValueOrDefault("availability") == "InStock",
                 ImageUrl = fieldDict.GetValueOrDefault("image_url", string.Empty),
+                AverageRating = decimal.TryParse(
+                    fieldDict.GetValueOrDefault("average_rating", ""),
+                    System.Globalization.NumberStyles.Number,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    out var rating) ? rating : 0,
+                ReviewsCount = int.TryParse(fieldDict.GetValueOrDefault("reviews_count", ""), out var reviews) ? reviews : 0,
             };
         }
 
@@ -745,7 +751,9 @@ namespace InShop.WebAPI.Controllers
                     Category = p.ProductCategoryName,
                     StockQuantity = p.ProductStockQuantity,
                     IsAvailable = p.ProductAvailability,
-                    ImageUrl = p.ImageUrl ?? string.Empty
+                    ImageUrl = p.ImageUrl ?? string.Empty,
+                    AverageRating = p.AverageRating,
+                    ReviewsCount = p.ReviewsCount
                 })
                 .ToList();
         }

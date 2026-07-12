@@ -1,4 +1,4 @@
-﻿using InShopDbModels.Abstractions;
+using InShopDbModels.Abstractions;
 using InShopDbModels.Data;
 using InShopDbModels.Models;
 using Microsoft.EntityFrameworkCore;
@@ -59,6 +59,15 @@ namespace InShopDbModels.Repositories
         {
             return await _appDbContext.Products
                 .Where(p => p.ProductCategoryId == categoryId)
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<Product>> GetInStockProductsWithCategoryAsync()
+        {
+            return await _appDbContext.Products
+                .AsNoTracking()
+                .Include(p => p.ProductCategory)
+                .Where(p => p.ProductAvailability && p.ProductStockQuantity > 0)
                 .ToListAsync();
         }
 

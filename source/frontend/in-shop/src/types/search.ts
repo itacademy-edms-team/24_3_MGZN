@@ -9,6 +9,8 @@ export interface ProductSearchResultDto {
   stockQuantity: number;
   isAvailable: boolean;
   imageUrl: string;
+  averageRating?: number;
+  reviewsCount?: number;
 }
 
 export interface CategoryDto {

@@ -120,7 +120,7 @@ const OrderSuccessPage = () => {
 
     if (sessionError || !isValid) {
         return (
-            <div className="order-success-page error">
+            <div className="order-success-page error page-reveal">
                 <p>⚠️ Ошибка сессии: {sessionError || 'Сессия не активна'}</p>
                 <button type="button" onClick={() => window.location.reload()}>Повторить</button>
             </div>
@@ -129,7 +129,7 @@ const OrderSuccessPage = () => {
 
     if (!orderData) {
         return (
-            <div className="order-success-page">
+            <div className="order-success-page page-reveal">
                 <p>Данные заказа не найдены.</p>
                 <button type="button" onClick={() => navigate('/')}>На главную</button>
             </div>
@@ -168,14 +168,14 @@ const OrderSuccessPage = () => {
 
     return (
         <div className="order-success-page">
-            <div className="order-success-container">
+            <div className="order-success-container page-reveal">
                 <div className="order-success-header">
                     <h1>Заказ оформлен</h1>
                     <p className="order-number">Номер заказа: <strong>#{completedOrderId || 'N/A'}</strong></p>
                 </div>
 
                 <div className="order-success-content">
-                    <div className="order-info">
+                    <div className="order-info page-reveal page-reveal--delay-1">
                         <h2>Информация о заказе</h2>
                         <div className="info-grid">
                             <div className="info-item">
@@ -199,7 +199,7 @@ const OrderSuccessPage = () => {
                         </div>
                     </div>
 
-                    <div className="customer-info">
+                    <div className="customer-info page-reveal page-reveal--delay-2">
                         <h2>Контактная информация</h2>
                         <div className="info-grid">
                             <div className="info-item">
@@ -217,7 +217,7 @@ const OrderSuccessPage = () => {
                         </div>
                     </div>
 
-                    <div className="order-items">
+                    <div className="order-items page-reveal page-reveal--delay-3">
                         <h2>Состав заказа ({orderItems.length})</h2>
                         <div className="items-list">
                             {orderItems.map((item, index) => (
@@ -253,7 +253,7 @@ const OrderSuccessPage = () => {
                     </div>
 
                     {orderData.payMethod === 'Онлайн' && (
-                        <div className="payment-reminder">
+                        <div className="payment-reminder page-reveal page-reveal--delay-4">
                             <div className="reminder-icon">!</div>
                             <div className="reminder-content">
                                 <h3>Требуется оплата</h3>
@@ -271,7 +271,7 @@ const OrderSuccessPage = () => {
                     )}
                 </div>
 
-                <div className="order-success-footer">
+                <div className="order-success-footer page-reveal-block">
                     <p>Спасибо за покупку! Детали заказа также отправлены на email.</p>
                     <div className="order-success-actions">
                         {trackingPath && (

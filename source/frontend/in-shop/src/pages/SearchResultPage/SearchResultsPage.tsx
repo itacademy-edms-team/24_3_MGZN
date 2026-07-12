@@ -5,11 +5,14 @@ import { useDebounce } from '../../hooks/useDebounce';
 import { useProductSearch } from '../../hooks/useProductSearch';
 import { parseFiltersFromUrl } from '../../utils/filters';
 import { FiltersState, SearchRequestDto } from '../../types/search';
+import { ProductCardModel, toProductCardModels } from '../../utils/searchProductMapper';
 import FiltersPanel from '../../components/FiltersPanel/FiltersPanel';
 import ActiveFiltersBar from '../../components/ActiveFiltersBar';
 import ProductCard from '../../components/ProductCard.jsx';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import SortMenu, { SortOption } from '../../components/SortMenu/SortMenu';
+import Modal from '../../components/Modal';
+import { useMatchMedia } from '../../hooks/useMatchMedia';
 
 // Swiper imports
 import { Swiper, SwiperSlide } from 'swiper/react';
@@ -31,11 +34,40 @@ const PAGE_SIZE = 12;
 const DEBOUNCE_DELAY = 400;
 const isDevelopment = process.env.NODE_ENV === 'development';
 
-// 🔧 FIX: Выносим блок рекомендаций в отдельный мемоизированный компонент
+// Блок рекомендаций: на mobile — сетка, на desktop — Swiper
 const RecommendationsSection = memo<{
-  products: Array<{ productId: number; productName: string; productPrice: number; imageUrl?: string }>;
+  products: ProductCardModel[];
 }>(({ products }) => {
-  const [swiperInstance, setSwiperInstance] = useState<any>(null);
+  const isMobileLayout = useMatchMedia('(max-width: 768px)');
+
+  if (products.length === 0) return null;
+
+  if (isMobileLayout) {
+    return (
+      <section className="recommendations-section" aria-labelledby="recommendations-title">
+        <h3 id="recommendations-title" className="recommendations-title">
+          Рекомендуем также
+        </h3>
+        <ul className="recommendations-grid" aria-label="Рекомендуемые товары">
+          {products.map((product) => (
+            <li key={`rec-${product.productId}`} className="recommendations-grid__item">
+              <ProductCard product={product} />
+            </li>
+          ))}
+        </ul>
+      </section>
+    );
+  }
+
+  return (
+    <RecommendationsCarousel products={products} />
+  );
+});
+
+RecommendationsSection.displayName = 'RecommendationsSection';
+
+const RecommendationsCarousel = memo<{ products: ProductCardModel[] }>(({ products }) => {
+  const [swiperInstance, setSwiperInstance] = useState<import('swiper').Swiper | null>(null);
   const [showNavigationButtons, setShowNavigationButtons] = useState(false);
 
   useEffect(() => {
@@ -54,8 +86,6 @@ const RecommendationsSection = memo<{
         slidesPerView = 3;
       } else if (windowWidth >= 640) {
         slidesPerView = 2;
-      } else {
-        slidesPerView = 1;
       }
 
       setShowNavigationButtons(products.length > slidesPerView);
@@ -67,36 +97,34 @@ const RecommendationsSection = memo<{
   }, [swiperInstance, products.length]);
 
   const handlePrevClick = useCallback(() => {
-    if (swiperInstance) {
-      swiperInstance.slidePrev();
-    }
+    swiperInstance?.slidePrev();
   }, [swiperInstance]);
 
   const handleNextClick = useCallback(() => {
-    if (swiperInstance) {
-      swiperInstance.slideNext();
-    }
+    swiperInstance?.slideNext();
   }, [swiperInstance]);
 
-  // 🔧 FIX: Используем useMemo для стабилизации слайдов
-  const slides = useMemo(() => {
-    return products.map(product => (
-      <SwiperSlide key={`rec-${product.productId}`} className="recommendation-slide">
-        <ProductCard product={product} />
-      </SwiperSlide>
-    ));
-  }, [products]);
-
-  if (products.length === 0) return null;
+  const slides = useMemo(
+    () =>
+      products.map((product) => (
+        <SwiperSlide key={`rec-${product.productId}`} className="recommendation-slide">
+          <ProductCard product={product} />
+        </SwiperSlide>
+      )),
+    [products]
+  );
 
   return (
-    <div className="recommendations-section">
-      <h3 className="recommendations-title">Рекомендуем также</h3>
-      
+    <section className="recommendations-section" aria-labelledby="recommendations-title">
+      <h3 id="recommendations-title" className="recommendations-title">
+        Рекомендуем также
+      </h3>
+
       <div className="recommendations-slider-wrapper">
         {showNavigationButtons && (
-          <button 
-            className="recommendations-swiper-button-prev" 
+          <button
+            type="button"
+            className="recommendations-swiper-button-prev"
             onClick={handlePrevClick}
             aria-label="Предыдущий слайд"
           >
@@ -108,8 +136,11 @@ const RecommendationsSection = memo<{
           <Swiper
             onSwiper={setSwiperInstance}
             modules={[Pagination]}
-            spaceBetween={20}
+            spaceBetween={24}
             slidesPerView={1}
+            watchOverflow
+            observer
+            observeParents
             pagination={{ clickable: true }}
             breakpoints={{
               640: {
@@ -118,11 +149,11 @@ const RecommendationsSection = memo<{
               },
               768: {
                 slidesPerView: 3,
-                spaceBetween: 30,
+                spaceBetween: 24,
               },
               1024: {
                 slidesPerView: 4,
-                spaceBetween: 32,
+                spaceBetween: 24,
               },
             }}
             className="recommendations-swiper"
@@ -132,8 +163,9 @@ const RecommendationsSection = memo<{
         </div>
 
         {showNavigationButtons && (
-          <button 
-            className="recommendations-swiper-button-next" 
+          <button
+            type="button"
+            className="recommendations-swiper-button-next"
             onClick={handleNextClick}
             aria-label="Следующий слайд"
           >
@@ -141,35 +173,22 @@ const RecommendationsSection = memo<{
           </button>
         )}
       </div>
-    </div>
+    </section>
   );
 });
 
-RecommendationsSection.displayName = 'RecommendationsSection';
+RecommendationsCarousel.displayName = 'RecommendationsCarousel';
 
-// 🔧 FIX: Выносим сетку товаров в отдельный компонент
-const ProductsGrid = memo<{
-  products: Array<{ productId: number; productName: string; productPrice: number; imageUrl?: string }>;
-}>(({ products }) => {
-  // 🔧 FIX: Стабилизируем продукты через useMemo
-  const productElements = useMemo(() => {
-    return products.map((product) => (
-      <div 
-        key={`main-${product.productId}`} 
-        className="product-card-wrapper"
-        style={{ animation: 'fadeInUp 0.4s ease-out forwards' }}
-      >
+// Сетка товаров — ProductCard напрямую, без лишних обёрток
+const ProductsGrid = memo<{ products: ProductCardModel[] }>(({ products }) => (
+  <ul className="products-grid" aria-label="Список товаров">
+    {products.map((product) => (
+      <li key={product.productId} className="products-grid__item">
         <ProductCard product={product} />
-      </div>
-    ));
-  }, [products]);
-
-  return (
-    <div className="products-grid">
-      {productElements}
-    </div>
-  );
-});
+      </li>
+    ))}
+  </ul>
+));
 
 ProductsGrid.displayName = 'ProductsGrid';
 
@@ -230,6 +249,11 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
   const debouncedSort = useDebounce(sort, DEBOUNCE_DELAY);
   const debouncedSpecFilters = useDebounce(specFilters, DEBOUNCE_DELAY);
 
+  const filtersRef = useRef(filters);
+  const sortRef = useRef(sort);
+  filtersRef.current = filters;
+  sortRef.current = sort;
+
   // Синхронизация URL -> State
   useEffect(() => {
     if (isUpdatingFromUrl.current) {
@@ -244,40 +268,44 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
       category: forcedCategory !== undefined ? forcedCategory : (urlFilters.category || ''),
       inStock: urlFilters.inStock !== undefined ? urlFilters.inStock : null,
     };
-    
-    let hasFilterChanges = false;
-    setFilters(prev => {
-      const hasChanges = Object.keys(newFilters).some(
-        key => prev[key as keyof FiltersState] !== newFilters[key as keyof FiltersState]
-      );
-      hasFilterChanges = hasChanges;
-      return hasChanges ? newFilters : prev;
-    });
-    
+
     const newSort = {
       option: searchParams.get('sort') || 'relevance',
       order: (searchParams.get('order') as 'asc' | 'desc') || 'desc',
     };
-    
-    let hasSortChanges = false;
-    setSort(prev => {
-      if (prev.option !== newSort.option || prev.order !== newSort.order) {
-        hasSortChanges = true;
-        return newSort;
-      }
-      return prev;
-    });
-    
+
+    const hasFilterChanges = (
+      filtersRef.current.query !== newFilters.query ||
+      filtersRef.current.minPrice !== newFilters.minPrice ||
+      filtersRef.current.maxPrice !== newFilters.maxPrice ||
+      filtersRef.current.category !== newFilters.category ||
+      filtersRef.current.inStock !== newFilters.inStock
+    );
+
+    const hasSortChanges =
+      sortRef.current.option !== newSort.option ||
+      sortRef.current.order !== newSort.order;
+
     const currentSpecsParam = searchParams.get('specs');
-    if (currentSpecsParam !== lastAppliedSpecsParamRef.current) {
-      lastAppliedSpecsParamRef.current = currentSpecsParam;
-      if (urlSpecFilters !== undefined) {
-        setSpecFiltersState(urlSpecFilters);
-      }
+    const specsChanged = currentSpecsParam !== lastAppliedSpecsParamRef.current;
+
+    if (hasFilterChanges) {
+      setFilters(newFilters);
     }
-    
-    if (hasFilterChanges || hasSortChanges || urlSpecFilters) {
+
+    if (hasSortChanges) {
+      setSort(newSort);
+    }
+
+    if (specsChanged) {
+      lastAppliedSpecsParamRef.current = currentSpecsParam;
+      setSpecFiltersState(urlSpecFilters);
+    }
+
+    if (hasFilterChanges || hasSortChanges || specsChanged) {
       clear();
+      lastSearchKeyRef.current = '';
+      lastSearchParamsRef.current = null;
     }
   }, [urlQuery, urlFilters, forcedCategory, searchParams, urlSpecFilters, clear]);
 
@@ -415,7 +443,7 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
     lastSearchParamsRef.current = request;
     
     search(request, false);
-  }, [debouncedFilters, debouncedSort, debouncedSpecFilters, search, clear, results.length, recommended.length]);
+  }, [debouncedFilters, debouncedSort, debouncedSpecFilters, search, clear]);
 
   const handleLoadMore = useCallback(() => {
     if (!lastSearchParamsRef.current) return;
@@ -559,25 +587,16 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
     return `${sort.option}-${sort.order}` as SortOption;
   }, [sort.option, sort.order]);
 
-  // 🔧 FIX: Мемоизируем адаптированные продукты
-  const adaptedProducts = useMemo(() => {
-    return results.map(p => ({
-      productId: p.id,
-      productName: p.name,
-      productPrice: p.price,
-      imageUrl: p.imageUrl,
-    }));
-  }, [results]);
+  // 🔧 Мемоизируем адаптированные продукты
+  const adaptedProducts = useMemo(
+    () => toProductCardModels(results),
+    [results]
+  );
 
-  // 🔧 FIX: Мемоизируем адаптированные рекомендации
-  const adaptedRecommended = useMemo(() => {
-    return recommended.map(p => ({
-      productId: p.id,
-      productName: p.name,
-      productPrice: p.price,
-      imageUrl: p.imageUrl,
-    }));
-  }, [recommended]);
+  const adaptedRecommended = useMemo(
+    () => toProductCardModels(recommended),
+    [recommended]
+  );
 
   const getPageTitle = useCallback(() => {
     if (pageTitleOverride) return pageTitleOverride;
@@ -614,6 +633,62 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
   const showMainEmptyState = !loading && !error && hasSearchCriteria && adaptedProducts.length === 0;
   const showIdleHint = !loading && !error && !hasSearchCriteria;
 
+  const isMobileFilters = useMatchMedia('(max-width: 768px)');
+  const [filtersModalOpen, setFiltersModalOpen] = useState(false);
+
+  /** Ключ для перезапуска каскадной анимации сетки на mobile при смене выдачи */
+  const mobileGridRevealKey = useMemo(
+    () =>
+      JSON.stringify({
+        query: debouncedFilters.query?.trim() ?? '',
+        category: debouncedFilters.category,
+        minPrice: debouncedFilters.minPrice,
+        maxPrice: debouncedFilters.maxPrice,
+        inStock: debouncedFilters.inStock,
+        specFilters: debouncedSpecFilters,
+        sortBy: debouncedSort.option,
+        sortOrder: debouncedSort.order,
+      }),
+    [debouncedFilters, debouncedSpecFilters, debouncedSort]
+  );
+
+  useEffect(() => {
+    if (!isMobileFilters) {
+      setFiltersModalOpen(false);
+    }
+  }, [isMobileFilters]);
+
+  useEffect(() => {
+    if (!filtersModalOpen) return undefined;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [filtersModalOpen]);
+
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (filters.minPrice) count += 1;
+    if (filters.maxPrice) count += 1;
+    if (filters.category && forcedCategory === undefined) count += 1;
+    if (filters.inStock !== null) count += 1;
+    if (specFilters) count += Object.keys(specFilters).length;
+    return count;
+  }, [filters, specFilters, forcedCategory]);
+
+  const filtersPanel = (
+    <FiltersPanel
+      filters={filters}
+      specFilters={specFilters}
+      onBasicFilterChange={handleBasicFilterChange}
+      onSpecFilterChange={handleSpecFilterChange}
+      onClearSpecFilters={handleClearSpecFilters}
+      isCategoryForced={forcedCategory !== undefined}
+      onSpecsLoaded={handleSpecsLoaded}
+    />
+  );
+
   return (
     <div className="search-results-page">
       <div className="search-results-header">
@@ -624,29 +699,40 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
         filters={filters}
         specFilters={specFilters}
         specDisplayNames={specDisplayNames}
+        hideQueryChip
         onRemoveBasic={handleRemoveBasicFilter}
         onRemoveSpec={handleRemoveSpecFilter}
         onClearAll={handleClearAllFilters}
       />
 
       <div className="search-results-layout">
-        <FiltersPanel
-          filters={filters}
-          specFilters={specFilters}
-          onBasicFilterChange={handleBasicFilterChange}
-          onSpecFilterChange={handleSpecFilterChange}
-          onClearSpecFilters={handleClearSpecFilters}
-          isCategoryForced={forcedCategory !== undefined}
-          onSpecsLoaded={handleSpecsLoaded}
-        />
+        <aside className="search-filters-sidebar" aria-hidden={isMobileFilters}>
+          {filtersPanel}
+        </aside>
 
-        <main className="search-results-main">
-          <div className="sort-menu__container">
-            <SortMenu
-              currentSortOption={getCurrentSortOptionForMenu()}
-              onSortOptionChange={handleSortMenuChange}
-              className="search-results__sort"
-            />
+        <div className="search-results-main">
+          <div className="search-results-toolbar">
+            <div className="sort-menu__container search-results-toolbar__sort">
+              <SortMenu
+                currentSortOption={getCurrentSortOptionForMenu()}
+                onSortOptionChange={handleSortMenuChange}
+                className="search-results__sort"
+              />
+            </div>
+            <button
+              type="button"
+              className="filters-open-btn"
+              onClick={() => setFiltersModalOpen(true)}
+              aria-haspopup="dialog"
+              aria-expanded={filtersModalOpen}
+            >
+              <span className="filters-open-btn__label">Фильтры</span>
+              {activeFilterCount > 0 && (
+                <span className="filters-open-btn__badge" aria-label={`Активных фильтров: ${activeFilterCount}`}>
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
           </div>
 
           {loading && results.length === 0 && (
@@ -665,7 +751,7 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
 
           {showIdleHint && (
             <div className="empty-state empty-state--idle">
-              <p>Введите запрос в поиске или выберите фильтры слева</p>
+              <p>{isMobileFilters ? 'Введите запрос в поиске или откройте фильтры' : 'Введите запрос в поиске или выберите фильтры слева'}</p>
             </div>
           )}
 
@@ -685,23 +771,23 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
             </div>
           )}
 
-          {/* Основная выдача */}
           {!loading && !error && adaptedProducts.length > 0 && (
-            <>
+            <div className="search-results-body">
               <div className="results-header">
                 <p className="results-count">
                   Показано товаров: <strong>{adaptedProducts.length}</strong>
                 </p>
               </div>
-              
-              {/* 🔧 FIX: Используем мемоизированный компонент сетки */}
-              <ProductsGrid products={adaptedProducts} />
-              
-              {/* Кнопка "Показать еще" */}
+
+              <ProductsGrid
+                key={isMobileFilters ? mobileGridRevealKey : undefined}
+                products={adaptedProducts}
+              />
+
               {hasMore && (
                 <div className="load-more-container">
-                  <button 
-                    onClick={handleLoadMore} 
+                  <button
+                    onClick={handleLoadMore}
                     className="load-more-btn"
                     disabled={loading}
                   >
@@ -709,15 +795,38 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
                   </button>
                 </div>
               )}
-            </>
+            </div>
           )}
 
-          {/* 🔧 FIX: Блок рекомендаций теперь мемоизирован и не перерендеривается */}
           {!loading && !error && adaptedRecommended.length > 0 && (
             <RecommendationsSection products={adaptedRecommended} />
           )}
-        </main>
+        </div>
       </div>
+
+      {isMobileFilters && (
+        <Modal
+          isOpen={filtersModalOpen}
+          onClose={() => setFiltersModalOpen(false)}
+          title="Фильтры"
+          overlayClassName="filters-modal-overlay"
+          contentClassName="filters-modal-content"
+          bodyClassName="filters-modal-body"
+          footer={
+            <div className="filters-modal-footer">
+              <button
+                type="button"
+                className="filters-modal-done-btn"
+                onClick={() => setFiltersModalOpen(false)}
+              >
+                Показать результаты
+              </button>
+            </div>
+          }
+        >
+          {filtersPanel}
+        </Modal>
+      )}
     </div>
   );
 });

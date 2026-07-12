@@ -45,20 +45,13 @@ const SearchComponent: React.FC = () => {
   const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isMountedRef = useRef(true);
   const isNavigatingRef = useRef(false);
-  const isSyncingFromUrlRef = useRef(false);
 
   const urlQuery = useMemo(() => searchParams.get('q') || '', [searchParams]);
 
+  // Только URL → инпут. Нельзя зависеть от query: иначе при стирании текст снова подтягивается из ?q=
   useEffect(() => {
-    if (isSyncingFromUrlRef.current) {
-      isSyncingFromUrlRef.current = false;
-      return;
-    }
-    
-    if (urlQuery && query !== urlQuery) {
-      setQuery(urlQuery);
-    }
-  }, [query, urlQuery]);
+    setQuery(urlQuery);
+  }, [urlQuery]);
 
   useEffect(() => {
     const savedHistory = localStorage.getItem('searchHistory');
@@ -134,11 +127,14 @@ const SearchComponent: React.FC = () => {
 
   const safelyClosePreview = useCallback(() => {
     if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
-    closeTimeoutRef.current = setTimeout(() => {
-      setShowPreview(false);
-      inputRef.current?.blur();
-    }, 100);
+    setShowPreview(false);
+    inputRef.current?.blur();
   }, []);
+
+  useEffect(() => {
+    setShowPreview(false);
+    inputRef.current?.blur();
+  }, [location.pathname, location.search]);
 
   const handleFocus = useCallback(() => setShowPreview(true), []);
   
@@ -170,29 +166,27 @@ const SearchComponent: React.FC = () => {
 
   const performSearchAndNavigate = useCallback((searchQuery: string) => {
     if (isNavigatingRef.current) return;
-    
+
     isNavigatingRef.current = true;
     updateSearchHistory(searchQuery);
-    
+    safelyClosePreview();
+
     const params = new URLSearchParams();
     params.set('q', searchQuery);
-    
+
     const currentCategory = searchParams.get('category');
     if (currentCategory) {
       params.set('category', currentCategory);
     }
-    
-    isSyncingFromUrlRef.current = true;
-    setSearchParams(params, { replace: true });
-    
-    navigate(`/search?q=${encodeURIComponent(searchQuery)}`, {
+
+    navigate(`/search?${params.toString()}`, {
       replace: location.pathname === '/search',
     });
-    
+
     setTimeout(() => {
       isNavigatingRef.current = false;
     }, 150);
-  }, [location.pathname, navigate, setSearchParams, updateSearchHistory, searchParams]);
+  }, [location.pathname, navigate, safelyClosePreview, updateSearchHistory, searchParams]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && query.trim() && !isNavigatingRef.current) {
@@ -211,24 +205,21 @@ const SearchComponent: React.FC = () => {
 
   const handleHistoryItemClick = useCallback((historyQuery: string) => {
     if (isNavigatingRef.current) return;
-    
+
     setQuery(historyQuery);
     updateSearchHistory(historyQuery);
-    
+    safelyClosePreview();
+
     const params = new URLSearchParams();
     params.set('q', historyQuery);
-    
+
     const currentCategory = searchParams.get('category');
     if (currentCategory) {
       params.set('category', currentCategory);
     }
-    
-    isSyncingFromUrlRef.current = true;
-    setSearchParams(params, { replace: true });
-    
-    navigate(`/search?q=${encodeURIComponent(historyQuery)}`, { replace: true });
-    safelyClosePreview();
-  }, [navigate, setSearchParams, safelyClosePreview, updateSearchHistory, searchParams]);
+
+    navigate(`/search?${params.toString()}`, { replace: true });
+  }, [navigate, safelyClosePreview, updateSearchHistory, searchParams]);
 
   const handleProductClick = useCallback((productId: number) => {
     if (isNavigatingRef.current) return;
@@ -301,7 +292,7 @@ const SearchComponent: React.FC = () => {
           onFocus={handleFocus}
           onBlur={handleBlur}
           onKeyDown={handleKeyDown}
-          placeholder="Поиск товаров..."
+          placeholder="Что ищете?"
           className="search-input"
         />
         <button onClick={handleSearchClick} className="search-button" aria-label="Выполнить поиск">

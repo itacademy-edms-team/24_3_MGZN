@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -16,5 +16,7 @@ namespace Contracts.Dtos
         public int StockQuantity { get; set; }
         public bool IsAvailable { get; set; }
         public string ImageUrl { get; set; } = string.Empty;
+        public decimal AverageRating { get; set; }
+        public int ReviewsCount { get; set; }
     }
 }

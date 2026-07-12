@@ -170,3 +170,73 @@
 .action-btn:hover {
   opacity: 0.7;
 }
+
+@media (max-width: 768px) {
+  .review-item {
+    padding: 16px;
+    margin-bottom: 16px;
+    box-shadow: var(--shadow-brutal-sm, 2px 2px 0 #000);
+  }
+
+  .review-item:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: var(--shadow-brutal, 4px 4px 0 #000);
+  }
+
+  .review-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .review-date {
+    font-size: 11px;
+  }
+
+  .review-actions {
+    margin-left: 0;
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .action-btn {
+    min-height: var(--touch-min, 44px);
+    padding: 8px 12px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .vote-section {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .vote-score {
+    width: 100%;
+    margin-right: 0;
+    margin-bottom: 4px;
+  }
+
+  .vote-btn {
+    min-height: var(--touch-min, 44px);
+    min-width: var(--touch-min, 44px);
+    padding: 8px 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .review-item {
+    padding: 12px;
+  }
+
+  .author-name {
+    font-size: 13px;
+  }
+
+  .review-text {
+    font-size: 13px;
+  }
+}

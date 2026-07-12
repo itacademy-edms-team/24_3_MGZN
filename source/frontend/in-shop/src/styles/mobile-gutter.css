@@ -1,0 +1,13 @@
+/* Единые отступы от краёв экрана на мобилках */
+
+@media (max-width: 768px) {
+  :root {
+    --space-edge: var(--gutter-mobile, 16px);
+  }
+}
+
+@media (max-width: 480px) {
+  :root {
+    --space-edge: var(--gutter-mobile-sm, 14px);
+  }
+}

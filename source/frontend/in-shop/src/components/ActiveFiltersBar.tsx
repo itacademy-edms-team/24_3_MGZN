@@ -7,8 +7,8 @@ type SpecFilterValue = string | number | { Min?: number; Max?: number } | null;
 interface Props {
   filters: FiltersState;
   specFilters: Record<string, SpecFilterValue> | null;
-  // 🔧 FIX: Маппинг internal name → human-readable displayName
   specDisplayNames?: Record<string, string>;
+  hideQueryChip?: boolean;
   onRemoveBasic: (key: keyof FiltersState) => void;
   onRemoveSpec: (specName: string) => void;
   onClearAll: () => void;
@@ -17,7 +17,8 @@ interface Props {
 const ActiveFiltersBar: React.FC<Props> = ({ 
   filters, 
   specFilters, 
-  specDisplayNames = {}, // 🔧 FIX: Default empty object
+  specDisplayNames = {},
+  hideQueryChip = false,
   onRemoveBasic, 
   onRemoveSpec, 
   onClearAll 
@@ -37,7 +38,7 @@ const ActiveFiltersBar: React.FC<Props> = ({
   const chips: Array<{ label: string; onRemove: () => void; key: string }> = [];
 
   // Базовые фильтры
-  if (filters.query) chips.push({ 
+  if (filters.query && !hideQueryChip) chips.push({ 
     label: `Поиск: "${filters.query}"`, 
     onRemove: () => onRemoveBasic('query'),
     key: 'query'

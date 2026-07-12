@@ -185,11 +185,11 @@ const EmailVerificationPage = () => {
     }
 
     return (
-        <div className="email-verification-page">
+        <div className="email-verification-page page-reveal">
             <h1>Подтверждение почты</h1>
             <p>Код отправлен на: <strong>{email}</strong></p>
 
-            <form onSubmit={handleSubmit} className="verification-form">
+            <form onSubmit={handleSubmit} className="verification-form page-reveal page-reveal--delay-1">
                 <div className="code-inputs">
                     {code.map((digit, index) => (
                         <input

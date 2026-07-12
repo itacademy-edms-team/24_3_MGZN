@@ -1,5 +1,7 @@
 // src/components/SortMenu/SortMenu.tsx
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
+import { useMatchMedia } from '../../hooks/useMatchMedia';
 import './SortMenu.css';
 
 export type SortOption = 'relevance' | 'name-asc' | 'name-desc' | 'price-asc' | 'price-desc';
@@ -7,7 +9,7 @@ export type SortOption = 'relevance' | 'name-asc' | 'name-desc' | 'price-asc' | 
 interface SortMenuProps {
   currentSortOption: SortOption;
   onSortOptionChange: (newSortOption: SortOption) => void;
-  className?: string; // ✅ Для гибкого позиционирования
+  className?: string;
 }
 
 const SORT_OPTIONS: Array<{ value: SortOption; label: string }> = [
@@ -18,20 +20,69 @@ const SORT_OPTIONS: Array<{ value: SortOption; label: string }> = [
   { value: 'price-desc', label: 'Цена ↓' },
 ];
 
+const MOBILE_EDGE_FALLBACK = 16;
+
+const readMobileEdge = (): number => {
+  if (typeof window === 'undefined') return MOBILE_EDGE_FALLBACK;
+  const value = getComputedStyle(document.documentElement)
+    .getPropertyValue('--space-edge')
+    .trim();
+  const parsed = parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : MOBILE_EDGE_FALLBACK;
+};
+
 const SortMenu: React.FC<SortMenuProps> = ({
   currentSortOption,
   onSortOptionChange,
   className = '',
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
   const menuRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const isMobileLayout = useMatchMedia('(max-width: 768px)');
 
-  // ✅ Закрытие меню при клике вне
+  const updateDropdownPosition = useCallback(() => {
+    if (!isMobileLayout || !triggerRef.current) return;
+
+    const rect = triggerRef.current.getBoundingClientRect();
+    const edge = readMobileEdge();
+    const horizontalInset = edge;
+    const width = Math.max(0, window.innerWidth - horizontalInset * 2);
+    const top = rect.bottom + 4;
+    const maxHeight = Math.max(120, window.innerHeight - top - edge);
+
+    setDropdownStyle({
+      position: 'fixed',
+      top: `${top}px`,
+      left: `${horizontalInset}px`,
+      width: `${width}px`,
+      maxHeight: `${maxHeight}px`,
+    });
+  }, [isMobileLayout]);
+
+  useLayoutEffect(() => {
+    if (!isMenuOpen || !isMobileLayout) return undefined;
+
+    updateDropdownPosition();
+
+    window.addEventListener('resize', updateDropdownPosition);
+    window.addEventListener('scroll', updateDropdownPosition, true);
+
+    return () => {
+      window.removeEventListener('resize', updateDropdownPosition);
+      window.removeEventListener('scroll', updateDropdownPosition, true);
+    };
+  }, [isMenuOpen, isMobileLayout, updateDropdownPosition]);
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setIsMenuOpen(false);
+      const target = event.target as Node;
+      if (menuRef.current?.contains(target) || dropdownRef.current?.contains(target)) {
+        return;
       }
+      setIsMenuOpen(false);
     };
 
     if (isMenuOpen) {
@@ -40,7 +91,6 @@ const SortMenu: React.FC<SortMenuProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isMenuOpen]);
 
-  // ✅ Закрытие по Escape
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setIsMenuOpen(false);
@@ -51,18 +101,61 @@ const SortMenu: React.FC<SortMenuProps> = ({
     return () => document.removeEventListener('keydown', handleEscape);
   }, [isMenuOpen]);
 
-  const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
+  useEffect(() => {
+    if (!isMobileLayout) {
+      setIsMenuOpen(false);
+    }
+  }, [isMobileLayout]);
+
+  const toggleMenu = () => setIsMenuOpen((open) => !open);
 
   const handleOptionChange = (value: SortOption) => {
     onSortOptionChange(value);
-    setIsMenuOpen(false); // ✅ Закрываем после выбора
+    setIsMenuOpen(false);
   };
 
-  const currentLabel = SORT_OPTIONS.find(opt => opt.value === currentSortOption)?.label || 'Сортировка';
+  const currentLabel =
+    SORT_OPTIONS.find((opt) => opt.value === currentSortOption)?.label || 'Сортировка';
+
+  const dropdownClassName = [
+    'sort-menu__dropdown',
+    isMobileLayout ? 'sort-menu__dropdown--portal' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  const dropdown = isMenuOpen ? (
+    <div
+      ref={dropdownRef}
+      className={dropdownClassName}
+      style={isMobileLayout ? dropdownStyle : undefined}
+      role="listbox"
+    >
+      {SORT_OPTIONS.map((option) => (
+        <label
+          key={option.value}
+          className={`sort-menu__option ${currentSortOption === option.value ? 'sort-menu__option--active' : ''}`}
+          role="option"
+          aria-selected={currentSortOption === option.value}
+        >
+          <input
+            type="radio"
+            name="sort"
+            value={option.value}
+            checked={currentSortOption === option.value}
+            onChange={() => handleOptionChange(option.value)}
+            className="sort-menu__radio"
+          />
+          <span className="sort-menu__label">{option.label}</span>
+        </label>
+      ))}
+    </div>
+  ) : null;
 
   return (
     <div className={`sort-menu ${className}`} ref={menuRef}>
       <button
+        ref={triggerRef}
         type="button"
         className="sort-menu__trigger"
         onClick={toggleMenu}
@@ -71,31 +164,14 @@ const SortMenu: React.FC<SortMenuProps> = ({
         aria-label="Выберите сортировку"
       >
         <span className="sort-menu__trigger-text">{currentLabel}</span>
-        <span className={`sort-menu__arrow ${isMenuOpen ? 'sort-menu__arrow--up' : 'sort-menu__arrow--down'}`}></span>
+        <span
+          className={`sort-menu__arrow ${isMenuOpen ? 'sort-menu__arrow--up' : 'sort-menu__arrow--down'}`}
+        />
       </button>
 
-      {isMenuOpen && (
-        <div className="sort-menu__dropdown" role="listbox">
-          {SORT_OPTIONS.map((option) => (
-            <label
-              key={option.value}
-              className={`sort-menu__option ${currentSortOption === option.value ? 'sort-menu__option--active' : ''}`}
-              role="option"
-              aria-selected={currentSortOption === option.value}
-            >
-              <input
-                type="radio"
-                name="sort"
-                value={option.value}
-                checked={currentSortOption === option.value}
-                onChange={() => handleOptionChange(option.value)}
-                className="sort-menu__radio"
-              />
-              <span className="sort-menu__label">{option.label}</span>
-            </label>
-          ))}
-        </div>
-      )}
+      {isMobileLayout && dropdown
+        ? createPortal(dropdown, document.body)
+        : !isMobileLayout && dropdown}
     </div>
   );
 };

@@ -30,8 +30,7 @@
   color: #000000;
   cursor: pointer;
   transition: background-color 0.2s ease, color 0.2s ease;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.02em;
 }
 
 .sort-menu__trigger:hover {
@@ -118,8 +117,7 @@
   font-weight: 500;
   border-bottom: 1px solid #e5e5e5;
   transition: background-color 0.2s ease, color 0.2s ease;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.02em;
 }
 
 .sort-menu__option:last-child {
@@ -195,6 +193,78 @@
 }
 
 /* ===== Адаптивность ===== */
+@media (max-width: 768px) {
+  .sort-menu__container {
+    margin-bottom: 14px;
+    padding-bottom: 14px;
+  }
+
+  .sort-menu {
+    width: 100%;
+    position: relative;
+  }
+
+  .sort-menu__trigger {
+    width: 100%;
+    justify-content: space-between;
+    min-height: var(--touch-min, 44px);
+    box-sizing: border-box;
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+
+  .sort-menu__dropdown {
+    width: 100%;
+    min-width: 0;
+    left: 0;
+    right: 0;
+  }
+
+  .sort-menu__dropdown--portal {
+    z-index: 1100;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    box-shadow: var(--shadow-brutal, 4px 4px 0 #000);
+  }
+
+  .sort-menu__option {
+    min-height: var(--touch-min, 44px);
+    box-sizing: border-box;
+    padding: 12px 14px;
+    font-size: 13px;
+    white-space: normal;
+    line-height: 1.3;
+  }
+
+  .sort-menu__label {
+    min-width: 0;
+    word-break: break-word;
+  }
+
+  .sort-menu__trigger-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+    text-align: left;
+  }
+
+  .search-results-toolbar {
+    overflow: visible;
+  }
+
+  .search-results-toolbar__sort {
+    overflow: visible;
+  }
+
+  .search-results-toolbar .sort-menu__container {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    overflow: visible;
+  }
+}
+
 @media (max-width: 480px) {
   .sort-menu__container {
     justify-content: flex-start;
@@ -203,19 +273,17 @@
   }
 
   .sort-menu__trigger {
-    padding: 8px 12px;
+    padding: 10px 12px;
     font-size: 12px;
   }
 
-  .sort-menu__dropdown {
-    min-width: 200px;
-    font-size: 12px;
-    box-shadow: 2px 2px 0 #000000;
+  .sort-menu__dropdown--portal {
+    box-shadow: var(--shadow-brutal-sm, 2px 2px 0 #000);
   }
 
   .sort-menu__option {
-    padding: 10px 12px;
-    font-size: 12px;
+    padding: 12px 14px;
+    font-size: 13px;
   }
 }
 

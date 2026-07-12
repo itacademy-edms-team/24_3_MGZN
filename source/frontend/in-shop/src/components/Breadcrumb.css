@@ -1,19 +1,26 @@
 .breadcrumb {
     display: flex;
     align-items: center;
-    gap: 10px; /* немного увеличен отступ для лучшего восприятия */
-    font-size: 1em;
+    gap: 10px;
+    font-size: clamp(11px, 2.5vw, 1em);
     color: #000000;
     margin-bottom: 20px;
-    flex-wrap: wrap; /* если путь длинный — элементы могут переноситься */
+    flex-wrap: wrap;
 }
 
 .breadcrumb a {
     text-decoration: none;
-    color: #000000; /* более стандартный цвет для ссылок */
+    color: #000000;
     transition: color 0.3s ease, background 0.3s ease;
-    padding: 2px 6px; /* чтобы было легче навести/кликнуть */
-    border-radius: 4px; /* лёгкий радиус для красоты */
+    padding: 4px 6px;
+    min-height: var(--touch-min, 44px);
+    display: inline-flex;
+    align-items: center;
+    border-radius: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .breadcrumb a:hover {
@@ -22,8 +29,27 @@
 }
 
 .breadcrumb span {
-    color: #6c757d; /* серый цвет для текущего элемента */
-    font-weight: 500; /* сделать его чуть выразительнее */
+    color: #6c757d;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: min(100%, 200px);
+}
+
+@media (max-width: 768px) {
+    .breadcrumb {
+        gap: 6px;
+        margin-bottom: 14px;
+    }
+
+    .breadcrumb a:not(:last-child)::after {
+        margin-left: 6px;
+    }
+
+    .breadcrumb span {
+        max-width: min(100%, 160px);
+    }
 }
 
 /* Добавляем разделители между элементами */

@@ -183,7 +183,9 @@ namespace InShopBLLayer.Services.Search
                 new("price", ((double)product.ProductPrice).ToString(System.Globalization.CultureInfo.InvariantCulture)),
                 new("stock", product.ProductStockQuantity.ToString()),
                 new("availability", product.ProductAvailability ? "InStock" : "OutOfStock"),
-                new("image_url", product.ImageUrl ?? "")
+                new("image_url", product.ImageUrl ?? ""),
+                new("average_rating", ((double)product.AverageRating).ToString(System.Globalization.CultureInfo.InvariantCulture)),
+                new("reviews_count", product.ReviewsCount.ToString())
             };
 
             foreach (var spec in specs)
@@ -293,6 +295,7 @@ namespace InShopBLLayer.Services.Search
                 "description", "TEXT", "WEIGHT", "1.0",
                 "category", "TAG", "SEPARATOR", ";",
                 "price", "NUMERIC", "stock", "NUMERIC", "availability", "TAG", "image_url", "TEXT",
+                "average_rating", "NUMERIC", "reviews_count", "NUMERIC",
                 "embedding", "VECTOR", "FLAT", "6", "TYPE", "FLOAT32", "DIM", ExpectedEmbeddingDimension, "DISTANCE_METRIC", "COSINE"
             };
 

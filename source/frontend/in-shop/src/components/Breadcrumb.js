@@ -4,7 +4,7 @@ import './Breadcrumb.css';
 
 const Breadcrumb = ({ currentPage, categoryName }) => {
     return (
-        <nav className="breadcrumb">
+        <nav className="breadcrumb page-reveal">
             <Link to="/catalog">Каталог товаров</Link>
             {categoryName && ( // Проверяем наличие categoryName
                 <>

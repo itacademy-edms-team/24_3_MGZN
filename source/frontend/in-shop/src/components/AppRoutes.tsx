@@ -6,7 +6,7 @@ import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 
 // Pages
-import CatalogPage from '../pages/CatalogPage.js';
+import CatalogPage from '../pages/CatalogPage';
 import CategoryPage from '../pages/CategoryPage';
 import ProductPage from '../pages/ProductPage';
 import CheckoutPage from '../pages/CheckoutPage.js';
@@ -14,7 +14,7 @@ import EmailVerificationPage from '../pages/EmailVerificationPage.js';
 import OrderSuccessPage from '../pages/OrderSuccessPage/OrderSuccessPage.js';
 import PaymentPage from '../pages/PaymentPage.js';
 import PaymentConfirmationPage from '../pages/PaymentConfirmationPage/PaymentConfirmationPage.js';
-import SearchResultsPage from '../pages/SearchResultPage/SearchResultsPage';
+import SearchPage from '../pages/SearchPage';
 import OrderTrackPage from '../pages/OrderTrackPage/OrderTrackPage';
 
 const AppRoutes: React.FC = () => {
@@ -31,7 +31,7 @@ const AppRoutes: React.FC = () => {
       <Route path="/product/:productId" element={<ProductPage />} />
       
       {/* Поиск */}
-      <Route path="/search" element={<SearchResultsPage />} />
+      <Route path="/search" element={<SearchPage />} />
       
       {/* Оформление заказа */}
       <Route path="/checkout" element={<CheckoutPage />} />
@@ -51,9 +51,9 @@ const AppRoutes: React.FC = () => {
       
       {/* 404 - не найдено */}
       <Route path="*" element={
-        <div style={{ textAlign: 'center', padding: '48px' }}>
+        <div className="page-reveal" style={{ textAlign: 'center', padding: '48px' }}>
           <h2>Страница не найдена</h2>
-          <a href="/" style={{ color: '#007bff' }}>Вернуться на главную</a>
+          <a href="/" style={{ color: '#000', textDecoration: 'underline' }}>Вернуться на главную</a>
         </div>
       } />
     </Routes>

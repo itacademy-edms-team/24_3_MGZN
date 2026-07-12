@@ -7,7 +7,13 @@
 
 main {
     flex: 1;
-    padding: 1rem;
+    padding: var(--space-page, 1rem);
+}
+
+@media (max-width: 768px) {
+    main {
+        padding: var(--space-edge, 16px);
+    }
 }
 
 

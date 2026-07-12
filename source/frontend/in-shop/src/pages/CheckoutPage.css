@@ -1,74 +1,198 @@
-/* src/pages/CheckoutPage.css */
+/* Checkout — тема витрины (чёрный/белый, жёсткие рамки). */
+
 .checkout-page {
-    padding: 20px;
+  min-height: calc(100vh - 120px);
+  padding: 32px 16px 48px;
+  font-family: 'Open Sans', sans-serif;
+  color: #000;
+  display: flex;
+  justify-content: center;
+  box-sizing: border-box;
 }
 
-.checkout-page h1 {
-    font-size: 2em;
-    color: #333;
-    margin-bottom: 20px;
+.checkout-shell {
+  width: 100%;
+  max-width: 1100px;
+  background: #fff;
+  border: 2px solid #000;
+  box-shadow: 6px 6px 0 #000;
+  overflow: hidden;
+}
+
+.checkout-header {
+  background: #000;
+  color: #fff;
+  text-align: center;
+  padding: 36px 24px 32px;
+  border-bottom: 2px solid #000;
+}
+
+.checkout-header__eyebrow {
+  margin: 0 0 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+.checkout-header h1 {
+  margin: 0;
+  font-size: clamp(1.5rem, 4vw, 2rem);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #fff;
 }
 
 .checkout-container {
-    display: flex;
-    gap: 20px;
-    max-width: 1200px;
-    margin: 0 auto;
+  display: flex;
+  gap: 24px;
+  padding: 24px;
+  align-items: flex-start;
+  box-sizing: border-box;
 }
 
 .checkout-left {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    width: 60%;
-    justify-content: space-between;
-    padding: 20px;
+  flex: 1 1 55%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .checkout-right {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
+  flex: 1 1 40%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-
-
-
+.checkout-items {
+  background: #fff;
+  border: 2px solid #000;
+  box-shadow: 3px 3px 0 #000;
+  padding: 20px;
+  box-sizing: border-box;
+}
 
 .checkout-items h2 {
-    margin-top: 0;
-    font-size: 1.5em;
-    color: #333;
+  margin: 0 0 16px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #000;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #000;
 }
 
 .items-list {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
+.checkout-status,
+.checkout-error-text {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
 
+.checkout-error-text {
+  border: 2px solid #000;
+  padding: 12px;
+  background: #000;
+  color: #fff;
+}
 
+.checkout-empty {
+  border: 2px solid #000;
+  box-shadow: 3px 3px 0 #000;
+  padding: 32px 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
 
+.checkout-empty p {
+  margin: 0;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: 1.5;
+}
 
+.checkout-empty__link {
+  display: inline-block;
+  padding: 12px 24px;
+  background: #000;
+  color: #fff;
+  border: 2px solid #000;
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  box-shadow: 3px 3px 0 #000;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
 
-/* Адаптивность */
+.checkout-empty__link:hover {
+  background: #fff;
+  color: #000;
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 #000;
+}
+
+@media (max-width: 900px) {
+  .checkout-container {
+    flex-direction: column;
+  }
+
+  .checkout-left,
+  .checkout-right {
+    flex: 1 1 auto;
+    width: 100%;
+  }
+
+  .checkout-shell {
+    box-shadow: 4px 4px 0 #000;
+  }
+}
+
 @media (max-width: 768px) {
-    .checkout-container {
-        flex-direction: column;
-    }
+  .checkout-page {
+    padding: 20px 0 36px;
+  }
 
-    .checkout-left {
-        flex: 1;
-    }
+  .checkout-empty__link {
+    width: 100%;
+    min-height: var(--touch-min, 44px);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+  }
+}
 
-    .checkout-right {
-        flex: 1;
-    }
+@media (max-width: 480px) {
+  .checkout-page {
+    padding: 16px 0 32px;
+  }
 
-    .summary-box {
-        order: 1;
-    }
+  .checkout-container {
+    padding: 16px;
+    gap: 16px;
+  }
 
+  .checkout-header {
+    padding: 28px 16px 24px;
+  }
 }

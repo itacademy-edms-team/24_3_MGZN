@@ -1,25 +1,24 @@
 // CartModal.js
 import React, { useContext, useState, useEffect } from 'react';
 import { CartContext } from '../components/CartContext';
-import CartItem from '../components/CartItem'; // Импортируем оптимизированную карточку
+import CartItem from '../components/CartItem';
 import './CartModal.css';
 import { Link } from 'react-router-dom';
 
 const CartModal = () => {
     const { isCartOpen, closeCart, cart, loading, error, clearCart } = useContext(CartContext);
-    
-    // Состояние для анимации закрытия
+
     const [isClosing, setIsClosing] = useState(false);
 
-    // Подсчет общей суммы заказа
     const totalAmount = cart.reduce((total, item) => total + (item.productPrice * item.quantity), 0);
+    const showInitialLoading = loading && cart.length === 0;
+    const showEmptyState = !loading && !error && cart.length === 0;
+    const showCartItems = cart.length > 0;
 
-    // Обработчик закрытия с анимацией
     const handleClose = () => {
         setIsClosing(true);
     };
 
-    // После завершения анимации закрытия - действительно закрываем модалку
     useEffect(() => {
         if (isClosing) {
             const timer = setTimeout(() => {
@@ -31,45 +30,65 @@ const CartModal = () => {
         }
     }, [isClosing, closeCart]);
 
-    // Если модалка полностью закрыта - не рендерим её
+    useEffect(() => {
+        if (!isCartOpen && !isClosing) return undefined;
+
+        const prevOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+
+        return () => {
+            document.body.style.overflow = prevOverflow;
+        };
+    }, [isCartOpen, isClosing]);
+
     if (!isCartOpen && !isClosing) return null;
 
     return (
-        <div className="cart-modal-overlay" onClick={handleClose}>
-            <div 
-                className={`cart-modal ${isClosing ? 'slide-out' : ''}`} 
+        <div
+            className={`cart-modal-overlay${isClosing ? ' cart-modal-overlay--closing' : ''}`}
+            onClick={handleClose}
+        >
+            <div
+                className={`cart-modal${isClosing ? ' cart-modal--closing' : ''}`}
                 onClick={(e) => e.stopPropagation()}
+                role="dialog"
+                aria-modal="true"
+                aria-label="Корзина"
             >
                 <div className="cart-header">
                     <h2>Корзина</h2>
-                    <button className="cart-close-btn" onClick={handleClose}>
+                    <button type="button" className="cart-close-btn" onClick={handleClose} aria-label="Закрыть корзину">
                         ×
                     </button>
                 </div>
 
                 <div className="cart-content">
-                    {loading && <p>Загрузка корзины...</p>}
                     {error && <p className="error-message">Ошибка: {error}</p>}
-                    
-                    {!loading && !error && cart.length === 0 ? (
+
+                    {showInitialLoading && (
+                        <p className="cart-loading-message">Загрузка корзины…</p>
+                    )}
+
+                    {showEmptyState && (
                         <p className="empty-cart-message">Корзина пуста.</p>
-                    ) : (
+                    )}
+
+                    {showCartItems && (
                         <>
                             <div className="cart-items">
-                                {/* Используем оптимизированную карточку */}
                                 {cart.map((item) => (
                                     <CartItem key={item.orderItemId} item={item} />
                                 ))}
                             </div>
-                            
+
                             <div className="cart-footer">
                                 <div className="cart-total">
                                     <span>Итого:</span>
                                     <strong>{totalAmount.toFixed(2)} ₽</strong>
                                 </div>
-                                
+
                                 <div className="cart-actions">
-                                    <button onClick={clearCart} className="clear-cart-button" data-testid="clear-cart-button">
+                                    <button type="button" onClick={clearCart} className="clear-cart-button" data-testid="clear-cart-button">
                                         Очистить корзину
                                     </button>
                                     <Link to="/checkout" onClick={closeCart} className="checkout-cart-button">

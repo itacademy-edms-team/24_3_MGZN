@@ -176,7 +176,7 @@ const ProductPage = () => {
                 categoryName={product.productCategoryName}
             />
             <div className="product-page">
-                <div className="product-details">
+                <div className="product-details page-reveal">
                     <img 
                         className="product-page__img"
                         src={resolveAssetUrl(product.imageUrl) ?? PRODUCT_PLACEHOLDER_URL}
@@ -187,7 +187,7 @@ const ProductPage = () => {
                         loading="lazy"
                     />
 
-                    <div className="product-info">
+                    <div className="product-info page-reveal page-reveal--delay-1">
                         <h2>{product.productName}</h2>
 
                         <div className="product-rating-summary">
@@ -230,7 +230,7 @@ const ProductPage = () => {
                 </div>
 
                 {specifications.length > 0 && (
-                    <div className="product-specifications-section">
+                    <div className="product-specifications-section page-reveal-block page-reveal--delay-2">
                         <h3 className="specs-title">Характеристики</h3>
                         {specsLoading ? (
                             <div className="specs-loading"><LoadingSpinner message="Загрузка характеристик..." /></div>
@@ -254,10 +254,11 @@ const ProductPage = () => {
                     </div>
                 )}
 
-                {/* <--- 2. Вставка компонента AI-анализа прямо над отзывами */}
+                <div className="page-reveal-block page-reveal--delay-2">
                 <AiSummaryBlock productId={numericProductId} />
+                </div>
 
-                <div className="product-reviews-section">
+                <div className="product-reviews-section page-reveal-block page-reveal--delay-3">
                     <ReviewList 
                         productId={numericProductId} 
                         onRefreshTrigger={refreshReviewsTrigger} 
@@ -270,9 +271,9 @@ const ProductPage = () => {
                     />
                 </div>
 
-                <div className="related-products">
+                <div className="related-products page-reveal-block page-reveal--delay-4">
                     <h3>Товары категории {product.productCategoryName}</h3>
-                    <ul className="products-list">
+                    <ul className="products-list page-reveal-stagger">
                         {relatedProducts.map((relatedProduct) => (
                             <li key={relatedProduct.productId} className="product-card-wrapper">
                                 <ProductCard product={relatedProduct} />

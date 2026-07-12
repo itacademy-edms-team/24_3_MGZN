@@ -80,6 +80,32 @@ namespace InShopBLLayer.Services
             var rndProducts = products.OrderBy(x => random.Next()).Take(_rndLimit);
             return _mapper.Map<IEnumerable<ProductDto>>(rndProducts);
         }
+
+        public async Task<IEnumerable<ProductDto>> GetPicksForYouAsync()
+        {
+            var products = (await _productRepository.GetInStockProductsWithCategoryAsync()).ToList();
+            if (products.Count == 0)
+            {
+                return Array.Empty<ProductDto>();
+            }
+
+            // Стабильный выбор в пределах текущей минуты UTC — набор меняется раз в минуту.
+            var minuteSeed = (int)(DateTime.UtcNow.Ticks / TimeSpan.TicksPerMinute);
+
+            var picks = products
+                .GroupBy(p => p.ProductCategoryId)
+                .OrderBy(g => g.First().ProductCategory?.CategoryName ?? string.Empty)
+                .Select(g =>
+                {
+                    var ordered = g.OrderBy(p => p.ProductId).ToList();
+                    var index = Math.Abs(unchecked(minuteSeed * 397 ^ g.Key)) % ordered.Count;
+                    return ordered[index];
+                })
+                .ToList();
+
+            return _mapper.Map<IEnumerable<ProductDto>>(picks);
+        }
+
         public async Task<List<ProductSpecDto>?> GetProductSpecificationsAsync(int id)
         {
             var rawSpecs = await _productRepository.GetProductSpecificationsAsync(id);

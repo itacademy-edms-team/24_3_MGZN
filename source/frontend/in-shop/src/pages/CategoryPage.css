@@ -12,3 +12,24 @@
   font-weight: 700;
   color: #000000;
 }
+
+@media (max-width: 768px) {
+  .category-page {
+    padding: 0 0 24px;
+  }
+
+  .category-page__title {
+    font-size: 20px;
+    margin-bottom: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .category-page {
+    padding: 0 0 20px;
+  }
+
+  .category-page__title {
+    font-size: 18px;
+  }
+}

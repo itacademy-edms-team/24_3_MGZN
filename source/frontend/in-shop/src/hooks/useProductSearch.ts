@@ -2,6 +2,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { apiClient } from '../api/client';
 import { ProductSearchResultDto, SearchRequestDto } from '../types/search';
+import { normalizeSearchProductList } from '../utils/searchProductMapper';
 
 const isDevelopment = process.env.NODE_ENV === 'development';
 
@@ -102,17 +103,20 @@ export const useProductSearch = (): UseProductSearchReturn => {
       }
 
       const data = response.data;
-      // Поддержка camelCase и PascalCase (на случай других настроек сериализации API)
-      const newResults = Array.isArray(data.results)
-        ? data.results
-        : Array.isArray(data.Results)
-          ? data.Results
-          : [];
-      const newRecommended = Array.isArray(data.recommended)
-        ? data.recommended
-        : Array.isArray(data.Recommended)
-          ? data.Recommended
-          : [];
+      const newResults = normalizeSearchProductList(
+        Array.isArray(data.results)
+          ? data.results
+          : Array.isArray(data.Results)
+            ? data.Results
+            : []
+      );
+      const newRecommended = normalizeSearchProductList(
+        Array.isArray(data.recommended)
+          ? data.recommended
+          : Array.isArray(data.Recommended)
+            ? data.Recommended
+            : []
+      );
 
       if (!append) {
         setResults(newResults);
@@ -170,11 +174,13 @@ export const useProductSearch = (): UseProductSearchReturn => {
       }
 
       const data = response.data;
-      const newResults = Array.isArray(data.results)
-        ? data.results
-        : Array.isArray(data.Results)
-          ? data.Results
-          : [];
+      const newResults = normalizeSearchProductList(
+        Array.isArray(data.results)
+          ? data.results
+          : Array.isArray(data.Results)
+            ? data.Results
+            : []
+      );
 
       setResults(prev => [...prev, ...newResults]);
       setHasMore(newResults.length >= (request.limit || 12));

@@ -1,4 +1,4 @@
-﻿using Contracts.Dtos;
+using Contracts.Dtos;
 using InShop.WebAPI.Extensions;
 using InShopBLLayer.Abstractions;
 using InShopBLLayer.Services;
@@ -127,6 +127,14 @@ namespace InShop.WebAPI.Controllers
             var rndProducts = await _productService.GetRandomProducts();
             return Ok(rndProducts);
         }
+
+        [HttpGet("picks-for-you")]
+        public async Task<IActionResult> GetPicksForYou()
+        {
+            var picks = await _productService.GetPicksForYouAsync();
+            return Ok(picks);
+        }
+
         [HttpGet("{id}/specifications")]
         public async Task<IActionResult> GetProductSpecifications(int id)
         {

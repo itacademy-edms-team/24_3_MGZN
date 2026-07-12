@@ -71,7 +71,7 @@ const PaymentPage = () => {
     if (!hasValidOrderId) {
         return (
             <div className="payment-page">
-                <div className="payment-container">
+                <div className="payment-container page-reveal">
                     <h1>Оплата заказа</h1>
                     <p>Номер оформленного заказа не найден.</p>
                     <button className="cancel-button" onClick={() => navigate('/order-success')}>Назад</button>
@@ -87,17 +87,17 @@ const PaymentPage = () => {
 
     return (
         <div className="payment-page">
-            <div className="payment-container">
+            <div className="payment-container page-reveal">
                 <h1>Оплата заказа</h1>
 
                 {orderData && (
-                    <div className="order-summary">
+                    <div className="order-summary page-reveal page-reveal--delay-1">
                         <p><strong>Номер заказа:</strong> #{resolvedOrderId}</p>
                         <p><strong>Сумма к оплате:</strong> {(orderData.orderTotalAmount ?? orderData.displayTotalAmount ?? 0).toFixed(2)} ₽</p>
                     </div>
                 )}
 
-                <div className="payment-form">
+                <div className="payment-form page-reveal page-reveal--delay-2">
                     <h2>Тестовая оплата</h2>
                     <p>
                         Реквизиты банковской карты не вводятся на сайте магазина. Для production-оплаты

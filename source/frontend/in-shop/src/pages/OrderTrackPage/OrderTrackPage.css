@@ -88,7 +88,7 @@
 
 .order-track-header h1 {
   margin: 0 0 16px;
-  font-size: 2rem;
+  font-size: clamp(1.35rem, 5vw, 2rem);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -339,22 +339,6 @@
   color: #000;
 }
 
-.anim-fade-up {
-  opacity: 0;
-  animation: order-track-fade-up 0.45s ease forwards;
-}
-
-@keyframes order-track-fade-up {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 @keyframes order-track-step-in {
   to {
     opacity: 1;
@@ -410,18 +394,60 @@
 
 @media (max-width: 640px) {
   .order-track-page {
-    padding: 20px 12px 36px;
+    padding: 20px 0 36px;
   }
 
-  .order-track-header h1 {
-    font-size: 1.5rem;
+  .order-track-container {
+    box-shadow: 4px 4px 0 #000;
+  }
+
+  .order-track-header {
+    padding: 28px 16px 24px;
   }
 
   .order-track-content {
     padding: 16px;
+    gap: 16px;
+  }
+
+  .order-track-card {
+    padding: 16px;
+    box-shadow: 2px 2px 0 #000;
   }
 
   .order-track-container--error {
     padding: 32px 20px;
+  }
+
+  .order-track-container--error h1 {
+    font-size: clamp(1.25rem, 5vw, 1.75rem);
+  }
+
+  .order-track-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 12px 0;
+  }
+
+  .order-track-item-total {
+    align-self: flex-end;
+  }
+
+  .order-track-footer a,
+  .order-track-home-link {
+    width: 100%;
+    box-sizing: border-box;
+  }
+}
+
+@media (max-width: 480px) {
+  .order-track-page {
+    padding: 16px 0 32px;
+  }
+
+  .order-track-status-badge {
+    font-size: 0.75rem;
+    padding: 8px 14px;
   }
 }

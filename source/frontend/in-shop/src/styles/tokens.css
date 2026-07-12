@@ -1,0 +1,26 @@
+/* Design tokens — единая система для адаптивности InShop */
+
+:root {
+  /* Breakpoints (для reference в JS; в CSS — literal values в @media) */
+  --bp-sm: 480px;
+  --bp-md: 768px;
+  --bp-lg: 1024px;
+  --bp-xl: 1200px;
+
+  /* Spacing */
+  --space-page: clamp(16px, 4vw, 24px);
+  --gutter-mobile: 16px;
+  --gutter-mobile-sm: 14px;
+
+  /* Touch targets (WCAG 2.5.5) */
+  --touch-min: 44px;
+
+  /* Neo-brutalist primitives */
+  --color-black: #000000;
+  --color-white: #ffffff;
+  --color-accent: #ff4d4d;
+  --color-bg: #f8f9fa;
+  --border-brutal: 2px solid var(--color-black);
+  --shadow-brutal: 4px 4px 0 var(--color-black);
+  --shadow-brutal-sm: 2px 2px 0 var(--color-black);
+}

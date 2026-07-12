@@ -14,10 +14,12 @@
   border: 2px solid #000000;
   padding: 48px;
   background-color: #ffffff;
+  box-shadow: var(--shadow-brutal, 6px 6px 0 #000);
+  box-sizing: border-box;
 }
 
 .payment-container h1 {
-  font-size: 2.5rem;
+  font-size: clamp(1.5rem, 5vw, 2.5rem);
   font-weight: 700;
   margin: 0 0 32px 0;
   color: #000000;
@@ -143,20 +145,44 @@
 
 /* Responsive */
 @media (max-width: 768px) {
-  .payment-container {
-    padding: 32px 24px;
+  .payment-page {
+    padding: 16px 0;
+    align-items: flex-start;
+    min-height: calc(100vh - 80px);
   }
 
-  .payment-container h1 {
-    font-size: 2rem;
+  .payment-container {
+    padding: 24px 16px;
+    box-shadow: 4px 4px 0 #000;
+  }
+
+  .form-group input {
+    font-size: 16px;
+    min-height: var(--touch-min, 44px);
   }
 
   .form-row {
-    flex-direction: column; /* На мобильных устройствах поля в столбец */
+    flex-direction: column;
     gap: 0;
   }
 
   .payment-actions {
     flex-direction: column;
+  }
+
+  .pay-button,
+  .cancel-button {
+    min-height: var(--touch-min, 44px);
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .payment-container {
+    padding: 20px 14px;
+  }
+
+  .order-summary {
+    padding: 16px;
   }
 }

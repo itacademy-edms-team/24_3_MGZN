@@ -1,0 +1,90 @@
+/* Общие появления блоков витрины */
+
+@keyframes page-reveal-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes page-reveal-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.page-reveal,
+.search-page-reveal,
+.anim-fade-up {
+  animation: page-reveal-fade-up 0.45s ease-out both;
+}
+
+.page-reveal--delay-1,
+.search-page-reveal--sidebar {
+  animation-delay: 0.05s;
+}
+
+.page-reveal--delay-2,
+.search-page-reveal--main {
+  animation-delay: 0.1s;
+}
+
+.page-reveal--delay-3 {
+  animation-delay: 0.16s;
+}
+
+.page-reveal--delay-4 {
+  animation-delay: 0.22s;
+}
+
+.page-reveal-block,
+.search-page-reveal-block {
+  animation: page-reveal-fade-up 0.4s ease-out both;
+}
+
+.page-reveal-fade {
+  animation: page-reveal-fade-in 0.35s ease-out both;
+}
+
+/* Cascade для сеток (связанные товары и т.п.) */
+.page-reveal-stagger > * {
+  opacity: 0;
+  animation: page-reveal-fade-up 0.45s ease-out forwards;
+}
+
+.page-reveal-stagger > *:nth-child(1) { animation-delay: 0.04s; }
+.page-reveal-stagger > *:nth-child(2) { animation-delay: 0.08s; }
+.page-reveal-stagger > *:nth-child(3) { animation-delay: 0.12s; }
+.page-reveal-stagger > *:nth-child(4) { animation-delay: 0.16s; }
+.page-reveal-stagger > *:nth-child(5) { animation-delay: 0.2s; }
+.page-reveal-stagger > *:nth-child(6) { animation-delay: 0.24s; }
+.page-reveal-stagger > *:nth-child(7) { animation-delay: 0.28s; }
+.page-reveal-stagger > *:nth-child(8) { animation-delay: 0.32s; }
+.page-reveal-stagger > *:nth-child(n + 9) { animation-delay: 0.36s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .page-reveal,
+  .page-reveal--delay-1,
+  .page-reveal--delay-2,
+  .page-reveal--delay-3,
+  .page-reveal--delay-4,
+  .page-reveal-block,
+  .page-reveal-fade,
+  .search-page-reveal,
+  .search-page-reveal--sidebar,
+  .search-page-reveal--main,
+  .search-page-reveal-block,
+  .anim-fade-up,
+  .page-reveal-stagger > * {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}

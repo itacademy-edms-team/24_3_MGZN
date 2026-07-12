@@ -1,39 +1,46 @@
 import React, { useContext } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { CartContext } from '../components/CartContext';
-import './Header.css'; // Импортируем стили
-import SearchComponent from './SearchComponent/SearchComponent'; // Убедитесь в правильности пути
+import './Header.css';
+import SearchComponent from './SearchComponent/SearchComponent';
+import { useHomeLogoMorph } from '../hooks/useHomeLogoMorph';
+import { useMatchMedia } from '../hooks/useMatchMedia';
 
-/**
- * Компонент шапки приложения
- * Содержит логотип, компонент поиска и иконку корзины
- */
 const Header = () => {
     const { openCart, cart } = useContext(CartContext);
-    // Вычисляем общее количество товаров в корзине
+    const { pathname } = useLocation();
     const totalQuantity = cart.reduce((total, item) => total + item.quantity, 0);
+    const isHome = pathname === '/' || pathname === '/catalog';
+    const isMobile = useMatchMedia('(max-width: 768px)');
+    const { style: morphStyle } = useHomeLogoMorph(isHome);
 
     return (
         <header className="header">
-            <div className="header__container">
-                {/* Логотип */}
-                <Link to="/" className="header__logo-link">
-                    <h1 className="header__logo">.InShop</h1>
+            <div
+                key={isMobile ? pathname : 'header-container'}
+                className={`header__container${isHome ? ' header__container--home' : ''}`}
+            >
+                <Link
+                    to="/"
+                    className={`header__logo-link${isHome ? ' header__logo-link--morph' : ''}`}
+                    aria-label=".InShop — на главную"
+                >
+                    <h1 id="header-logo" className="header__logo">.InShop</h1>
                 </Link>
 
-                {/* Компонент поиска */}
-                
-                <SearchComponent />
-                
+                {!isHome && (
+                    <div className="header__search">
+                        <SearchComponent />
+                    </div>
+                )}
 
-                {/* Иконка корзины */}
                 <button
                     className="header__cart-button"
                     onClick={openCart}
-                    aria-label="Открыть корзину" // Добавляем aria-label для доступности
+                    aria-label="Открыть корзину"
                 >
                     <img
-                        src="/cart-icon.png" // Убедитесь, что путь к иконке корректен
+                        src="/cart-icon.png"
                         alt=""
                         className="header__cart-icon-img"
                     />
@@ -42,6 +49,18 @@ const Header = () => {
                     )}
                 </button>
             </div>
+
+            {isHome && morphStyle && (
+                <Link
+                    to="/"
+                    className="home-logo-morph"
+                    style={morphStyle}
+                    aria-hidden="true"
+                    tabIndex={-1}
+                >
+                    .InShop
+                </Link>
+            )}
         </header>
     );
 };

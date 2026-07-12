@@ -139,7 +139,7 @@ const PaymentConfirmationPage = () => {
     if (status === 'error') {
         return (
             <div className="payment-confirmation-page">
-                <div className="confirmation-container">
+                <div className="confirmation-container page-reveal">
                     <h1>Ошибка проверки оплаты</h1>
                     <p>{error}</p>
                     {provider?.toLowerCase() === 'yookassa' && (
@@ -158,7 +158,7 @@ const PaymentConfirmationPage = () => {
     if (status === 'paid') {
         return (
             <div className="payment-confirmation-page">
-                <div className="confirmation-container">
+                <div className="confirmation-container page-reveal">
                     <div className="success-icon">✓</div>
                     <h1>Заказ успешно оплачен</h1>
                     <p>Номер заказа: #{orderId}</p>
@@ -183,7 +183,7 @@ const PaymentConfirmationPage = () => {
 
     return (
         <div className="payment-confirmation-page">
-            <div className="confirmation-container">
+            <div className="confirmation-container page-reveal">
                 <div className="loading-spinner" />
                 <h1>Проверка статуса оплаты</h1>
                 <p>Заказ #{orderId}</p>

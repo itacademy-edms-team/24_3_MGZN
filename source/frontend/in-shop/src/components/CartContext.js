@@ -2,7 +2,7 @@
 // Файл: src/components/CartContext.js
 // ============================================
 
-import React, { createContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useState, useEffect, useCallback, useRef } from 'react';
 import { apiClient } from '../api/client';
 import { useSessionContext } from '../context/SessionContext';
 
@@ -15,12 +15,15 @@ export const CartProvider = ({ children }) => {
     const [isCartOpen, setIsCartOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const cartRef = useRef(cart);
+
+    cartRef.current = cart;
     
     // ✅ Получаем данные сессии из хука
     const { orderId, isValid, updateOrderId } = useSessionContext();
 
     // Загрузка корзины из бэкенда
-    const fetchCart = useCallback(async () => {
+    const fetchCart = useCallback(async ({ showLoading } = {}) => {
         // Бэкенд определяет текущую корзину по HttpOnly cookie сессии.
         if (!isValid) {
             if (isDevelopment) {
@@ -28,9 +31,13 @@ export const CartProvider = ({ children }) => {
             }
             return;
         }
-        
+
+        const shouldShowLoading = showLoading ?? cartRef.current.length === 0;
+
         try {
-            setLoading(true);
+            if (shouldShowLoading) {
+                setLoading(true);
+            }
             setError(null);
             
             // ✅ SessionId НЕ передаём — бэкенд берёт из cookie
@@ -48,14 +55,16 @@ export const CartProvider = ({ children }) => {
                 }
             }
         } finally {
-            setLoading(false);
+            if (shouldShowLoading) {
+                setLoading(false);
+            }
         }
     }, [isValid]);
 
     // Открытие модального окна корзины
     const openCart = useCallback(() => {
         setIsCartOpen(true);
-        fetchCart();
+        fetchCart({ showLoading: false });
     }, [fetchCart]);
 
     // Закрытие модального окна корзины

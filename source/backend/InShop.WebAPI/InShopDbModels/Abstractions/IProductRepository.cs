@@ -1,4 +1,4 @@
-﻿using InShopDbModels.Models;
+using InShopDbModels.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -23,6 +23,7 @@ namespace InShopDbModels.Abstractions
             string sortBy,
             string sortOrder);
         Task<IEnumerable<Product>> GetProductsByCategoryId(int categoryId);
+        Task<IEnumerable<Product>> GetInStockProductsWithCategoryAsync();
         Task<List<(int SpecId, string Name, string DisplayName, string DataType, string? TextValue, decimal? NumberValue)>?> GetProductSpecificationsAsync(int id);
         Task<List<ProductSpecification>> GetSpecificationsByGroupNameAsync(string groupName);
         Task<(List<string>? TextValues, (decimal? Min, decimal? Max)? NumberRange)> GetPossibleValuesForSpecAsync(int specId);

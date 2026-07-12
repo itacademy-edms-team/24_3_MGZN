@@ -1,4 +1,21 @@
 /* src/index.css */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+img,
+video {
+  max-width: 100%;
+  height: auto;
+}
+
+html {
+  overflow-x: clip;
+}
+
 body {
     margin: 0;
     font-family: 'Open Sans', sans-serif;
@@ -8,6 +25,7 @@ body {
     linear-gradient(135deg, rgba(0, 0, 0, 0.02) 0%, transparent 50%, rgba(0, 0, 0, 0.02) 100%);
   background-size: 20px 20px, 100% 100%;
   background-position: center center;
+  overflow-x: clip;
 }
 
 a {

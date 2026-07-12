@@ -1,4 +1,4 @@
-﻿using InShopDbModels.Abstractions;
+using InShopDbModels.Abstractions;
 using InShopDbModels.Data;
 using InShopDbModels.Models;
 using Microsoft.EntityFrameworkCore;
@@ -20,10 +20,14 @@ namespace InShopDbModels.Repositories
 
         public async Task<bool> CheckVerifiedPurchaseAsync(int sessionId, int productId)
         {
+            // В БД пишется канонический Delivered; legacy-алиасы — на случай старых заказов.
+            // Paid/Shipped не считаем: «проверенный покупатель» = товар получен.
+            var deliveredStatuses = new[] { "Delivered", "Доставлен", "Завершен" };
+
             return await _appDbContext.OrderItems
                 .AnyAsync(oi => oi.Order.SessionId == sessionId
                              && oi.ProductId == productId
-                             && (oi.Order.OrderStatus == "Доставлен" || oi.Order.OrderStatus == "Завершен"));
+                             && deliveredStatuses.Contains(oi.Order.OrderStatus));
         }
     }
 }

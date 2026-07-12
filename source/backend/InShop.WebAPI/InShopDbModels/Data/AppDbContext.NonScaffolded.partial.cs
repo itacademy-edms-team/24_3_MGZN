@@ -47,5 +47,11 @@ public partial class AppDbContext
             entity.Property(e => e.RowVersion).IsRowVersion();
             entity.Property(e => e.ImageUrl).HasColumnName("ImageURL").HasMaxLength(500);
         });
+
+        // Путь /uploads/categories/... (scripts/WidenCategoryImageUrl.sql)
+        modelBuilder.Entity<Category>(entity =>
+        {
+            entity.Property(e => e.ImageUrl).HasColumnName("ImageURL").HasMaxLength(500);
+        });
     }
 }

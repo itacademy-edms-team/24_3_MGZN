@@ -101,7 +101,9 @@ namespace InShop.WebAPI
             app.UseAuthorization();
             app.UseStaticFiles();
 
-            Directory.CreateDirectory(Path.Combine(app.Environment.WebRootPath ?? "wwwroot", "uploads", "products"));
+            var uploadsRoot = Path.Combine(app.Environment.WebRootPath ?? "wwwroot", "uploads");
+            Directory.CreateDirectory(Path.Combine(uploadsRoot, "products"));
+            Directory.CreateDirectory(Path.Combine(uploadsRoot, "categories"));
 
             app.UseMiddleware<InShop.WebAPI.Middleware.SessionCsrfMiddleware>();
             app.UseMiddleware<InShop.WebAPI.Middleware.SessionMiddleware>();

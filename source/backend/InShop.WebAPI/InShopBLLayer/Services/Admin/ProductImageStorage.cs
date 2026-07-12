@@ -3,11 +3,13 @@ using Microsoft.AspNetCore.Hosting;
 namespace InShopBLLayer.Services.Admin
 {
     /// <summary>
-    /// Сохранение изображений товаров из Base64 в wwwroot/uploads/products/.
+    /// Сохранение изображений из Base64 в wwwroot/uploads/{subFolder}/.
     /// </summary>
     public class ProductImageStorage
     {
         public const int MaxImageSizeBytes = 5 * 1024 * 1024;
+        public const string ProductsSubFolder = "products";
+        public const string CategoriesSubFolder = "categories";
 
         private static readonly HashSet<string> AllowedMimeTypes = new(StringComparer.OrdinalIgnoreCase)
         {
@@ -16,20 +18,28 @@ namespace InShopBLLayer.Services.Admin
             "image/webp"
         };
 
-        private readonly string _uploadRoot;
+        private readonly string _webRoot;
 
         public ProductImageStorage(IWebHostEnvironment environment)
         {
-            _uploadRoot = Path.Combine(environment.WebRootPath ?? "wwwroot", "uploads", "products");
-            Directory.CreateDirectory(_uploadRoot);
+            _webRoot = environment.WebRootPath ?? "wwwroot";
+            Directory.CreateDirectory(GetUploadRoot(ProductsSubFolder));
+            Directory.CreateDirectory(GetUploadRoot(CategoriesSubFolder));
         }
 
         /// <summary>
         /// Декодирует Base64, проверяет размер и MIME по сигнатуре файла, сохраняет на диск.
         /// </summary>
-        /// <returns>Относительный URL для Product.ImageUrl, например /uploads/products/abc.jpg</returns>
-        public async Task<string> SaveBase64ImageAsync(string imageBase64, CancellationToken ct = default)
+        /// <returns>Относительный URL, например /uploads/products/abc.jpg</returns>
+        public Task<string> SaveBase64ImageAsync(string imageBase64, CancellationToken ct = default)
+            => SaveBase64ImageAsync(imageBase64, ProductsSubFolder, ct);
+
+        public async Task<string> SaveBase64ImageAsync(string imageBase64, string subFolder, CancellationToken ct = default)
         {
+            var safeFolder = NormalizeSubFolder(subFolder);
+            var uploadRoot = GetUploadRoot(safeFolder);
+            Directory.CreateDirectory(uploadRoot);
+
             var (payload, declaredMime) = ParseBase64Payload(imageBase64);
             var bytes = Convert.FromBase64String(payload);
 
@@ -54,11 +64,11 @@ namespace InShopBLLayer.Services.Admin
             };
 
             var fileName = $"{Guid.NewGuid():N}{extension}";
-            var fullPath = Path.Combine(_uploadRoot, fileName);
+            var fullPath = Path.Combine(uploadRoot, fileName);
 
             await File.WriteAllBytesAsync(fullPath, bytes, ct);
 
-            return $"/uploads/products/{fileName}";
+            return $"/uploads/{safeFolder}/{fileName}";
         }
 
         /// <summary>
@@ -66,13 +76,17 @@ namespace InShopBLLayer.Services.Admin
         /// Внешние URL не трогаем.
         /// </summary>
         public bool TryDeleteProductImageFile(string? imageUrl)
+            => TryDeleteImageFile(imageUrl, ProductsSubFolder);
+
+        public bool TryDeleteImageFile(string? imageUrl, string subFolder)
         {
             if (string.IsNullOrWhiteSpace(imageUrl))
             {
                 return false;
             }
 
-            const string prefix = "/uploads/products/";
+            var safeFolder = NormalizeSubFolder(subFolder);
+            var prefix = $"/uploads/{safeFolder}/";
             if (!imageUrl.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
             {
                 return false;
@@ -84,7 +98,7 @@ namespace InShopBLLayer.Services.Admin
                 return false;
             }
 
-            var fullPath = Path.Combine(_uploadRoot, fileName);
+            var fullPath = Path.Combine(GetUploadRoot(safeFolder), fileName);
             if (!File.Exists(fullPath))
             {
                 return false;
@@ -92,6 +106,27 @@ namespace InShopBLLayer.Services.Admin
 
             File.Delete(fullPath);
             return true;
+        }
+
+        private string GetUploadRoot(string subFolder)
+            => Path.Combine(_webRoot, "uploads", subFolder);
+
+        private static string NormalizeSubFolder(string subFolder)
+        {
+            if (string.IsNullOrWhiteSpace(subFolder))
+            {
+                throw new ArgumentException("Подкаталог загрузки обязателен.", nameof(subFolder));
+            }
+
+            var trimmed = subFolder.Trim().Trim('/', '\\');
+            if (trimmed.Contains("..", StringComparison.Ordinal)
+                || trimmed.Contains('/', StringComparison.Ordinal)
+                || trimmed.Contains('\\', StringComparison.Ordinal))
+            {
+                throw new ArgumentException("Некорректный подкаталог загрузки.", nameof(subFolder));
+            }
+
+            return trimmed.ToLowerInvariant();
         }
 
         private static (string Base64Payload, string? Mime) ParseBase64Payload(string input)

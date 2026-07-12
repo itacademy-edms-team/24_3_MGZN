@@ -1,4 +1,4 @@
-﻿using Contracts.Optoins;
+using Contracts.Optoins;
 using InShopBLLayer.Abstractions;
 using InShopBLLayer.MappingProfiles;
 using InShopBLLayer.Services;
@@ -35,6 +35,8 @@ namespace InShopBLLayer.Extensions
             services.AddAutoMapper(config => config.AddProfile<OrderProfile>());
             services.AddScoped<IEmailVerificationService, EmailVerificationService>();
             services.AddScoped<IEmailSender, EmailSender>();
+            services.AddSingleton<OrderTrackingTokenService>();
+            services.AddScoped<IOrderStatusEmailNotifier, OrderStatusEmailNotifier>();
             services.AddScoped<IPaymentStatusService, PaymentStatusService>();
             services.AddScoped<IReviewService, ReviewService>();
             services.AddAutoMapper(config => config.AddProfile<ReviewProfile>());

@@ -1,4 +1,4 @@
-﻿using Contracts.Dtos;
+using Contracts.Dtos;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,6 +18,7 @@ namespace InShopBLLayer.Abstractions
         Task<List<ShipCompanyDto>> GetAllShipCompanies();
         Task<OrderResponseDto> CreateOrder(CreateOrderRequestDto request);
         Task<OrderResponseDto?> GetOrderByIdAsync(int orderId);
+        Task<OrderTrackDto?> GetOrderForTrackingAsync(int orderId);
         Task<OrderResponseDto?> GetOrderBySessionIdAsync(int sessionId);
         Task<bool> OrderItemBelongsToSessionAsync(int orderItemId, int sessionId);
     }

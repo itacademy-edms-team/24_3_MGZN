@@ -115,6 +115,34 @@ const EmailVerificationPage = () => {
                 ...orderData,
                 ...checkoutData,
                 orderId: completedOrderId,
+                // Ответ checkout даёт quantity/price, черновик — quantityItem/displayPrice + productName.
+                // Для UI успеха сохраняем клиентский состав и подмешиваем серверные цены, если есть.
+                orderItems: (orderData.orderItems || []).map((draftItem, index) => {
+                    const serverItem = checkoutData?.orderItems?.[index]
+                        || (checkoutData?.orderItems || []).find((s) => s.productId === draftItem.productId);
+                    const quantity = Number(
+                        draftItem.quantityItem
+                        ?? draftItem.quantity
+                        ?? serverItem?.quantity
+                        ?? serverItem?.quantityItem
+                        ?? 1
+                    );
+                    return {
+                        productId: draftItem.productId ?? serverItem?.productId,
+                        productName:
+                            draftItem.productName
+                            || serverItem?.product?.productName
+                            || serverItem?.productName,
+                        quantityItem: quantity > 0 ? quantity : 1,
+                        displayPrice: draftItem.displayPrice,
+                        price: serverItem?.price ?? draftItem.displayPrice,
+                        totalPrice: serverItem?.totalPrice,
+                    };
+                }),
+                customerFullname:
+                    orderData.customerFullname
+                    || orderData.customerFullName
+                    || checkoutData?.customerFullName,
             };
 
             saveCompletedOrder(completedOrderData);

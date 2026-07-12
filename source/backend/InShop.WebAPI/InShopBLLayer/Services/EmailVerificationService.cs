@@ -1,4 +1,4 @@
-﻿// InShopBLLayer.Services/EmailVerificationService.cs
+// InShopBLLayer.Services/EmailVerificationService.cs
 using InShopBLLayer.Abstractions;
 using InShopBLLayer.BLModels;
 using Microsoft.Extensions.Caching.Memory;
@@ -63,8 +63,8 @@ namespace InShopBLLayer.Services
 
         private string GenerateRandomCode()
         {
-            var number = System.Security.Cryptography.RandomNumberGenerator.GetInt32(0, 1_000_000);
-            return number.ToString("D6");
+            var number = System.Security.Cryptography.RandomNumberGenerator.GetInt32(0, 10_000);
+            return number.ToString("D4");
         }
 
         private static string NormalizeEmail(string email)

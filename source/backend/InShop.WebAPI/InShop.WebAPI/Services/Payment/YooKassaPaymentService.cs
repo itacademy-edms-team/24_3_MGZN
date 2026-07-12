@@ -1,3 +1,4 @@
+using InShopBLLayer.Abstractions;
 using InShop.WebAPI.Services.Payment.Clients;
 using InShopDbModels.Abstractions;
 using InShopDbModels.Models;
@@ -11,17 +12,23 @@ namespace InShop.WebAPI.Services.Payment
     {
         private readonly YooKassaClient _client;
         private readonly IOrderRepository _orderRepository;
+        private readonly IInventoryReservationService _inventoryReservationService;
+        private readonly IOrderStatusEmailNotifier _emailNotifier;
         private readonly IConfiguration _configuration;
         private readonly ILogger<YooKassaPaymentService> _logger;
 
         public YooKassaPaymentService(
             YooKassaClient client,
             IOrderRepository orderRepository,
+            IInventoryReservationService inventoryReservationService,
+            IOrderStatusEmailNotifier emailNotifier,
             IConfiguration configuration,
             ILogger<YooKassaPaymentService> logger)
         {
             _client = client;
             _orderRepository = orderRepository;
+            _inventoryReservationService = inventoryReservationService;
+            _emailNotifier = emailNotifier;
             _configuration = configuration;
             _logger = logger;
         }
@@ -236,6 +243,13 @@ namespace InShop.WebAPI.Services.Payment
                 return false;
             }
 
+            // Онлайн-оплата минует Processing — резервируем здесь, иначе Delivered не сможет списать резерв.
+            var orderWithItems = await _orderRepository.GetOrderById(order.OrderId) ?? order;
+            foreach (var item in orderWithItems.OrderItems ?? Enumerable.Empty<OrderItem>())
+            {
+                await _inventoryReservationService.ReserveAsync(item.ProductId, item.QuantityItem);
+            }
+
             order.OrderStatus = "Payed";
             order.PayStatus = PaidPayStatusValue;
             if (string.IsNullOrEmpty(order.YooKassaPaymentId))
@@ -247,6 +261,13 @@ namespace InShop.WebAPI.Services.Payment
             _logger.LogInformation(
                 "Заказ {OrderId}: OrderStatus=Payed, PayStatus={PayStatus} (платёж {PaymentId})",
                 order.OrderId, order.PayStatus, yooKassaPaymentId);
+
+            var orderForEmail = await _orderRepository.GetOrderById(order.OrderId);
+            if (orderForEmail != null)
+            {
+                await _emailNotifier.SendStatusUpdateAsync(orderForEmail);
+            }
+
             return true;
         }
 

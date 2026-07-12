@@ -15,6 +15,7 @@ import OrderSuccessPage from '../pages/OrderSuccessPage/OrderSuccessPage.js';
 import PaymentPage from '../pages/PaymentPage.js';
 import PaymentConfirmationPage from '../pages/PaymentConfirmationPage/PaymentConfirmationPage.js';
 import SearchResultsPage from '../pages/SearchResultPage/SearchResultsPage';
+import OrderTrackPage from '../pages/OrderTrackPage/OrderTrackPage';
 
 const AppRoutes: React.FC = () => {
   return (
@@ -41,6 +42,9 @@ const AppRoutes: React.FC = () => {
       
       {/* Успешный заказ */}
       <Route path="/order-success" element={<OrderSuccessPage />} />
+
+      {/* Отслеживание заказа из письма */}
+      <Route path="/order-track/:orderId" element={<OrderTrackPage />} />
       
       {/* Верификация email */}
       <Route path="/email-verification" element={<EmailVerificationPage />} />

@@ -1,19 +1,9 @@
-﻿using AutoMapper;
-using Azure.Core;
+using AutoMapper;
 using Contracts.Dtos;
 using InShopBLLayer.Abstractions;
-using InShopBLLayer.Models;
+using InShopBLLayer.Services.Admin;
 using InShopDbModels.Abstractions;
 using InShopDbModels.Models;
-using InShopDbModels.Repositories;
-using RazorLight;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Xml;
-using Newtonsoft.Json;
 
 namespace InShopBLLayer.Services
 {
@@ -21,13 +11,18 @@ namespace InShopBLLayer.Services
     {
         private readonly IOrderRepository _orderRepository;
         private readonly IProductRepository _productReposiotory;
-        private readonly IEmailSender _emailSender;
+        private readonly IOrderStatusEmailNotifier _emailNotifier;
         private readonly IMapper _mapper;
-        public OrderService(IOrderRepository orderRepository, IProductRepository productRepository, IMapper mapper, IEmailSender emailSender)
+
+        public OrderService(
+            IOrderRepository orderRepository,
+            IProductRepository productRepository,
+            IMapper mapper,
+            IOrderStatusEmailNotifier emailNotifier)
         {
             _orderRepository = orderRepository;
             _productReposiotory = productRepository;
-            _emailSender = emailSender;
+            _emailNotifier = emailNotifier;
             _mapper = mapper;
         }
         public async Task<int> CreateNewOrder(OrderDto orderDto)
@@ -253,8 +248,7 @@ namespace InShopBLLayer.Services
                 if (orderForEmail == null)
                     throw new InvalidOperationException("Не удалось получить оформленный заказ.");
 
-                // Отправляем письмо
-                await SendOrderConfirmationEmailAsync(orderForEmail, orderForEmail.CustomerEmail);
+                await _emailNotifier.SendOrderConfirmationAsync(orderForEmail);
 
                 return _mapper.Map<OrderResponseDto>(orderForEmail);
             }
@@ -273,67 +267,40 @@ namespace InShopBLLayer.Services
 
             return _mapper.Map<OrderResponseDto>(order);
         }
-        private async Task SendOrderConfirmationEmailAsync(Order order, string customerEmail)
+
+        public async Task<OrderTrackDto?> GetOrderForTrackingAsync(int orderId)
         {
-            var subject = "Подтверждение заказа";
-            var body = GenerateOrderConfirmationHtml(order);
-
-            // Проверки
-            if (_emailSender == null)
-                throw new InvalidOperationException("_emailSender не был внедрён");
-
-            if (string.IsNullOrEmpty(customerEmail))
-                throw new InvalidOperationException("Email получателя пуст");
-
-            if (string.IsNullOrEmpty(body))
-                throw new InvalidOperationException("Тело письма пусто");
-
-            try
+            var order = await _orderRepository.GetOrderById(orderId);
+            if (order == null)
             {
-                await _emailSender.SendAsync(customerEmail, subject, body);
+                return null;
             }
-            catch (Exception ex)
+
+            var canonical = OrderStatusStateMachine.Normalize(order.OrderStatus);
+            return new OrderTrackDto
             {
-                _ = ex;
-            }
-        }
-
-        private string GenerateOrderConfirmationHtml(Order order)
-        {
-            try
-            {
-                var templatePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "EmailTemplates");
-
-                var engine = new RazorLightEngineBuilder()
-                    .UseFileSystemProject(templatePath) // Папка с шаблонами
-                    .UseMemoryCachingProvider()
-                    .Build();
-
-                var model = new OrderConfirmationTemplateModel
-                {
-                    OrderId = order.OrderId,
-                    OrderDate = order.OrderDate.ToString(),
-                    OrderStatus = order.OrderStatus,
-                    OrderTotalAmount = order.OrderTotalAmount.ToString("C"),
-                    OrderItems = order.OrderItems.Select(item => new OrderItemTemplateModel
+                OrderId = order.OrderId,
+                OrderStatus = canonical,
+                OrderStatusDisplay = OrderStatusLabels.ToRussian(order.OrderStatus),
+                OrderDate = order.OrderDate.ToString("dd.MM.yyyy"),
+                OrderTotalAmount = order.OrderTotalAmount,
+                ShipMethod = order.ShipMethod,
+                ShipAddress = order.ShipAddress,
+                CustomerFullname = order.CustomerFullname,
+                PayMethod = order.PayMethod,
+                PayStatus = order.PayStatus,
+                Items = (order.OrderItems ?? Enumerable.Empty<OrderItem>())
+                    .Select(i => new OrderTrackItemDto
                     {
-                        ProductName = item.Product?.ProductName ?? "Товар не найден",
-                        QuantityItem = item.QuantityItem,
-                        Price = item.Price.ToString("C"),
-                        TotalPrice = (item.TotalPrice ?? item.Price * item.QuantityItem).ToString("C"),
-                    }).ToList()
-                };
-
-                var html = engine.CompileRenderAsync("OrderConfirmationTemplate.cshtml", model).Result;
-
-                return html;
-            }
-            catch (Exception ex)
-            {
-                _ = ex;
-                return "<p>Ошибка генерации письма.</p>";
-            }
+                        ProductName = i.Product?.ProductName ?? $"Товар #{i.ProductId}",
+                        Quantity = i.QuantityItem,
+                        UnitPrice = i.Price,
+                        LineTotal = i.TotalPrice ?? i.Price * i.QuantityItem
+                    })
+                    .ToList()
+            };
         }
+
         public async Task<OrderResponseDto?> GetOrderBySessionIdAsync(int sessionId)
         {
             var order = await _orderRepository.GetOrderBySessionIdAsync(sessionId);

@@ -34,9 +34,10 @@ services:
     restart: "no"
 
   redis:
-    image: redis/redis-stack-server:latest
+    image: redis/redis-stack:latest
     ports:
       - "${REDIS_PORT:-6379}:6379"
+      - "${REDIS_INSIGHT_PORT:-8001}:8001"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -99,6 +100,8 @@ services:
       Email__Port: ${EMAIL_PORT:-587}
       Email__Username: ${EMAIL_USERNAME:-}
       Email__Password: ${EMAIL_PASSWORD:-}
+      Frontend__BaseUrl: ${FRONTEND_BASE_URL:-http://localhost:3000}
+      OrderTracking__Secret: ${ORDER_TRACKING_SECRET:-InShop-Dev-OrderTracking-Secret-ChangeMe}
     ports:
       - "${API_PORT:-5000}:8080"
     volumes:

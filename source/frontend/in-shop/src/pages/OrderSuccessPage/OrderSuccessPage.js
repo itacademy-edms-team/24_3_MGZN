@@ -14,6 +14,7 @@ const OrderSuccessPage = () => {
     const [orderData, setOrderData] = useState(null);
     const [completedOrderId, setCompletedOrderId] = useState(null);
     const [isPaying, setIsPaying] = useState(false);
+    const [trackingPath, setTrackingPath] = useState(null);
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -43,6 +44,28 @@ const OrderSuccessPage = () => {
             setOrderData(storedOrderData);
         }
     }, [location.state]);
+
+    useEffect(() => {
+        if (!completedOrderId || !isValid) {
+            return undefined;
+        }
+
+        let cancelled = false;
+        apiClient
+            .get(`/Order/${completedOrderId}/tracking-link`)
+            .then((res) => {
+                if (!cancelled && res.data?.trackingPath) {
+                    setTrackingPath(res.data.trackingPath);
+                }
+            })
+            .catch(() => {
+                /* кнопка отслеживания опциональна */
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [completedOrderId, isValid]);
 
     /**
      * ЮKassa: POST /Payment/initiate → редирект на страницу ЮKassa (без /payment).
@@ -113,18 +136,40 @@ const OrderSuccessPage = () => {
         );
     }
 
+    const orderItems = (orderData.orderItems || []).map((item) => {
+        const rawQuantity = Number(
+            item.quantityItem
+            ?? item.quantity
+            ?? item.QuantityItem
+            ?? item.Quantity
+            ?? 0
+        );
+        const quantity = rawQuantity > 0 ? rawQuantity : 1;
+        const unitPrice = Number(item.displayPrice ?? item.price ?? 0);
+        const lineTotal = item.totalPrice != null
+            ? Number(item.totalPrice)
+            : unitPrice * quantity;
+        return {
+            productId: item.productId,
+            productName:
+                item.productName
+                || item.product?.productName
+                || (item.productId != null ? `Товар #${item.productId}` : 'Товар'),
+            quantity: Number.isFinite(quantity) ? quantity : 1,
+            unitPrice: Number.isFinite(unitPrice) ? unitPrice : 0,
+            lineTotal: Number.isFinite(lineTotal) ? lineTotal : 0,
+        };
+    });
+
     const deliveryCost = orderData.shipMethod === 'Самовывоз' ? 0 : 1500;
-    const itemsTotal = orderData.orderItems?.reduce(
-        (sum, item) => sum + ((item.price ?? item.displayPrice ?? 0) * item.quantityItem),
-        0
-    ) || 0;
-    const totalAmount = orderData.orderTotalAmount ?? orderData.displayTotalAmount ?? (itemsTotal + deliveryCost);
+    const itemsTotal = orderItems.reduce((sum, item) => sum + item.lineTotal, 0);
+    const rawTotal = orderData.orderTotalAmount ?? orderData.displayTotalAmount ?? (itemsTotal + deliveryCost);
+    const totalAmount = Number.isFinite(Number(rawTotal)) ? Number(rawTotal) : itemsTotal + deliveryCost;
 
     return (
         <div className="order-success-page">
             <div className="order-success-container">
                 <div className="order-success-header">
-                    <div className="success-icon">✓</div>
                     <h1>Заказ оформлен</h1>
                     <p className="order-number">Номер заказа: <strong>#{completedOrderId || 'N/A'}</strong></p>
                 </div>
@@ -159,7 +204,7 @@ const OrderSuccessPage = () => {
                         <div className="info-grid">
                             <div className="info-item">
                                 <span className="label">ФИО</span>
-                                <span className="value">{orderData.customerFullname}</span>
+                                <span className="value">{orderData.customerFullname || orderData.customerFullName}</span>
                             </div>
                             <div className="info-item">
                                 <span className="label">Email</span>
@@ -173,19 +218,17 @@ const OrderSuccessPage = () => {
                     </div>
 
                     <div className="order-items">
-                        <h2>Состав заказа ({orderData.orderItems?.length || 0})</h2>
+                        <h2>Состав заказа ({orderItems.length})</h2>
                         <div className="items-list">
-                            {orderData.orderItems?.map((item, index) => (
-                                <div key={index} className="order-item">
+                            {orderItems.map((item, index) => (
+                                <div key={`${item.productId}-${index}`} className="order-item">
                                     <div className="item-info">
-                                        <span className="item-name">{item.productName || `Товар #${item.productId}`}</span>
-                                        <span className="item-quantity">× {item.quantityItem}</span>
+                                        <span className="item-name">{item.productName}</span>
+                                        <span className="item-quantity">× {item.quantity}</span>
                                     </div>
-                                    {(item.price != null || item.displayPrice != null) && (
-                                        <div className="item-price">
-                                            {((item.price ?? item.displayPrice) * item.quantityItem).toFixed(2)} ₽
-                                        </div>
-                                    )}
+                                    <div className="item-price">
+                                        {item.lineTotal.toFixed(2)} ₽
+                                    </div>
                                 </div>
                             ))}
                         </div>
@@ -229,17 +272,28 @@ const OrderSuccessPage = () => {
                 </div>
 
                 <div className="order-success-footer">
-                    <p>Спасибо за покупку! По вопросам: поддержка@магазин.ру</p>
-                    <button
-                        type="button"
-                        onClick={() => {
-                            clearCheckoutStorage();
-                            navigate('/');
-                        }}
-                        className="back-to-shop"
-                    >
-                        Продолжить покупки
-                    </button>
+                    <p>Спасибо за покупку! Детали заказа также отправлены на email.</p>
+                    <div className="order-success-actions">
+                        {trackingPath && (
+                            <button
+                                type="button"
+                                className="back-to-shop"
+                                onClick={() => navigate(trackingPath)}
+                            >
+                                Отследить заказ
+                            </button>
+                        )}
+                        <button
+                            type="button"
+                            className="order-success-secondary"
+                            onClick={() => {
+                                clearCheckoutStorage();
+                                navigate('/');
+                            }}
+                        >
+                            Продолжить покупки
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

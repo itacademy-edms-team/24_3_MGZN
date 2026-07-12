@@ -2,6 +2,7 @@ using FluentAssertions;
 using InShop.IntegrationTests.Infrastructure;
 using InShopBLLayer.Abstractions;
 using InShopBLLayer.Services.Admin;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 
@@ -17,6 +18,8 @@ public class AdminOrderServiceTests
         _fixture = fixture;
     }
 
+    private static IServiceScopeFactory CreateScopeFactory() => Mock.Of<IServiceScopeFactory>();
+
     [Fact]
     public async Task ChangeOrderStatusAsync_UpdatesStatusAndWritesAuditLog()
     {
@@ -31,6 +34,7 @@ public class AdminOrderServiceTests
             context,
             mapper,
             inventoryMock.Object,
+            CreateScopeFactory(),
             NullLogger<AdminOrderService>.Instance);
 
         var result = await sut.ChangeOrderStatusAsync(
@@ -58,6 +62,7 @@ public class AdminOrderServiceTests
             context,
             TestMapperFactory.CreateAdminMapper(),
             Mock.Of<IInventoryReservationService>(),
+            CreateScopeFactory(),
             NullLogger<AdminOrderService>.Instance);
 
         var act = () => sut.ChangeOrderStatusAsync(order.OrderId, "Processing", "admin@test.local");
@@ -79,6 +84,7 @@ public class AdminOrderServiceTests
             context,
             TestMapperFactory.CreateAdminMapper(),
             Mock.Of<IInventoryReservationService>(),
+            CreateScopeFactory(),
             NullLogger<AdminOrderService>.Instance);
 
         var page = await sut.GetOrdersAsync(page: 1, pageSize: 20, statusFilter: null);

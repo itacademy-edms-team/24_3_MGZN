@@ -14,7 +14,7 @@ public class OrderServiceTests
     private readonly Mock<IOrderRepository> _orderRepository = new();
     private readonly Mock<IProductRepository> _productRepository = new();
     private readonly Mock<IMapper> _mapper = new();
-    private readonly Mock<IEmailSender> _emailSender = new();
+    private readonly Mock<IOrderStatusEmailNotifier> _emailNotifier = new();
     private readonly OrderService _sut;
 
     public OrderServiceTests()
@@ -23,7 +23,7 @@ public class OrderServiceTests
             _orderRepository.Object,
             _productRepository.Object,
             _mapper.Object,
-            _emailSender.Object);
+            _emailNotifier.Object);
     }
 
     [Fact]

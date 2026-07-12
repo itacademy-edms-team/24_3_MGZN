@@ -1,13 +1,9 @@
-﻿using AutoMapper;
+using AutoMapper;
 using Contracts.Dtos;
 using InShopBLLayer.Abstractions;
+using InShopBLLayer.Services.Admin;
 using InShopDbModels.Abstractions;
 using InShopDbModels.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace InShopBLLayer.Services
 {
@@ -15,16 +11,29 @@ namespace InShopBLLayer.Services
     {
         private readonly ICategoryRepository _repository;
         private readonly IMapper _mapper;
-        public CategoryService(ICategoryRepository repository, IMapper mapper)
+        private readonly ProductImageStorage _imageStorage;
+
+        public CategoryService(
+            ICategoryRepository repository,
+            IMapper mapper,
+            ProductImageStorage imageStorage)
         {
             _repository = repository;
             _mapper = mapper;
-
+            _imageStorage = imageStorage;
         }
 
         public async Task CreateCategory(CategoryCreateDto categoryDto)
         {
             var category = _mapper.Map<Category>(categoryDto);
+
+            if (!string.IsNullOrWhiteSpace(categoryDto.ImageBase64))
+            {
+                category.ImageUrl = await _imageStorage.SaveBase64ImageAsync(
+                    categoryDto.ImageBase64,
+                    ProductImageStorage.CategoriesSubFolder);
+            }
+
             await _repository.CreateCategory(category);
         }
 
@@ -51,9 +60,33 @@ namespace InShopBLLayer.Services
         {
             if (!await _repository.ExistsCategory(categoryDto.CategoryId))
                 throw new Exception("Категория не найдена");
-            var editedCategory = _mapper.Map<Category>(categoryDto);
-            await _repository.UpdateCategory(editedCategory);
+
+            var category = await _repository.GetCategory(categoryDto.CategoryId)
+                ?? throw new Exception("Категория не найдена");
+
+            category.CategoryName = categoryDto.CategoryName;
+
+            if (!string.IsNullOrWhiteSpace(categoryDto.ImageBase64))
+            {
+                var previousUrl = category.ImageUrl;
+                category.ImageUrl = await _imageStorage.SaveBase64ImageAsync(
+                    categoryDto.ImageBase64,
+                    ProductImageStorage.CategoriesSubFolder);
+                _imageStorage.TryDeleteImageFile(previousUrl, ProductImageStorage.CategoriesSubFolder);
+            }
+            else if (categoryDto.RemoveImage)
+            {
+                _imageStorage.TryDeleteImageFile(category.ImageUrl, ProductImageStorage.CategoriesSubFolder);
+                category.ImageUrl = null;
+            }
+            else if (!string.IsNullOrWhiteSpace(categoryDto.ImageURL))
+            {
+                category.ImageUrl = categoryDto.ImageURL;
+            }
+
+            await _repository.UpdateCategory(category);
         }
+
         public async Task<CategoryDto> GetCategoryByName(string categoryName)
         {
             var categoryId = await _repository.GetCategoryByName(categoryName);
@@ -61,6 +94,6 @@ namespace InShopBLLayer.Services
             if (category == null)
                 throw new Exception("Категория не найдена");
             return _mapper.Map<CategoryDto>(category);
-        } 
+        }
     }
 }

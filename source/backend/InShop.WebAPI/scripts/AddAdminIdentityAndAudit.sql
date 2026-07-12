@@ -26,10 +26,25 @@ BEGIN
     ALTER TABLE dbo.Products ALTER COLUMN ImageURL NVARCHAR(500) NULL;';
     BEGIN TRY
         EXEC sp_executesql @sql;
-        PRINT N'ImageURL расширен до NVARCHAR(500).';
+        PRINT N'Products.ImageURL расширен до NVARCHAR(500).';
     END TRY
     BEGIN CATCH
-        PRINT N'ImageURL: ' + ERROR_MESSAGE();
+        PRINT N'Products.ImageURL: ' + ERROR_MESSAGE();
+    END CATCH
+END
+
+-- Расширение пути к изображению категории для /uploads/categories/...
+IF COL_LENGTH(N'dbo.Categories', N'ImageURL') IS NOT NULL
+BEGIN
+    DECLARE @sqlCat NVARCHAR(MAX);
+    SET @sqlCat = N'
+    ALTER TABLE dbo.Categories ALTER COLUMN ImageURL NVARCHAR(500) NULL;';
+    BEGIN TRY
+        EXEC sp_executesql @sqlCat;
+        PRINT N'Categories.ImageURL расширен до NVARCHAR(500).';
+    END TRY
+    BEGIN CATCH
+        PRINT N'Categories.ImageURL: ' + ERROR_MESSAGE();
     END CATCH
 END
 

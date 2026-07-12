@@ -21,7 +21,9 @@ namespace InShopBLLayer.MappingProfiles
             CreateMap<CreateOrderItemRequest, OrderItem>();
 
             CreateMap<Order, OrderResponseDto>();
-            CreateMap<OrderItem, OrderItemResponse>();
+            CreateMap<OrderItem, OrderItemResponse>()
+                .ForMember(d => d.Quantity, o => o.MapFrom(s => s.QuantityItem))
+                .ForMember(d => d.TotalPrice, o => o.MapFrom(s => s.TotalPrice ?? s.Price * s.QuantityItem));
         }
     }
 }

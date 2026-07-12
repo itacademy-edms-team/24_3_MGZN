@@ -22,6 +22,7 @@ const PaymentConfirmationPage = () => {
     const [status, setStatus] = useState('checking');
     const [error, setError] = useState(null);
     const [provider, setProvider] = useState(null);
+    const [trackingPath, setTrackingPath] = useState(null);
 
     useEffect(() => {
         if (!orderId) {
@@ -38,6 +39,20 @@ const PaymentConfirmationPage = () => {
         let intervalId;
         let pollCount = 0;
         let cancelled = false;
+
+        const loadTrackingLink = async () => {
+            try {
+                const res = await apiClient.get(`/Order/${orderId}/tracking-link`);
+                const path = res.data?.trackingPath;
+                if (!cancelled && path) {
+                    setTrackingPath(path);
+                }
+            } catch (err) {
+                if (isDevelopment) {
+                    console.warn('tracking-link:', err.response?.data || err.message);
+                }
+            }
+        };
 
         const runYooKassaConfirm = async () => {
             if (confirmCalledRef.current) {
@@ -66,6 +81,7 @@ const PaymentConfirmationPage = () => {
                 if (currentStatus === 'Payed') {
                     setStatus('paid');
                     if (intervalId) clearInterval(intervalId);
+                    await loadTrackingLink();
                     return;
                 }
 
@@ -146,9 +162,20 @@ const PaymentConfirmationPage = () => {
                     <div className="success-icon">✓</div>
                     <h1>Заказ успешно оплачен</h1>
                     <p>Номер заказа: #{orderId}</p>
-                    <button type="button" className="done-button" onClick={() => navigate('/')}>
-                        На главную
-                    </button>
+                    <div className="confirmation-actions">
+                        {trackingPath && (
+                            <button
+                                type="button"
+                                className="done-button"
+                                onClick={() => navigate(trackingPath)}
+                            >
+                                Отследить заказ
+                            </button>
+                        )}
+                        <button type="button" className="back-button" onClick={() => navigate('/')}>
+                            На главную
+                        </button>
+                    </div>
                 </div>
             </div>
         );

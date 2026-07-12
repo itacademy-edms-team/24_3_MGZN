@@ -7,7 +7,7 @@
 - `frontend` - React-приложение, которое отдаётся через nginx
 - `inshop-api` - основной ASP.NET Core WebAPI
 - `sqlserver` - SQL Server 2025
-- `redis` - инфраструктура кеша и поиска
+- `redis` - Redis Stack (кеш, поиск) + Redis Insight UI
 - `embedding-server` - FastAPI-сервис для генерации embeddings
 
 `PaymentsAPI` намеренно не входит в основной compose-файл. Это mock-сервис оплаты только для разработки, он подключается через `docker-compose.dev.yml`.
@@ -34,6 +34,7 @@
 
    - Frontend: `http://localhost:3000`
    - API: `http://localhost:5000`
+   - Redis Insight: `http://localhost:8001`
 
 Первая сборка/загрузка `embedding-server` может занять много времени, потому что модель LaBSE большая.
 

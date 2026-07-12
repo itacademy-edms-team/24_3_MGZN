@@ -46,10 +46,13 @@ export interface CategoryDto {
   categoryId: number;
   categoryName: string;
   imageURL?: string;
+  imageBase64?: string;
+  removeImage?: boolean;
 }
 
 export interface CategoryCreateDto {
   categoryName: string;
+  imageBase64?: string;
 }
 
 export interface ShipCompanyDto {

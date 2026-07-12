@@ -90,6 +90,20 @@
   background-color: #333333;
 }
 
+.confirmation-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.confirmation-actions .back-button,
+.confirmation-actions .done-button {
+  margin-top: 0;
+  width: 100%;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .confirmation-container {

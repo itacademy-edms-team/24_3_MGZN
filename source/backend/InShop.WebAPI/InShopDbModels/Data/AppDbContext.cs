@@ -72,7 +72,7 @@ public partial class AppDbContext : DbContext
         {
             entity.Property(e => e.CategoryName).HasMaxLength(50);
             entity.Property(e => e.ImageUrl)
-                .HasMaxLength(50)
+                .HasMaxLength(500)
                 .HasColumnName("ImageURL");
         });
 

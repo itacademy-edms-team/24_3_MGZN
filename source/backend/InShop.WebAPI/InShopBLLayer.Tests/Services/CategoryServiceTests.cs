@@ -1,10 +1,11 @@
 using AutoMapper;
 using Contracts.Dtos;
 using FluentAssertions;
-using InShopBLLayer.Abstractions;
 using InShopBLLayer.Services;
+using InShopBLLayer.Services.Admin;
 using InShopDbModels.Abstractions;
 using InShopDbModels.Models;
+using Microsoft.AspNetCore.Hosting;
 using Moq;
 
 namespace InShopBLLayer.Tests.Services;
@@ -17,7 +18,10 @@ public class CategoryServiceTests
 
     public CategoryServiceTests()
     {
-        _sut = new CategoryService(_repository.Object, _mapper.Object);
+        var env = new Mock<IWebHostEnvironment>();
+        env.Setup(e => e.WebRootPath).Returns(Path.Combine(Path.GetTempPath(), "inshop-category-tests"));
+        var imageStorage = new ProductImageStorage(env.Object);
+        _sut = new CategoryService(_repository.Object, _mapper.Object, imageStorage);
     }
 
     [Fact]
@@ -57,5 +61,29 @@ public class CategoryServiceTests
         var result = await _sut.GetCategories();
 
         result.Should().BeEquivalentTo(dtos);
+    }
+
+    [Fact]
+    public async Task UpdateCategory_WhenRemoveImage_ClearsImageUrl()
+    {
+        var category = new Category
+        {
+            CategoryId = 1,
+            CategoryName = "Аудио",
+            ImageUrl = "/images/audio.jpg"
+        };
+
+        _repository.Setup(r => r.ExistsCategory(1)).ReturnsAsync(true);
+        _repository.Setup(r => r.GetCategory(1)).ReturnsAsync(category);
+
+        await _sut.UpdateCategory(new CategoryDto
+        {
+            CategoryId = 1,
+            CategoryName = "Аудио",
+            RemoveImage = true
+        });
+
+        category.ImageUrl.Should().BeNull();
+        _repository.Verify(r => r.UpdateCategory(category), Times.Once);
     }
 }

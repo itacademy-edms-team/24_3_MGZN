@@ -145,7 +145,7 @@ const CheckoutForm = ({ onSubmit }) => {
         const displayItems = cart.map(item => ({
             productId: item.productId,
             productName: item.productName,
-            quantityItem: item.quantity,
+            quantityItem: Number(item.quantity ?? item.quantityItem ?? 1),
             displayPrice: Number(item.productPrice || 0)
         }));
         const displayItemsTotal = displayItems.reduce((sum, item) => sum + (item.displayPrice * item.quantityItem), 0);

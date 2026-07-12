@@ -4,6 +4,7 @@ using InShopBLLayer.Abstractions;
 using InShopDbModels.Data;
 using InShopDbModels.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace InShopBLLayer.Services.Admin
@@ -17,17 +18,20 @@ namespace InShopBLLayer.Services.Admin
         private readonly AppDbContext _context;
         private readonly IMapper _mapper;
         private readonly IInventoryReservationService _inventoryReservationService;
+        private readonly IServiceScopeFactory _scopeFactory;
         private readonly ILogger<AdminOrderService> _logger;
 
         public AdminOrderService(
             AppDbContext context,
             IMapper mapper,
             IInventoryReservationService inventoryReservationService,
+            IServiceScopeFactory scopeFactory,
             ILogger<AdminOrderService> logger)
         {
             _context = context;
             _mapper = mapper;
             _inventoryReservationService = inventoryReservationService;
+            _scopeFactory = scopeFactory;
             _logger = logger;
         }
 
@@ -204,6 +208,9 @@ namespace InShopBLLayer.Services.Admin
                     canonicalNew,
                     adminEmail);
 
+                // Письмо уходит в фоне — админка не ждёт SMTP.
+                QueueStatusEmail(orderId, canonicalNew);
+
                 return MapOrder(order);
             }
             catch
@@ -211,6 +218,53 @@ namespace InShopBLLayer.Services.Admin
                 await transaction.RollbackAsync(ct);
                 throw;
             }
+        }
+
+        /// <summary>
+        /// Ставит отправку письма в фон с отдельным DI-scope (scoped-сервисы не переживают HTTP-запрос).
+        /// </summary>
+        private void QueueStatusEmail(int orderId, string newStatus)
+        {
+            if (!OrderStatusLabels.ShouldSendStatusEmail(newStatus))
+            {
+                return;
+            }
+
+            var scopeFactory = _scopeFactory;
+            var logger = _logger;
+
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await using var scope = scopeFactory.CreateAsyncScope();
+                    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                    var notifier = scope.ServiceProvider.GetRequiredService<IOrderStatusEmailNotifier>();
+
+                    var orderForEmail = await db.Orders
+                        .AsNoTracking()
+                        .Include(o => o.OrderItems)
+                            .ThenInclude(i => i.Product)
+                        .FirstOrDefaultAsync(o => o.OrderId == orderId);
+
+                    if (orderForEmail is null)
+                    {
+                        logger.LogWarning(
+                            "Фоновая отправка письма: заказ {OrderId} не найден",
+                            orderId);
+                        return;
+                    }
+
+                    await notifier.SendStatusUpdateAsync(orderForEmail);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(
+                        ex,
+                        "Фоновая отправка письма для заказа {OrderId} не удалась",
+                        orderId);
+                }
+            });
         }
 
         public IReadOnlyList<string> GetAllowedNextStatuses(string? currentStatus) =>
@@ -236,23 +290,16 @@ namespace InShopBLLayer.Services.Admin
                 return;
             }
 
-            if (string.Equals(newStatus, OrderStatusStateMachine.Processing, StringComparison.OrdinalIgnoreCase)
-                && !string.Equals(oldStatus, OrderStatusStateMachine.Processing, StringComparison.OrdinalIgnoreCase))
+            // Резерв ставится при входе в Processing или Paid (онлайн-оплата часто минует Processing).
+            var shouldReserve =
+                (string.Equals(newStatus, OrderStatusStateMachine.Processing, StringComparison.OrdinalIgnoreCase)
+                 && !string.Equals(oldStatus, OrderStatusStateMachine.Processing, StringComparison.OrdinalIgnoreCase))
+                || (string.Equals(newStatus, OrderStatusStateMachine.Paid, StringComparison.OrdinalIgnoreCase)
+                    && string.Equals(oldStatus, OrderStatusStateMachine.Unpaid, StringComparison.OrdinalIgnoreCase));
+
+            if (shouldReserve)
             {
-                foreach (var item in order.OrderItems)
-                {
-                    var product = await LoadProductForInventoryAsync(item.ProductId, ct);
-                    if (product.ProductStockQuantity < item.QuantityItem)
-                    {
-                        throw new InvalidOperationException(
-                            $"Недостаточно свободного остатка для товара {product.ProductId}: " +
-                            $"запрошено {item.QuantityItem}, доступно {product.ProductStockQuantity}.");
-                    }
-
-                    product.ProductStockQuantity -= item.QuantityItem;
-                    product.ReservedQuantity += item.QuantityItem;
-                }
-
+                await ReserveOrderItemsAsync(order, ct);
                 return;
             }
 
@@ -262,11 +309,10 @@ namespace InShopBLLayer.Services.Admin
                 foreach (var item in order.OrderItems)
                 {
                     var product = await LoadProductForInventoryAsync(item.ProductId, ct);
+                    // Заказ мог стать Paid через оплату без резерва — освобождать нечего.
                     if (product.ReservedQuantity < item.QuantityItem)
                     {
-                        throw new InvalidOperationException(
-                            $"Нельзя освободить резерв товара {product.ProductId}: " +
-                            $"зарезервировано {product.ReservedQuantity}, требуется {item.QuantityItem}.");
+                        continue;
                     }
 
                     product.ReservedQuantity -= item.QuantityItem;
@@ -281,15 +327,40 @@ namespace InShopBLLayer.Services.Admin
                 foreach (var item in order.OrderItems)
                 {
                     var product = await LoadProductForInventoryAsync(item.ProductId, ct);
+                    // Если резерва нет (оплата минула Processing) — добираем из свободного остатка, затем списываем.
                     if (product.ReservedQuantity < item.QuantityItem)
                     {
-                        throw new InvalidOperationException(
-                            $"Нельзя списать резерв товара {product.ProductId}: " +
-                            $"зарезервировано {product.ReservedQuantity}, требуется {item.QuantityItem}.");
+                        var deficit = item.QuantityItem - product.ReservedQuantity;
+                        if (product.ProductStockQuantity < deficit)
+                        {
+                            throw new InvalidOperationException(
+                                $"Нельзя списать товар {product.ProductId}: " +
+                                $"зарезервировано {product.ReservedQuantity}, свободно {product.ProductStockQuantity}, требуется {item.QuantityItem}.");
+                        }
+
+                        product.ProductStockQuantity -= deficit;
+                        product.ReservedQuantity += deficit;
                     }
 
                     product.ReservedQuantity -= item.QuantityItem;
                 }
+            }
+        }
+
+        private async Task ReserveOrderItemsAsync(Order order, CancellationToken ct)
+        {
+            foreach (var item in order.OrderItems)
+            {
+                var product = await LoadProductForInventoryAsync(item.ProductId, ct);
+                if (product.ProductStockQuantity < item.QuantityItem)
+                {
+                    throw new InvalidOperationException(
+                        $"Недостаточно свободного остатка для товара {product.ProductId}: " +
+                        $"запрошено {item.QuantityItem}, доступно {product.ProductStockQuantity}.");
+                }
+
+                product.ProductStockQuantity -= item.QuantityItem;
+                product.ReservedQuantity += item.QuantityItem;
             }
         }
 

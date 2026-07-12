@@ -1,4 +1,4 @@
-/// <reference types="react-scripts" />
+ё/// <reference types="react-scripts" />
 
 declare module '*.css';
 declare module 'swiper/css';

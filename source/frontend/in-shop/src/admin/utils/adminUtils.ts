@@ -13,3 +13,9 @@ export const resolveProductImageUrl = (imageUrl?: string | null): string | null 
   if (!imageUrl?.trim()) return null;
   return resolveAssetUrl(imageUrl);
 };
+
+/** Абсолютный URL для изображения категории (относительный путь из API). */
+export const resolveCategoryImageUrl = (imageUrl?: string | null): string | null => {
+  if (!imageUrl?.trim()) return null;
+  return resolveAssetUrl(imageUrl);
+};

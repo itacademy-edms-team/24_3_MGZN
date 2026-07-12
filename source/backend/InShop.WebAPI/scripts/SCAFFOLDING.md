@@ -15,7 +15,8 @@
 В SSMS на `InShopDB`, **в таком порядке**:
 
 1. `scripts/CreateAspNetIdentityTables.sql` — `AspNetUsers`, `AspNetRoles`, …
-2. `scripts/AddAdminIdentityAndAudit.sql` — `OrderAuditLogs`, `ImageURL` 500
+2. `scripts/AddAdminIdentityAndAudit.sql` — `OrderAuditLogs`, `Products.ImageURL` / `Categories.ImageURL` 500  
+   (если Identity уже накатывали раньше: отдельно `scripts/WidenCategoryImageUrl.sql`)
 3. `scripts/AddProductReservationColumns.sql` — `ReservedQuantity`, `RowVersion` (если ещё не делали)
 
 Проверка:

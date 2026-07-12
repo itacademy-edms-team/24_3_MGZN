@@ -1,4 +1,5 @@
-﻿using InShop.WebAPI.Services.Payment;
+using InShopBLLayer.Abstractions;
+using InShop.WebAPI.Services.Payment;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Cryptography;
 using System.Text;
@@ -11,6 +12,8 @@ namespace InShop.WebAPI.Controllers
     public class WebhookController : ControllerBase
     {
         private readonly InShopDbModels.Abstractions.IOrderRepository _orderRepository;
+        private readonly IInventoryReservationService _inventoryReservationService;
+        private readonly IOrderStatusEmailNotifier _emailNotifier;
         private readonly IServiceProvider _serviceProvider;
         private readonly IConfiguration _configuration;
         private readonly IWebHostEnvironment _environment;
@@ -18,12 +21,16 @@ namespace InShop.WebAPI.Controllers
 
         public WebhookController(
             InShopDbModels.Abstractions.IOrderRepository orderRepository,
+            IInventoryReservationService inventoryReservationService,
+            IOrderStatusEmailNotifier emailNotifier,
             IServiceProvider serviceProvider,
             IConfiguration configuration,
             IWebHostEnvironment environment,
             ILogger<WebhookController> logger)
         {
             _orderRepository = orderRepository;
+            _inventoryReservationService = inventoryReservationService;
+            _emailNotifier = emailNotifier;
             _serviceProvider = serviceProvider;
             _configuration = configuration;
             _environment = environment;
@@ -96,6 +103,15 @@ namespace InShop.WebAPI.Controllers
             {
                 if (order.OrderStatus == "Unpayed")
                 {
+                    if (string.Equals(dto.Status, "Payed", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var orderWithItems = await _orderRepository.GetOrderById(dto.OrderId) ?? order;
+                        foreach (var item in orderWithItems.OrderItems ?? Enumerable.Empty<InShopDbModels.Models.OrderItem>())
+                        {
+                            await _inventoryReservationService.ReserveAsync(item.ProductId, item.QuantityItem);
+                        }
+                    }
+
                     order.OrderStatus = dto.Status;
                     // При успешной оплате обновляем и PayStatus (как в ЮKassa TryMarkOrderAsPaidAsync).
                     if (string.Equals(dto.Status, "Payed", StringComparison.OrdinalIgnoreCase))
@@ -106,6 +122,15 @@ namespace InShop.WebAPI.Controllers
                     await _orderRepository.UpdateOrder(order);
                     _logger.LogInformation("Мок webhook: заказ {OrderId} → OrderStatus={Status}, PayStatus={PayStatus}",
                         dto.OrderId, dto.Status, order.PayStatus);
+
+                    if (string.Equals(dto.Status, "Payed", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var orderForEmail = await _orderRepository.GetOrderById(dto.OrderId);
+                        if (orderForEmail != null)
+                        {
+                            await _emailNotifier.SendStatusUpdateAsync(orderForEmail);
+                        }
+                    }
                 }
                 else
                 {

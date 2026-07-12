@@ -1,4 +1,5 @@
 ﻿using InShopBLLayer.Abstractions;
+using InShopBLLayer.Services;
 using Microsoft.AspNetCore.Mvc;
 using Contracts.Dtos;
 
@@ -10,15 +11,18 @@ namespace InShop.WebAPI.Controllers
     {
         private readonly IOrderService _orderService;
         private readonly IUserSessionService _userSessionService;
+        private readonly OrderTrackingTokenService _trackingTokenService;
         private readonly ILogger<OrderController> _logger;
 
         public OrderController(
             IOrderService orderService,
             IUserSessionService userSessionService,
+            OrderTrackingTokenService trackingTokenService,
             ILogger<OrderController> logger)
         {
             _orderService = orderService;
             _userSessionService = userSessionService;
+            _trackingTokenService = trackingTokenService;
             _logger = logger;
         }
 
@@ -296,10 +300,76 @@ namespace InShop.WebAPI.Controllers
         }
 
         // ═══════════════════════════════════════════════════════
+        // ССЫЛКА ОТСЛЕЖИВАНИЯ ДЛЯ ЗАКАЗА ТЕКУЩЕЙ СЕССИИ
+        // ═══════════════════════════════════════════════════════
+
+        [HttpGet("{orderId:int}/tracking-link")]
+        public async Task<IActionResult> GetTrackingLink(int orderId)
+        {
+            var (success, sessionId, error) = await GetValidatedSessionIdAsync();
+            if (!success || !sessionId.HasValue)
+            {
+                return Unauthorized(new { error = error });
+            }
+
+            try
+            {
+                var order = await _orderService.GetOrderByIdAsync(orderId);
+                if (order == null)
+                {
+                    return NotFound(new { error = "Заказ не найден" });
+                }
+
+                if (order.SessionId != sessionId.Value)
+                {
+                    return Forbid();
+                }
+
+                var token = _trackingTokenService.CreateToken(orderId);
+                var trackingPath = $"/order-track/{orderId}?t={Uri.EscapeDataString(token)}";
+                return Ok(new { trackingPath });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "GetTrackingLink: Unexpected error for OrderId={OrderId}", orderId);
+                return StatusCode(500, new { error = "Внутренняя ошибка сервера" });
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════
+        // ПУБЛИЧНОЕ ОТСЛЕЖИВАНИЕ ЗАКАЗА (HMAC-токен из письма)
+        // ═══════════════════════════════════════════════════════
+
+        [HttpGet("track/{orderId:int}")]
+        public async Task<IActionResult> TrackOrder(int orderId, [FromQuery] string? t)
+        {
+            if (!_trackingTokenService.ValidateToken(orderId, t))
+            {
+                return NotFound(new { error = "Заказ не найден" });
+            }
+
+            try
+            {
+                var order = await _orderService.GetOrderForTrackingAsync(orderId);
+                if (order == null)
+                {
+                    return NotFound(new { error = "Заказ не найден" });
+                }
+
+                return Ok(order);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "TrackOrder: Unexpected error for OrderId={OrderId}", orderId);
+                return StatusCode(500, new { error = "Внутренняя ошибка сервера" });
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════
         // ПОЛУЧИТЬ ЗАКАЗ ПО ID (ПУБЛИЧНЫЙ ИЛИ С ПРОВЕРКОЙ)
         // ═══════════════════════════════════════════════════════
 
-        [HttpGet("{id}")]
+        [HttpGet("{id:int}")]
         public async Task<IActionResult> GetOrderById(int id)
         {
             var (success, sessionId, error) = await GetValidatedSessionIdAsync();

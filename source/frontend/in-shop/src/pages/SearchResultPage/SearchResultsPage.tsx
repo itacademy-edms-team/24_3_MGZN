@@ -443,7 +443,7 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
     lastSearchParamsRef.current = request;
     
     search(request, false);
-  }, [debouncedFilters, debouncedSort, debouncedSpecFilters, search, clear]);
+  }, [debouncedFilters, debouncedSort, debouncedSpecFilters, search, clear, results.length, recommended.length]);
 
   const handleLoadMore = useCallback(() => {
     if (!lastSearchParamsRef.current) return;

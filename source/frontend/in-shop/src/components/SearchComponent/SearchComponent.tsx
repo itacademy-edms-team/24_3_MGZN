@@ -29,7 +29,7 @@ interface ProductSearchResultDto {
 }
 
 const SearchComponent: React.FC = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const location = useLocation();
   const navigate = useNavigate();
   
@@ -42,7 +42,6 @@ const SearchComponent: React.FC = () => {
 
   const inputRef = useRef<HTMLInputElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
-  const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isMountedRef = useRef(true);
   const isNavigatingRef = useRef(false);
 
@@ -70,6 +69,11 @@ const SearchComponent: React.FC = () => {
     return () => {
       isMountedRef.current = false;
     };
+  }, []);
+
+  const safelyClosePreview = useCallback(() => {
+    setShowPreview(false);
+    inputRef.current?.blur();
   }, []);
 
   useEffect(() => {
@@ -118,18 +122,6 @@ const SearchComponent: React.FC = () => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showPreview]);
-
-  useEffect(() => {
-    return () => {
-      if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
-    };
-  }, []);
-
-  const safelyClosePreview = useCallback(() => {
-    if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
-    setShowPreview(false);
-    inputRef.current?.blur();
-  }, []);
 
   useEffect(() => {
     setShowPreview(false);

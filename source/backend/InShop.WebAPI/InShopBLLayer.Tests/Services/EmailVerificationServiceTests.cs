@@ -25,7 +25,7 @@ public class EmailVerificationServiceTests
 
         var code = await _sut.GenerateAndSendCodeAsync(email);
 
-        code.Should().MatchRegex(@"^\d{6}$");
+        code.Should().MatchRegex(@"^\d{4}$");
         _cache.TryGetValue(email, out EmailVerificationCode stored).Should().BeTrue();
         stored!.Code.Should().Be(code);
         stored.IsValid.Should().BeTrue();

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { getReviewAiSummary } from '../../api/reviews';
 import { ReviewSummary } from '../../types/reviewSummary';
 import './AiSummaryBlock.css';
@@ -7,84 +7,176 @@ interface AiSummaryBlockProps {
   productId: number;
 }
 
-const AiSummaryBlock: React.FC<AiSummaryBlockProps> = ({ productId }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [data, setData] = useState<ReviewSummary | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+type Phase = 'idle' | 'motion' | 'result' | 'error';
 
-  const handleToggle = async () => {
-    if (isOpen) {
-      setIsOpen(false);
+const MOTION_MS = 3000;
+
+const MOTION_STATUSES = [
+  'Собираем отзывы…',
+  'Ищем повторяющиеся оценки…',
+  'Складываем плюсы и минусы…',
+  'Формируем краткий обзор…',
+];
+
+const AiSummaryBlock: React.FC<AiSummaryBlockProps> = ({ productId }) => {
+  const [phase, setPhase] = useState<Phase>('idle');
+  const [data, setData] = useState<ReviewSummary | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [statusIndex, setStatusIndex] = useState(0);
+  const [progress, setProgress] = useState(0);
+  const abortRef = useRef(false);
+
+  useEffect(() => {
+    abortRef.current = false;
+    return () => {
+      abortRef.current = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (phase !== 'motion') return undefined;
+
+    setStatusIndex(0);
+    setProgress(0);
+
+    const statusTimer = window.setInterval(() => {
+      setStatusIndex((prev) => Math.min(prev + 1, MOTION_STATUSES.length - 1));
+    }, MOTION_MS / MOTION_STATUSES.length);
+
+    const started = performance.now();
+    let rafId = 0;
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - started) / MOTION_MS);
+      setProgress(t * 100);
+      if (t < 1) {
+        rafId = requestAnimationFrame(tick);
+      }
+    };
+    rafId = requestAnimationFrame(tick);
+
+    return () => {
+      window.clearInterval(statusTimer);
+      cancelAnimationFrame(rafId);
+    };
+  }, [phase]);
+
+  const handleClose = () => {
+    setPhase('idle');
+  };
+
+  const handleOpen = async () => {
+    if (phase === 'motion') return;
+
+    if (phase === 'result' || phase === 'error') {
+      handleClose();
       return;
     }
 
-    setIsOpen(true);
-    
-    // Если данные уже есть, не грузим снова
-    if (data) return;
-
-    setIsLoading(true);
+    setPhase('motion');
     setError(null);
+    setProgress(0);
+    setStatusIndex(0);
+
+    const startedAt = Date.now();
+
+    const waitRemaining = async () => {
+      const elapsed = Date.now() - startedAt;
+      const left = Math.max(0, MOTION_MS - elapsed);
+      if (left > 0) {
+        await new Promise((resolve) => window.setTimeout(resolve, left));
+      }
+    };
 
     try {
-      const summary = await getReviewAiSummary(productId);
+      let summary = data;
+      if (!summary) {
+        summary = await getReviewAiSummary(productId);
+      }
+      await waitRemaining();
+      if (abortRef.current) return;
       setData(summary);
+      setPhase('result');
     } catch (err: any) {
+      await waitRemaining();
+      if (abortRef.current) return;
       console.error(err);
       if (err.response?.status === 503) {
-        setError('АНАЛИЗ УЖЕ ГОТОВИТСЯ ДРУГИМ ПОЛЬЗОВАТЕЛЕМ. ПОПРОБУЙТЕ ЧЕРЕЗ НЕСКОЛЬКО СЕКУНД.');
+        setError('Анализ уже готовится. Попробуйте через несколько секунд.');
       } else {
-        setError('НЕ УДАЛОСЬ ЗАГРУЗИТЬ АНАЛИЗ. ПОПРОБУЙТЕ ПОЗЖЕ.');
+        setError('Не удалось загрузить анализ. Попробуйте позже.');
       }
-    } finally {
-      setIsLoading(false);
+      setPhase('error');
     }
   };
 
   return (
     <div className="ai-summary-wrapper">
-      {/* Кнопка вызова */}
-      {!isOpen && (
-        <button
-          onClick={handleToggle}
-          className="ai-summary-trigger-btn"
-        >
-          <span className="btn-icon">✨</span>
-          AI-АНАЛИЗ ОТЗЫВОВ
+      {phase === 'idle' && (
+        <button type="button" onClick={handleOpen} className="ai-summary-trigger-btn">
+          <span className="btn-icon" aria-hidden="true">
+            ✦
+          </span>
+          AI-анализ отзывов
         </button>
       )}
 
-      {/* Раскрытый блок */}
-      {isOpen && (
-        <div className={`ai-summary-content ${isLoading ? 'rainbow-border' : ''}`}>
-          
-          {isLoading ? (
-            <div className="ai-loading-state">
-              <div className="loader-spinner"></div>
-              <p>ИИ ИЗУЧАЕТ МНЕНИЯ ПОКУПАТЕЛЕЙ...</p>
+      {phase === 'motion' && (
+        <div className="ai-motion" role="status" aria-live="polite">
+          <div className="ai-motion__frame">
+            <span className="ai-motion__corner ai-motion__corner--tl" />
+            <span className="ai-motion__corner ai-motion__corner--tr" />
+            <span className="ai-motion__corner ai-motion__corner--bl" />
+            <span className="ai-motion__corner ai-motion__corner--br" />
+            <div className="ai-motion__scan" />
+            <div className="ai-motion__bars" aria-hidden="true">
+              <span />
+              <span />
+              <span />
+              <span />
+              <span />
             </div>
-          ) : error ? (
-            <div className="ai-error-state">
-              {error}
+            <p className="ai-motion__label">AI-анализ</p>
+            <p className="ai-motion__status" key={statusIndex}>
+              {MOTION_STATUSES[statusIndex]}
+            </p>
+            <div className="ai-motion__progress" aria-hidden="true">
+              <div className="ai-motion__progress-fill" style={{ width: `${progress}%` }} />
             </div>
+          </div>
+        </div>
+      )}
+
+      {(phase === 'result' || phase === 'error') && (
+        <div className="ai-summary-content ai-summary-content--enter">
+          <button
+            type="button"
+            className="ai-summary-close"
+            onClick={handleClose}
+            aria-label="Скрыть анализ"
+          >
+            ×
+          </button>
+
+          {phase === 'error' ? (
+            <div className="ai-error-state">{error}</div>
           ) : data ? (
             <div className="ai-data-container">
-              
-              {/* Заголовок */}
               <div className="ai-header">
-                <h3>КРАТКИЙ ОБЗОР ОТ ИИ</h3>
+                <h3>Краткий обзор от ИИ</h3>
                 <span className={`ai-trend-badge trend-${data.ratingTrend.toLowerCase()}`}>
-                  НАСТРОЕНИЕ: {data.ratingTrend === 'Positive' ? 'ПОЛОЖИТЕЛЬНОЕ' : 
-                               data.ratingTrend === 'Negative' ? 'ОТРИЦАТЕЛЬНОЕ' : 'НЕЙТРАЛЬНОЕ'}
+                  Настроение:{' '}
+                  {data.ratingTrend === 'Positive'
+                    ? 'положительное'
+                    : data.ratingTrend === 'Negative'
+                      ? 'отрицательное'
+                      : 'нейтральное'}
                 </span>
               </div>
 
               <div className="ai-grid">
-                {/* Плюсы */}
                 {data.pros.length > 0 && (
                   <div className="ai-column ai-pros">
-                    <h4>✅ ПЛЮСЫ</h4>
+                    <h4>Плюсы</h4>
                     <ul>
                       {data.pros.map((pro, idx) => (
                         <li key={idx}>{pro}</li>
@@ -93,10 +185,9 @@ const AiSummaryBlock: React.FC<AiSummaryBlockProps> = ({ productId }) => {
                   </div>
                 )}
 
-                {/* Минусы */}
                 {data.cons.length > 0 && (
                   <div className="ai-column ai-cons">
-                    <h4>❌ МИНУСЫ</h4>
+                    <h4>Минусы</h4>
                     <ul>
                       {data.cons.map((con, idx) => (
                         <li key={idx}>{con}</li>
@@ -106,11 +197,9 @@ const AiSummaryBlock: React.FC<AiSummaryBlockProps> = ({ productId }) => {
                 )}
               </div>
 
-              {/* Итог */}
               <div className="ai-footer">
                 <p>{data.summary}</p>
               </div>
-
             </div>
           ) : null}
         </div>

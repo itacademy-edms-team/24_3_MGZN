@@ -12,6 +12,7 @@
   justify-content: center;
   align-items: center;
   z-index: 1000;
+  animation: modal-overlay-in 0.24s ease-out both;
 }
 
 .modal-content {
@@ -25,6 +26,28 @@
   overflow-y: auto;
   position: relative;
   /* Никаких border-radius */
+  animation: modal-content-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity;
+}
+
+@keyframes modal-overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modal-content-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .modal-header {
@@ -77,19 +100,21 @@
 
 @media (max-width: 768px) {
   .modal-overlay {
-    align-items: flex-end;
+    align-items: center;
+    justify-content: center;
     padding: var(--space-edge, 16px);
     padding-top: calc(var(--space-edge, 16px) + env(safe-area-inset-top, 0px));
+    padding-bottom: calc(var(--space-edge, 16px) + env(safe-area-inset-bottom, 0px));
   }
 
   .modal-content:not(.filters-modal-content) {
     width: 100%;
     max-width: 100%;
-    max-height: calc(92dvh - var(--space-edge, 16px));
+    max-height: calc(90dvh - (var(--space-edge, 16px) * 2) - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
     padding: 20px 16px;
     border: 2px solid #000;
-    box-shadow: 0 -4px 0 #000, var(--shadow-brutal-sm, 2px 2px 0 #000);
-    border-bottom: none;
+    box-shadow: var(--shadow-brutal-sm, 4px 4px 0 #000);
+    animation: modal-content-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) both;
   }
 
   .modal-header {
@@ -108,5 +133,12 @@
     min-height: var(--touch-min, 44px);
     width: var(--touch-min, 44px);
     height: var(--touch-min, 44px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal-overlay,
+  .modal-content {
+    animation: none !important;
   }
 }

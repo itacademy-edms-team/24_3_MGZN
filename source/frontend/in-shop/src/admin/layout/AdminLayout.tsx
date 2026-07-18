@@ -16,18 +16,20 @@ const AdminLayout: React.FC = () => {
   return (
     <div className="admin-layout">
       <header className="admin-header">
-        <div style={{ display: 'flex', alignItems: 'center' }}>
+        <div className="admin-header__left">
           <button
             type="button"
             className="admin-burger"
-            aria-label="Меню"
+            aria-label={menuOpen ? 'Закрыть меню' : 'Открыть меню'}
+            aria-expanded={menuOpen}
+            aria-controls="admin-sidebar"
             onClick={() => setMenuOpen((v) => !v)}
           >
-            ☰
+            {menuOpen ? '✕' : '☰'}
           </button>
           <h1 className="admin-header__title">InShop Admin</h1>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        <div className="admin-header__right">
           <span className="admin-header__user">{user?.email}</span>
           <button type="button" className="admin-btn admin-btn--secondary" onClick={handleLogout}>
             Выйти
@@ -36,7 +38,11 @@ const AdminLayout: React.FC = () => {
       </header>
 
       <div className="admin-body">
-        <nav className={`admin-sidebar ${menuOpen ? '' : 'admin-sidebar--hidden'}`}>
+        <nav
+          id="admin-sidebar"
+          className={`admin-sidebar ${menuOpen ? '' : 'admin-sidebar--hidden'}`}
+          aria-hidden={!menuOpen}
+        >
           <NavLink to="/admin/products">Товары</NavLink>
           <NavLink to="/admin/categories">Категории</NavLink>
           <NavLink to="/admin/ship-companies">Транспортные компании</NavLink>

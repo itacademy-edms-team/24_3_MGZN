@@ -33,13 +33,13 @@ const AdminProductsList: React.FC = () => {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="admin-page-header">
         <h2>Товары</h2>
-        <Link to="/admin/products/new" className="admin-btn" style={{ textDecoration: 'none' }}>
+        <Link to="/admin/products/new" className="admin-btn">
           + Добавить
         </Link>
       </div>
-      {loading && <p>Загрузка…</p>}
+      {loading && <p className="admin-muted">Загрузка…</p>}
       {data && (
         <div className="admin-card">
           <AdminPagination
@@ -70,10 +70,13 @@ const AdminProductsList: React.FC = () => {
                     {p.productStockQuantity}
                   </td>
                   <td>{p.reservedQuantity}</td>
-                  <td>
+                  <td className="admin-table-actions">
                     <Link to={`/admin/products/${p.productId}`}>Изменить</Link>
-                    {' | '}
-                    <button type="button" onClick={() => handleDelete(p.productId)} style={{ background: 'none', border: 'none', color: '#dc3545', cursor: 'pointer' }}>
+                    <button
+                      type="button"
+                      className="admin-btn--danger"
+                      onClick={() => handleDelete(p.productId)}
+                    >
                       Удалить
                     </button>
                   </td>

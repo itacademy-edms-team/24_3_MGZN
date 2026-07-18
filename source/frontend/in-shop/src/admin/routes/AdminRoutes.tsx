@@ -2,6 +2,7 @@ import React from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AdminAuthProvider, useAdminAuth } from '../auth/AdminAuthContext';
 import AdminLayout from '../layout/AdminLayout';
+import '../layout/AdminLayout.css';
 import AdminCategoriesList from '../pages/AdminCategoriesList';
 import AdminCategoryForm from '../pages/AdminCategoryForm';
 import AdminDraftOrdersList from '../pages/AdminDraftOrdersList';
@@ -14,7 +15,7 @@ import AdminShipCompanyForm from '../pages/AdminShipCompanyForm';
 
 const RequireAdmin: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, loading } = useAdminAuth();
-  if (loading) return <p style={{ padding: '2rem' }}>Загрузка…</p>;
+  if (loading) return <p className="admin-loading-text">Загрузка…</p>;
   if (!isAuthenticated) return <Navigate to="/admin/login" replace />;
   return <>{children}</>;
 };

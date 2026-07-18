@@ -15,6 +15,7 @@ const OrderSuccessPage = () => {
     const [completedOrderId, setCompletedOrderId] = useState(null);
     const [isPaying, setIsPaying] = useState(false);
     const [trackingPath, setTrackingPath] = useState(null);
+    const [paymentFailed, setPaymentFailed] = useState(false);
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -28,22 +29,45 @@ const OrderSuccessPage = () => {
         const stateCompletedOrderId = location.state?.completedOrderId;
         const stateOrderData = location.state?.orderData;
         const storedOrderData = readCompletedOrder();
+        const queryOrderIdRaw = new URLSearchParams(location.search).get('orderId');
+        const queryOrderId = queryOrderIdRaw ? Number.parseInt(queryOrderIdRaw, 10) : NaN;
+        const resolvedOrderId = stateCompletedOrderId
+            ?? (!Number.isNaN(queryOrderId) ? queryOrderId : null)
+            ?? storedOrderData?.orderId
+            ?? null;
 
-        if (stateCompletedOrderId) {
-            setCompletedOrderId(stateCompletedOrderId);
-        } else if (storedOrderData?.orderId) {
-            setCompletedOrderId(storedOrderData.orderId);
+        setPaymentFailed(Boolean(location.state?.paymentFailed));
+
+        if (resolvedOrderId != null) {
+            setCompletedOrderId(resolvedOrderId);
         }
 
         if (stateOrderData) {
-            setOrderData(stateOrderData);
+            setOrderData({
+                ...stateOrderData,
+                orderId: stateOrderData.orderId ?? resolvedOrderId,
+            });
             return;
         }
 
         if (storedOrderData) {
-            setOrderData(storedOrderData);
+            setOrderData({
+                ...storedOrderData,
+                orderId: storedOrderData.orderId ?? resolvedOrderId,
+            });
+            return;
         }
-    }, [location.state]);
+
+        // После неуспешной оплаты / внешнего редиректа данные в storage могли истечь —
+        // оставляем минимальный черновик, чтобы можно было повторить оплату.
+        if (resolvedOrderId != null) {
+            setOrderData({
+                orderId: resolvedOrderId,
+                payMethod: 'Онлайн',
+                orderItems: [],
+            });
+        }
+    }, [location.state, location.search]);
 
     useEffect(() => {
         if (!completedOrderId || !isValid) {
@@ -161,7 +185,9 @@ const OrderSuccessPage = () => {
         };
     });
 
-    const deliveryCost = orderData.shipMethod === 'Самовывоз' ? 0 : 1500;
+    const deliveryCost = !orderData.shipMethod
+        ? 0
+        : (orderData.shipMethod === 'Самовывоз' ? 0 : 1500);
     const itemsTotal = orderItems.reduce((sum, item) => sum + item.lineTotal, 0);
     const rawTotal = orderData.orderTotalAmount ?? orderData.displayTotalAmount ?? (itemsTotal + deliveryCost);
     const totalAmount = Number.isFinite(Number(rawTotal)) ? Number(rawTotal) : itemsTotal + deliveryCost;
@@ -174,6 +200,14 @@ const OrderSuccessPage = () => {
                     <p className="order-number">Номер заказа: <strong>#{completedOrderId || 'N/A'}</strong></p>
                 </div>
 
+                {paymentFailed && (
+                    <div className="payment-failed-banner page-reveal">
+                        <strong>Оплата не подтверждена.</strong>
+                        {' '}
+                        Заказ сохранён — вы можете повторить оплату ниже.
+                    </div>
+                )}
+
                 <div className="order-success-content">
                     <div className="order-info page-reveal page-reveal--delay-1">
                         <h2>Информация о заказе</h2>
@@ -184,12 +218,14 @@ const OrderSuccessPage = () => {
                             </div>
                             <div className="info-item">
                                 <span className="label">Способ оплаты</span>
-                                <span className="value">{orderData.payMethod}</span>
+                                <span className="value">{orderData.payMethod || 'Онлайн'}</span>
                             </div>
-                            <div className="info-item">
-                                <span className="label">Способ доставки</span>
-                                <span className="value">{orderData.shipMethod}</span>
-                            </div>
+                            {orderData.shipMethod && (
+                                <div className="info-item">
+                                    <span className="label">Способ доставки</span>
+                                    <span className="value">{orderData.shipMethod}</span>
+                                </div>
+                            )}
                             {orderData.shipAddress && (
                                 <div className="info-item">
                                     <span className="label">Адрес доставки</span>
@@ -199,24 +235,33 @@ const OrderSuccessPage = () => {
                         </div>
                     </div>
 
+                    {(orderData.customerFullname || orderData.customerFullName || orderData.customerEmail || orderData.customerPhoneNumber) && (
                     <div className="customer-info page-reveal page-reveal--delay-2">
                         <h2>Контактная информация</h2>
                         <div className="info-grid">
-                            <div className="info-item">
-                                <span className="label">ФИО</span>
-                                <span className="value">{orderData.customerFullname || orderData.customerFullName}</span>
-                            </div>
-                            <div className="info-item">
-                                <span className="label">Email</span>
-                                <span className="value">{orderData.customerEmail}</span>
-                            </div>
-                            <div className="info-item">
-                                <span className="label">Телефон</span>
-                                <span className="value">{orderData.customerPhoneNumber}</span>
-                            </div>
+                            {(orderData.customerFullname || orderData.customerFullName) && (
+                                <div className="info-item">
+                                    <span className="label">ФИО</span>
+                                    <span className="value">{orderData.customerFullname || orderData.customerFullName}</span>
+                                </div>
+                            )}
+                            {orderData.customerEmail && (
+                                <div className="info-item">
+                                    <span className="label">Email</span>
+                                    <span className="value">{orderData.customerEmail}</span>
+                                </div>
+                            )}
+                            {orderData.customerPhoneNumber && (
+                                <div className="info-item">
+                                    <span className="label">Телефон</span>
+                                    <span className="value">{orderData.customerPhoneNumber}</span>
+                                </div>
+                            )}
                         </div>
                     </div>
+                    )}
 
+                    {orderItems.length > 0 && (
                     <div className="order-items page-reveal page-reveal--delay-3">
                         <h2>Состав заказа ({orderItems.length})</h2>
                         <div className="items-list">
@@ -233,31 +278,42 @@ const OrderSuccessPage = () => {
                             ))}
                         </div>
                     </div>
+                    )}
 
+                    {(orderItems.length > 0 || orderData.orderTotalAmount != null || orderData.displayTotalAmount != null) && (
                     <div className="order-summary">
                         <h2>Стоимость заказа</h2>
                         <div className="summary-grid">
-                            <div className="summary-item">
-                                <span className="label">Товары</span>
-                                <span className="value">{itemsTotal.toFixed(2)} ₽</span>
-                            </div>
-                            <div className="summary-item">
-                                <span className="label">Доставка</span>
-                                <span className="value">{deliveryCost} ₽</span>
-                            </div>
+                            {orderItems.length > 0 && (
+                                <div className="summary-item">
+                                    <span className="label">Товары</span>
+                                    <span className="value">{itemsTotal.toFixed(2)} ₽</span>
+                                </div>
+                            )}
+                            {orderData.shipMethod && (
+                                <div className="summary-item">
+                                    <span className="label">Доставка</span>
+                                    <span className="value">{deliveryCost} ₽</span>
+                                </div>
+                            )}
                             <div className="summary-item total">
                                 <span className="label">Итого</span>
                                 <span className="value total">{totalAmount.toFixed(2)} ₽</span>
                             </div>
                         </div>
                     </div>
+                    )}
 
-                    {orderData.payMethod === 'Онлайн' && (
+                    {(orderData.payMethod === 'Онлайн' || !orderData.payMethod) && (
                         <div className="payment-reminder page-reveal page-reveal--delay-4">
                             <div className="reminder-icon">!</div>
                             <div className="reminder-content">
-                                <h3>Требуется оплата</h3>
-                                <p>Оплатите заказ в течение 24 часов, иначе он будет отменён.</p>
+                                <h3>{paymentFailed ? 'Повторите оплату' : 'Требуется оплата'}</h3>
+                                <p>
+                                    {paymentFailed
+                                        ? 'Предыдущая попытка не подтверждена. Оплатите заказ, чтобы завершить оформление.'
+                                        : 'Оплатите заказ в течение 24 часов, иначе он будет отменён.'}
+                                </p>
                                 <button
                                     type="button"
                                     className="pay-button"

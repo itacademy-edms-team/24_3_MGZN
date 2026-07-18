@@ -310,6 +310,45 @@
   padding-top: 14px;
 }
 
+.order-track-pay-hint {
+  margin: 0 0 16px;
+  color: #333;
+  line-height: 1.5;
+  font-size: 0.95rem;
+}
+
+.order-track-pay-error {
+  margin: 0 0 12px;
+  color: #000;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.order-track-pay-button {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 24px;
+  background: #000;
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  border: 2px solid #000;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.order-track-pay-button:hover:not(:disabled) {
+  background: #333;
+}
+
+.order-track-pay-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .order-track-footer {
   text-align: center;
   padding: 4px 0 0;

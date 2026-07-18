@@ -1,43 +1,99 @@
-import { useEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 
 const MORPH_DISTANCE = 140;
-const EASE = (t) => t * t * (3 - 2 * t); // smoothstep
+const ENTER_DURATION_MS = 520;
+const EASE = (t) => t * t * (3 - 2 * t);
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
-
 const lerp = (from, to, t) => from + (to - from) * t;
+
+function readLogoMetrics(el) {
+  if (!el) return null;
+  const rect = el.getBoundingClientRect();
+  if (rect.width < 2 || rect.height < 2) return null;
+  const styles = window.getComputedStyle(el);
+  return {
+    left: rect.left,
+    top: rect.top,
+    fontSize: parseFloat(styles.fontSize),
+    letterSpacing: styles.letterSpacing,
+  };
+}
+
+function buildMorphStyle(from, to, progress) {
+  const left = lerp(from.left, to.left, progress);
+  const top = lerp(from.top, to.top, progress);
+  const fontSize = lerp(from.fontSize, to.fontSize, progress);
+
+  return {
+    position: 'fixed',
+    left: `${left}px`,
+    top: `${top}px`,
+    fontSize: `${fontSize}px`,
+    fontWeight: 800,
+    letterSpacing: progress > 0.5 ? to.letterSpacing : from.letterSpacing,
+    lineHeight: 0.95,
+    margin: 0,
+    color: '#fff',
+    zIndex: 1001,
+    pointerEvents: 'none',
+    whiteSpace: 'nowrap',
+    textDecoration: 'none',
+    transformOrigin: 'left top',
+    willChange: 'left, top, font-size',
+  };
+}
 
 /**
  * На главной: логотип летит из hero в слот шапки по скроллу.
- * Возвращает inline-стиль для fixed-элемента.
+ * При переходе на главную — reverse header → hero.
+ * Header-лого не скрываем opacity — слой morph только перекрывает/уходит.
  */
 export function useHomeLogoMorph(enabled) {
   const [style, setStyle] = useState(null);
-  const startRef = useRef(null);
+  const startDocRef = useRef(null);
   const rafRef = useRef(0);
+  const enterRafRef = useRef(0);
+  const prevEnabledRef = useRef(enabled);
+  const enteringRef = useRef(false);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    const wasEnabled = prevEnabledRef.current;
+    prevEnabledRef.current = enabled;
+
+    const clearBody = () => {
+      document.body.classList.remove(
+        'home-logo-morph-active',
+        'home-logo-morph-settled',
+        'home-logo-morph-entering'
+      );
+    };
+
     if (!enabled) {
-      startRef.current = null;
-      setStyle(null);
-      document.body.classList.remove('home-logo-morph-active', 'home-logo-morph-settled');
+      cancelAnimationFrame(rafRef.current);
+      cancelAnimationFrame(enterRafRef.current);
+      enteringRef.current = false;
+      startDocRef.current = null;
+      flushSync(() => setStyle(null));
+      clearBody();
       return undefined;
     }
 
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (reducedMotion) {
-      setStyle(null);
-      document.body.classList.remove('home-logo-morph-active', 'home-logo-morph-settled');
+      flushSync(() => setStyle(null));
+      clearBody();
       return undefined;
     }
 
-    const captureStart = () => {
+    const captureHeroStartDoc = () => {
       const source = document.getElementById('catalog-hero-brand');
       if (!source) return false;
       const rect = source.getBoundingClientRect();
       if (rect.width < 2 || rect.height < 2) return false;
       const styles = window.getComputedStyle(source);
-      startRef.current = {
+      startDocRef.current = {
         docLeft: rect.left + window.scrollX,
         docTop: rect.top + window.scrollY,
         fontSize: parseFloat(styles.fontSize),
@@ -46,80 +102,154 @@ export function useHomeLogoMorph(enabled) {
       return true;
     };
 
-    const update = () => {
+    const updateScrollMorph = () => {
+      if (enteringRef.current) return;
+
       const target = document.getElementById('header-logo');
       if (!target) return;
 
-      if (!startRef.current && !captureStart()) {
+      if (!startDocRef.current && !captureHeroStartDoc()) {
         document.body.classList.remove('home-logo-morph-active', 'home-logo-morph-settled');
-        setStyle(null);
+        flushSync(() => setStyle(null));
         return;
       }
 
       document.body.classList.add('home-logo-morph-active');
+      document.body.classList.remove('home-logo-morph-entering');
 
       const progress = EASE(clamp(window.scrollY / MORPH_DISTANCE, 0, 1));
       const isSettled = progress >= 0.999;
       document.body.classList.toggle('home-logo-morph-settled', isSettled);
 
       if (isSettled) {
-        setStyle(null);
+        flushSync(() => setStyle(null));
         return;
       }
 
-      const start = startRef.current;
+      const start = startDocRef.current;
       const end = target.getBoundingClientRect();
       const endStyles = window.getComputedStyle(target);
 
-      const left = lerp(start.docLeft - window.scrollX, end.left, progress);
-      const top = lerp(start.docTop - window.scrollY, end.top, progress);
-      const fontSize = lerp(start.fontSize, parseFloat(endStyles.fontSize), progress);
+      const from = {
+        left: start.docLeft - window.scrollX,
+        top: start.docTop - window.scrollY,
+        fontSize: start.fontSize,
+        letterSpacing: start.letterSpacing,
+      };
+      const to = {
+        left: end.left,
+        top: end.top,
+        fontSize: parseFloat(endStyles.fontSize),
+        letterSpacing: endStyles.letterSpacing,
+      };
 
-      setStyle({
-        position: 'fixed',
-        left: `${left}px`,
-        top: `${top}px`,
-        fontSize: `${fontSize}px`,
-        fontWeight: 800,
-        letterSpacing: progress > 0.5 ? endStyles.letterSpacing : start.letterSpacing,
-        lineHeight: 0.95,
-        margin: 0,
-        color: '#fff',
-        zIndex: 1001,
-        pointerEvents: progress > 0.85 ? 'auto' : 'none',
-        whiteSpace: 'nowrap',
-        textDecoration: 'none',
-        transformOrigin: 'left top',
-        willChange: 'left, top, font-size',
+      setStyle(buildMorphStyle(from, to, progress));
+    };
+
+    const runEnterMorph = () => {
+      enteringRef.current = true;
+      document.body.classList.add('home-logo-morph-active', 'home-logo-morph-entering');
+      document.body.classList.remove('home-logo-morph-settled');
+      window.scrollTo(0, 0);
+
+      const from = readLogoMetrics(document.getElementById('header-logo'));
+      if (!from) {
+        enteringRef.current = false;
+        document.body.classList.remove('home-logo-morph-entering');
+        updateScrollMorph();
+        return;
+      }
+
+      // Синхронно до paint: morph + скрытие слота лого в одном кадре.
+      flushSync(() => {
+        setStyle(buildMorphStyle(from, from, 0));
       });
+
+      let fromFrozen = from;
+      let fromLocked = false;
+      let startedAt = 0;
+
+      const tick = (now) => {
+        const to = readLogoMetrics(document.getElementById('catalog-hero-brand'));
+        if (!to) {
+          enterRafRef.current = requestAnimationFrame(tick);
+          return;
+        }
+
+        if (!fromLocked) {
+          const latestHeader = readLogoMetrics(document.getElementById('header-logo'));
+          if (latestHeader) fromFrozen = latestHeader;
+          fromLocked = true;
+          startedAt = now;
+          setStyle(buildMorphStyle(fromFrozen, fromFrozen, 0));
+          enterRafRef.current = requestAnimationFrame(tick);
+          return;
+        }
+
+        const t = EASE(clamp((now - startedAt) / ENTER_DURATION_MS, 0, 1));
+        setStyle(buildMorphStyle(fromFrozen, to, t));
+
+        if (t < 1) {
+          enterRafRef.current = requestAnimationFrame(tick);
+          return;
+        }
+
+        enteringRef.current = false;
+        document.body.classList.remove('home-logo-morph-entering');
+        captureHeroStartDoc();
+        updateScrollMorph();
+      };
+
+      enterRafRef.current = requestAnimationFrame(tick);
     };
 
     const onScrollOrResize = () => {
+      if (enteringRef.current) return;
       if (window.scrollY < 8) {
-        startRef.current = null;
-        captureStart();
+        startDocRef.current = null;
+        captureHeroStartDoc();
       }
       cancelAnimationFrame(rafRef.current);
-      rafRef.current = requestAnimationFrame(update);
+      rafRef.current = requestAnimationFrame(updateScrollMorph);
     };
 
-    const retryId = window.setInterval(() => {
-      if (captureStart()) {
+    const enteringHome = enabled && !wasEnabled;
+
+    if (enteringHome) {
+      runEnterMorph();
+    } else {
+      const retryId = window.setInterval(() => {
+        if (captureHeroStartDoc()) {
+          window.clearInterval(retryId);
+          updateScrollMorph();
+        }
+      }, 50);
+
+      window.addEventListener('scroll', onScrollOrResize, { passive: true });
+      window.addEventListener('resize', onScrollOrResize);
+      updateScrollMorph();
+
+      return () => {
         window.clearInterval(retryId);
-        update();
-      }
-    }, 50);
+        cancelAnimationFrame(rafRef.current);
+        cancelAnimationFrame(enterRafRef.current);
+        window.removeEventListener('scroll', onScrollOrResize);
+        window.removeEventListener('resize', onScrollOrResize);
+        enteringRef.current = false;
+        clearBody();
+      };
+    }
 
     window.addEventListener('scroll', onScrollOrResize, { passive: true });
     window.addEventListener('resize', onScrollOrResize);
-    update();
 
     return () => {
-      window.clearInterval(retryId);
       cancelAnimationFrame(rafRef.current);
+      cancelAnimationFrame(enterRafRef.current);
       window.removeEventListener('scroll', onScrollOrResize);
       window.removeEventListener('resize', onScrollOrResize);
-      document.body.classList.remove('home-logo-morph-active', 'home-logo-morph-settled');
+      enteringRef.current = false;
+      clearBody();
     };
   }, [enabled]);
 

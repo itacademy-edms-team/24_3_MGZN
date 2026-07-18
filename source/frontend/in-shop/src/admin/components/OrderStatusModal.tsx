@@ -51,31 +51,23 @@ const OrderStatusModal: React.FC<Props> = ({ order, onClose, onUpdated }) => {
   };
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(0,0,0,0.5)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 200,
-      }}
-      onClick={onClose}
-    >
-      <div className="admin-card" style={{ maxWidth: 420, width: '90%' }} onClick={(e) => e.stopPropagation()}>
-        <h3>Заказ #{order.orderId}</h3>
+    <div className="admin-modal-overlay" onClick={onClose}>
+      <div className="admin-card admin-card--modal" onClick={(e) => e.stopPropagation()}>
+        <div className="admin-modal-header">
+          <h3>Заказ #{order.orderId}</h3>
+        </div>
         <p>
           Текущий статус: <strong>{order.orderStatus}</strong>
           {order.rawOrderStatus && order.rawOrderStatus !== order.orderStatus && (
-            <span style={{ color: '#6c757d' }}> (в БД: {order.rawOrderStatus})</span>
+            <span className="admin-muted"> (в БД: {order.rawOrderStatus})</span>
           )}
         </p>
-        <label>Новый статус</label>
+        <label htmlFor="admin-order-status">Новый статус</label>
         <select
+          id="admin-order-status"
+          className="admin-status-select"
           value={selected}
           onChange={(e) => setSelected(e.target.value)}
-          style={{ width: '100%', marginBottom: '1rem' }}
           disabled={terminal || allowed.length === 0}
         >
           {allowed.map((s) => (
@@ -85,7 +77,7 @@ const OrderStatusModal: React.FC<Props> = ({ order, onClose, onUpdated }) => {
           ))}
         </select>
         {error && <p className="admin-error">{error}</p>}
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <div className="admin-form-actions">
           <button type="button" className="admin-btn" onClick={submit} disabled={loading || !selected || terminal}>
             Сохранить
           </button>

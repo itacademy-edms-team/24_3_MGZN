@@ -16,19 +16,21 @@ const SessionHandler: React.FC<SessionHandlerProps> = ({
   fallback,
   errorFallback,
 }) => {
-  const { isLoading, error, recreateSession } = useSessionContext();
+  const { isLoading, isValid, error, recreateSession } = useSessionContext();
 
   if (isLoading) {
     return <>{fallback ?? <div>Загрузка...</div>}</>;
   }
 
-  if (error) {
+  if (error || !isValid) {
     return (
       <>
         {errorFallback ?? (
           <div>
-            <p>Ошибка: {error}</p>
-            <button onClick={recreateSession}>Повторить</button>
+            <p>Ошибка: {error || 'Сессия не активна'}</p>
+            <button type="button" onClick={() => { void recreateSession(); }}>
+              Повторить
+            </button>
           </div>
         )}
       </>

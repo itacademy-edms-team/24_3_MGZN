@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { apiClient } from '../../api/client';
+import { redirectToPaymentProvider } from '../../utils/paymentRedirect';
 import './OrderTrackPage.css';
 
 export interface OrderTrackItem {
@@ -39,6 +40,11 @@ const POLL_INTERVAL_MS = 4000;
 const isTerminalStatus = (status: string) =>
   status === 'Delivered' || status === 'Cancelled';
 
+/** Статус «Оформлен» в таймлайне — заказ ждёт онлайн-оплату. */
+const isAwaitingOnlinePayment = (order: OrderTrackDto) =>
+  order.orderStatus === 'Unpaid'
+  && order.payMethod === 'Онлайн';
+
 const formatMoney = (value: number) =>
   new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB' }).format(value);
 
@@ -59,11 +65,14 @@ const OrderTrackPage: React.FC = () => {
   const { orderId } = useParams<{ orderId: string }>();
   const [searchParams] = useSearchParams();
   const token = searchParams.get('t');
+  const navigate = useNavigate();
 
   const [order, setOrder] = useState<OrderTrackDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [statusFlash, setStatusFlash] = useState(false);
+  const [isPaying, setIsPaying] = useState(false);
+  const [payError, setPayError] = useState<string | null>(null);
   const previousStatusRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -164,6 +173,68 @@ const OrderTrackPage: React.FC = () => {
   );
 
   const isLive = Boolean(order && !isTerminalStatus(order.orderStatus));
+  const canPay = Boolean(order && token && isAwaitingOnlinePayment(order));
+
+  const handlePayNow = async () => {
+    if (!order || !token) {
+      return;
+    }
+
+    setIsPaying(true);
+    setPayError(null);
+
+    try {
+      const providerResponse = await apiClient.get('/Payment/provider');
+      const provider = providerResponse.data?.provider ?? 'Mock';
+
+      if (String(provider).toLowerCase() === 'yookassa') {
+        const response = await apiClient.post('/Payment/initiate', {
+          orderId: order.orderId,
+          trackingToken: token,
+        });
+
+        const redirectUrl = response.data?.redirectUrl;
+        if (!redirectUrl) {
+          throw new Error('Сервер не вернул ссылку на оплату.');
+        }
+
+        redirectToPaymentProvider(redirectUrl);
+        return;
+      }
+
+      navigate('/payment', {
+        state: {
+          completedOrderId: order.orderId,
+          trackingToken: token,
+          orderData: {
+            orderId: order.orderId,
+            orderTotalAmount: order.orderTotalAmount,
+            displayTotalAmount: order.orderTotalAmount,
+            payMethod: order.payMethod,
+            shipMethod: order.shipMethod,
+            shipAddress: order.shipAddress,
+            customerFullname: order.customerFullname,
+            orderItems: order.items.map((item) => ({
+              productName: item.productName,
+              quantity: item.quantity,
+              displayPrice: item.unitPrice,
+              totalPrice: item.lineTotal,
+            })),
+          },
+        },
+      });
+    } catch (err: unknown) {
+      console.error('Ошибка при инициации оплаты:', err);
+      const axiosErr = err as { response?: { data?: { message?: string } }; message?: string };
+      setPayError(
+        axiosErr.response?.data?.message
+          || axiosErr.message
+          || 'Не удалось начать оплату.'
+      );
+    } finally {
+      setIsPaying(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -287,6 +358,26 @@ const OrderTrackPage: React.FC = () => {
               Итого: <strong>{formatMoney(order.orderTotalAmount)}</strong>
             </p>
           </section>
+
+          {canPay && (
+            <section className="order-track-card order-track-pay anim-fade-up" style={{ animationDelay: '0.38s' }}>
+              <h2>Оплата</h2>
+              <p className="order-track-pay-hint">
+                Заказ оформлен и ожидает онлайн-оплату. Оплатите его, чтобы мы могли продолжить сборку.
+              </p>
+              {payError && <p className="order-track-pay-error">{payError}</p>}
+              <button
+                type="button"
+                className="order-track-pay-button"
+                onClick={() => {
+                  void handlePayNow();
+                }}
+                disabled={isPaying}
+              >
+                {isPaying ? 'Переход к оплате…' : 'Оплатить заказ'}
+              </button>
+            </section>
+          )}
 
           <div className="order-track-footer anim-fade-up" style={{ animationDelay: '0.42s' }}>
             <Link to="/">В каталог</Link>

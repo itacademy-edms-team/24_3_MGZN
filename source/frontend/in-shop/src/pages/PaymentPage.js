@@ -18,7 +18,14 @@ const PaymentPage = () => {
             .then((res) => {
                 const provider = res.data?.provider ?? 'Mock';
                 if (provider.toLowerCase() === 'yookassa') {
-                    navigate('/order-success', { replace: true });
+                    const stored = readCompletedOrder();
+                    navigate('/order-success', {
+                        replace: true,
+                        state: {
+                            completedOrderId: stored?.orderId,
+                            orderData: stored || undefined,
+                        },
+                    });
                 }
             })
             .catch(() => {});
@@ -26,6 +33,7 @@ const PaymentPage = () => {
 
     const orderDataFromState = location.state?.orderData || null;
     const completedOrderIdFromState = location.state?.completedOrderId;
+    const trackingTokenFromState = location.state?.trackingToken || null;
     const storedOrderData = useMemo(() => {
         return readCompletedOrder();
     }, []);
@@ -48,6 +56,7 @@ const PaymentPage = () => {
         const paymentData = {
             orderId: resolvedOrderId,
             mockPaymentToken: 'inshop-test-approved',
+            ...(trackingTokenFromState ? { trackingToken: trackingTokenFromState } : {}),
         };
 
         try {
@@ -61,7 +70,12 @@ const PaymentPage = () => {
                 return;
             }
 
-            navigate('/payment-confirmation', { state: { orderId: paymentData.orderId } });
+            navigate('/payment-confirmation', {
+                state: {
+                    orderId: paymentData.orderId,
+                    ...(trackingTokenFromState ? { trackingToken: trackingTokenFromState } : {}),
+                },
+            });
         } catch (error) {
             console.error('Ошибка при отправке данных оплаты:', error);
             setErrorMessage(error.response?.data?.message || 'Ошибка при отправке данных оплаты. Проверьте соединение с интернетом.');
@@ -74,15 +88,31 @@ const PaymentPage = () => {
                 <div className="payment-container page-reveal">
                     <h1>Оплата заказа</h1>
                     <p>Номер оформленного заказа не найден.</p>
-                    <button className="cancel-button" onClick={() => navigate('/order-success')}>Назад</button>
+                    <button
+                        className="cancel-button"
+                        onClick={() => navigate('/order-success')}
+                    >
+                        Назад
+                    </button>
                 </div>
             </div>
         );
     }
 
     const handleCancel = () => {
-        // Возврат на страницу заказа или на главную
-        navigate(-1);
+        if (trackingTokenFromState && hasValidOrderId) {
+            navigate(`/order-track/${resolvedOrderId}?t=${encodeURIComponent(trackingTokenFromState)}`);
+            return;
+        }
+
+        navigate('/order-success', {
+            state: {
+                completedOrderId: resolvedOrderId,
+                orderData: orderData
+                    ? { ...orderData, orderId: resolvedOrderId }
+                    : { orderId: resolvedOrderId },
+            },
+        });
     };
 
     return (

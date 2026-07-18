@@ -1,6 +1,5 @@
-/* Стили для шапки */
+/* Стили для шапки. */
 
-/* Блок header */
 .header {
     background-color: #000000;
     color: #ffffff;
@@ -11,54 +10,107 @@
     padding-top: env(safe-area-inset-top, 0px);
 }
 
-/* Контейнер внутри шапки */
+/* Без анимаций у всего, кроме слота поиска (схлопывание ↔ разворот симметричны) */
+.header__logo-link,
+.header__logo,
+.header__cart-button,
+.header__cart-button *,
+.home-logo-morph {
+    animation: none !important;
+    transition: none !important;
+}
+
+:root {
+    --header-search-ease: cubic-bezier(0.4, 0, 0.2, 1);
+    --header-search-duration: 0.32s;
+}
+
+/*
+ * Сетка: лого | поиск | корзина.
+ * Средняя колонка анимируется 1fr ↔ 0fr — туда и обратно одинаково.
+ */
 .header__container {
-    display: flex;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: center;
-    justify-content: space-between;
+    column-gap: 20px;
     padding: 20px 20px;
     margin: 0 auto;
     max-width: 1200px;
-    gap: 20px;
+    width: 100%;
+    box-sizing: border-box;
+    transition: grid-template-columns var(--header-search-duration) var(--header-search-ease);
 }
 
-.header__container--home {
-    justify-content: space-between;
+.header--home .header__container {
+    grid-template-columns: auto minmax(0, 0fr) auto;
 }
 
-/* Логотип */
-.header__logo {
-    margin: 0;
-    font-size: 1.5em;
-    color: inherit;
-    text-decoration: none;
-}
-
-/* Ссылка логотипа */
 .header__logo-link {
+    grid-column: 1;
+    justify-self: start;
     color: inherit;
     text-decoration: none;
     display: block;
+    font-weight: 800;
+    /* Резерв ширины — слот не схлопывается, пока лого ушло в morph */
+    min-width: 7.5ch;
 }
 
-/* На главной слот шапки невидим, пока логотип «летит»; после settle — снова виден */
-body.home-logo-morph-active:not(.home-logo-morph-settled) .header__logo-link--morph {
+.header__search {
+    grid-column: 2;
+    justify-self: stretch;
+    min-width: 0;
+    width: 100%;
+    max-width: 20rem;
+    margin-inline: auto;
+    overflow: hidden;
+    opacity: 1;
+    transform: scaleX(1);
+    transform-origin: center center;
+    transition:
+        opacity var(--header-search-duration) var(--header-search-ease),
+        transform var(--header-search-duration) var(--header-search-ease);
+}
+
+.header__search .search-component-wrapper {
+    max-width: 100%;
+    transition:
+        opacity var(--header-search-duration) var(--header-search-ease),
+        transform var(--header-search-duration) var(--header-search-ease);
+}
+
+/* Главная: схлопывание — зеркало разворота при уходе с главной */
+.header--home .header__search {
     opacity: 0;
+    transform: scaleX(0);
     pointer-events: none;
 }
 
-body.home-logo-morph-active.home-logo-morph-settled .header__logo-link--morph {
-    opacity: 1;
-    pointer-events: auto;
-    transition: opacity 0.15s ease;
+.header__logo {
+    margin: 0;
+    font-size: 1.5em;
+    font-weight: 800;
+    color: inherit;
+    text-decoration: none;
+}
+
+/*
+ * Слот лого скрываем только вместе с готовым morph-слоем (один commit / flushSync).
+ * visibility — без fade, поэтому нет мигания opacity.
+ */
+.header--morph-cover .header__logo-link {
+    visibility: hidden;
 }
 
 .home-logo-morph {
     font-family: inherit;
+    font-weight: 800;
     user-select: none;
+    pointer-events: none;
 }
 
-/* Hero-бренд на главной — только якорь под morph (скрыт) */
+/* Hero-бренд — якорь под morph */
 body.home-logo-morph-active .catalog-hero__brand {
     visibility: hidden;
 }
@@ -68,24 +120,20 @@ body.home-logo-morph-active .catalog-hero__brand {
         visibility: visible;
     }
 
-    body.home-logo-morph-active .header__logo-link--morph {
-        opacity: 1;
-        pointer-events: auto;
-    }
-
     .home-logo-morph {
         display: none !important;
     }
 
-    .header__container {
-        animation: none !important;
-        opacity: 1 !important;
-        transform: none !important;
+    .header__container,
+    .header__search,
+    .header__search .search-component-wrapper {
+        transition: none !important;
     }
 }
 
-/* Кнопка корзины */
 .header__cart-button {
+    grid-column: 3;
+    justify-self: end;
     background: none;
     border: none;
     padding: 6px;
@@ -100,14 +148,12 @@ body.home-logo-morph-active .catalog-hero__brand {
     -webkit-tap-highlight-color: transparent;
 }
 
-/* Иконка корзины */
 .header__cart-icon-img {
     width: 2.5rem;
     height: 2.5rem;
     display: block;
 }
 
-/* Счётчик товаров в корзине */
 .header__cart-count {
     position: absolute;
     top: 2px;
@@ -129,46 +175,18 @@ body.home-logo-morph-active .catalog-hero__brand {
     border: 2px solid #000000;
 }
 
-/* --- Адаптивность (медиа-запросы) --- */
-
 @media (max-width: 768px) {
     .header__container {
-        animation: page-reveal-fade-up 0.45s ease-out both;
         padding: 10px var(--space-edge, 16px);
-        gap: 8px 12px;
+        column-gap: 12px;
         max-width: none;
         width: 100%;
         box-sizing: border-box;
-    }
-
-    /* Главная: одна строка — логотип и корзина */
-    .header__container--home {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
         min-height: calc(var(--touch-min, 44px) + 20px);
     }
 
-    /* Внутренние страницы: одна строка — логотип, компактный поиск, корзина */
-    .header__container:not(.header__container--home) {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 8px;
-    }
-
-    .header__logo-link {
-        flex-shrink: 0;
-    }
-
     .header__search {
-        flex: 1 1 auto;
-        min-width: 0;
         max-width: 11.5rem;
-    }
-
-    .header__cart-button {
-        flex-shrink: 0;
     }
 
     .header__logo {
@@ -199,10 +217,7 @@ body.home-logo-morph-active .catalog-hero__brand {
 @media (max-width: 480px) {
     .header__container {
         padding: 8px var(--space-edge, 14px);
-        gap: 8px 10px;
-    }
-
-    .header__container--home {
+        column-gap: 10px;
         min-height: calc(var(--touch-min, 44px) + 16px);
     }
 

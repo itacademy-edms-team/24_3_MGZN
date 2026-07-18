@@ -316,7 +316,8 @@
     .cart-modal-overlay {
         padding: var(--space-edge, 16px);
         padding-top: calc(var(--space-edge, 16px) + env(safe-area-inset-top, 0px));
-        align-items: flex-end;
+        padding-bottom: calc(var(--space-edge, 16px) + env(safe-area-inset-bottom, 0px));
+        align-items: center;
         justify-content: center;
         backdrop-filter: none;
         -webkit-backdrop-filter: none;
@@ -326,37 +327,36 @@
         width: 100%;
         max-width: 100%;
         height: auto;
-        max-height: calc(100dvh - (var(--space-edge, 16px) * 2) - env(safe-area-inset-top, 0px));
+        max-height: calc(90dvh - (var(--space-edge, 16px) * 2) - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
         border: 2px solid #000000;
-        border-bottom: none;
         border-left: 2px solid #000000;
-        box-shadow: 0 -4px 0 #000, var(--shadow-brutal-sm, 2px 2px 0 #000);
-        animation: cart-modal-sheet-in 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+        box-shadow: var(--shadow-brutal-sm, 4px 4px 0 #000);
+        animation: cart-modal-center-in 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
     }
 
     .cart-modal--closing {
-        animation: cart-modal-sheet-out 0.24s ease-in forwards;
+        animation: cart-modal-center-out 0.24s ease-in forwards;
     }
 
-    @keyframes cart-modal-sheet-in {
+    @keyframes cart-modal-center-in {
         from {
             opacity: 0;
-            transform: translateY(100%);
+            transform: translateY(18px) scale(0.97);
         }
         to {
             opacity: 1;
-            transform: translateY(0);
+            transform: translateY(0) scale(1);
         }
     }
 
-    @keyframes cart-modal-sheet-out {
+    @keyframes cart-modal-center-out {
         from {
             opacity: 1;
-            transform: translateY(0);
+            transform: translateY(0) scale(1);
         }
         to {
             opacity: 0;
-            transform: translateY(100%);
+            transform: translateY(12px) scale(0.98);
         }
     }
 
@@ -412,7 +412,6 @@
     
     .cart-header {
         padding: 16px;
-        padding-top: calc(16px + env(safe-area-inset-top, 0px));
     }
 
     .cart-close-btn {
@@ -427,7 +426,6 @@
     
     .cart-footer {
         padding: 16px;
-        padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
     }
 
     .cart-content {

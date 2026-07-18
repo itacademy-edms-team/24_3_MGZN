@@ -1,10 +1,18 @@
 // src/hooks/useProductSearch.ts
 import { useState, useCallback, useRef } from 'react';
+import axios from 'axios';
 import { apiClient } from '../api/client';
 import { ProductSearchResultDto, SearchRequestDto } from '../types/search';
 import { normalizeSearchProductList } from '../utils/searchProductMapper';
 
 const isDevelopment = process.env.NODE_ENV === 'development';
+
+const isRequestCanceled = (error: unknown): boolean => {
+  if (axios.isCancel(error)) return true;
+  if (!error || typeof error !== 'object') return false;
+  const err = error as { name?: string; code?: string };
+  return err.name === 'AbortError' || err.name === 'CanceledError' || err.code === 'ERR_CANCELED';
+};
 
 interface BackendSearchRequest {
   q: string;
@@ -128,7 +136,7 @@ export const useProductSearch = (): UseProductSearchReturn => {
       setHasMore(newResults.length >= (request.limit || 12));
 
     } catch (e) {
-      if (e instanceof Error && e.name === 'AbortError') {
+      if (isRequestCanceled(e)) {
         if (isDevelopment) {
           console.log('Request aborted');
         }
@@ -149,6 +157,12 @@ export const useProductSearch = (): UseProductSearchReturn => {
   }, []);
 
   const loadMore = useCallback(async (request: SearchRequestDto) => {
+    // Не абортим текущий REPLACE-поиск: loadMore — отдельный запрос.
+    // Но если уже идёт другой loadMore/search — отменяем предыдущий.
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
     const currentRequestId = ++requestIdRef.current;
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
@@ -186,7 +200,7 @@ export const useProductSearch = (): UseProductSearchReturn => {
       setHasMore(newResults.length >= (request.limit || 12));
 
     } catch (e) {
-      if (e instanceof Error && e.name === 'AbortError') {
+      if (isRequestCanceled(e)) {
         if (isDevelopment) {
           console.log('LoadMore request aborted');
         }

@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { apiClient } from '../../api/client';
+import { readCompletedOrder } from '../../utils/checkoutStorage';
 import './PaymentConfirmationPage.css';
 
 const MAX_POLL_ATTEMPTS = 15;
@@ -18,11 +19,38 @@ const PaymentConfirmationPage = () => {
     const parsedQueryOrderId = orderIdFromQuery ? Number.parseInt(orderIdFromQuery, 10) : NaN;
     const orderId = location.state?.orderId
         ?? (!Number.isNaN(parsedQueryOrderId) ? parsedQueryOrderId : null);
+    const trackingToken = location.state?.trackingToken
+        ?? searchParams.get('t')
+        ?? null;
 
     const [status, setStatus] = useState('checking');
     const [error, setError] = useState(null);
     const [provider, setProvider] = useState(null);
     const [trackingPath, setTrackingPath] = useState(null);
+
+    const goToConfirmedOrder = () => {
+        if (trackingToken && orderId) {
+            navigate(`/order-track/${orderId}?t=${encodeURIComponent(trackingToken)}`, {
+                replace: true,
+            });
+            return;
+        }
+
+        const storedOrder = readCompletedOrder();
+        const sameOrder = storedOrder
+            && Number(storedOrder.orderId) === Number(orderId);
+
+        navigate('/order-success', {
+            replace: true,
+            state: {
+                completedOrderId: orderId,
+                orderData: sameOrder
+                    ? storedOrder
+                    : { orderId, payMethod: 'Онлайн' },
+                paymentFailed: true,
+            },
+        });
+    };
 
     useEffect(() => {
         if (!orderId) {
@@ -41,6 +69,13 @@ const PaymentConfirmationPage = () => {
         let cancelled = false;
 
         const loadTrackingLink = async () => {
+            if (trackingToken && orderId) {
+                if (!cancelled) {
+                    setTrackingPath(`/order-track/${orderId}?t=${encodeURIComponent(trackingToken)}`);
+                }
+                return;
+            }
+
             try {
                 const res = await apiClient.get(`/Order/${orderId}/tracking-link`);
                 const path = res.data?.trackingPath;
@@ -61,7 +96,10 @@ const PaymentConfirmationPage = () => {
             confirmCalledRef.current = true;
 
             try {
-                await apiClient.post('/Payment/confirm-yookassa', { orderId });
+                await apiClient.post('/Payment/confirm-yookassa', {
+                    orderId,
+                    ...(trackingToken ? { trackingToken } : {}),
+                });
             } catch (err) {
                 if (isDevelopment) {
                     console.warn('confirm-yookassa:', err.response?.data || err.message);
@@ -71,7 +109,9 @@ const PaymentConfirmationPage = () => {
 
         const checkPaymentStatus = async () => {
             try {
-                const response = await apiClient.get(`/Payment/status/${orderId}`);
+                const response = await apiClient.get(`/Payment/status/${orderId}`, {
+                    params: trackingToken ? { t: trackingToken } : undefined,
+                });
                 const currentStatus = response.data?.Status ?? response.data?.status;
 
                 if (!currentStatus) {
@@ -130,7 +170,7 @@ const PaymentConfirmationPage = () => {
             cancelled = true;
             if (intervalId) clearInterval(intervalId);
         };
-    }, [orderId]);
+    }, [orderId, trackingToken]);
 
     if (!orderId) {
         return <div className="payment-confirmation-page">Загрузка...</div>;
@@ -140,16 +180,24 @@ const PaymentConfirmationPage = () => {
         return (
             <div className="payment-confirmation-page">
                 <div className="confirmation-container page-reveal">
-                    <h1>Ошибка проверки оплаты</h1>
-                    <p>{error}</p>
+                    <div className="error-icon" aria-hidden="true">!</div>
+                    <h1>Оплата не подтверждена</h1>
+                    <p>Заказ #{orderId} сохранён, но оплата не прошла или ещё не подтверждена.</p>
+                    {error && <p className="error-detail">{error}</p>}
                     {provider?.toLowerCase() === 'yookassa' && (
                         <p className="hint">
                             Если вы уже оплатили заказ, обновите страницу — статус мог обновиться с задержкой.
+                            Иначе вернитесь к заказу и повторите оплату.
                         </p>
                     )}
-                    <button type="button" className="back-button" onClick={() => window.location.reload()}>
-                        Обновить
-                    </button>
+                    <div className="confirmation-actions">
+                        <button type="button" className="done-button" onClick={goToConfirmedOrder}>
+                            Вернуться к заказу
+                        </button>
+                        <button type="button" className="back-button" onClick={() => window.location.reload()}>
+                            Обновить статус
+                        </button>
+                    </div>
                 </div>
             </div>
         );

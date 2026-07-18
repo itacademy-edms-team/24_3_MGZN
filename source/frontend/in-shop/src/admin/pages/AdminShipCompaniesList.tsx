@@ -44,13 +44,13 @@ const AdminShipCompaniesList: React.FC = () => {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="admin-page-header">
         <h2>Транспортные компании</h2>
-        <Link to="/admin/ship-companies/new" className="admin-btn" style={{ textDecoration: 'none' }}>
+        <Link to="/admin/ship-companies/new" className="admin-btn">
           + Добавить
         </Link>
       </div>
-      {loading && <p>Загрузка…</p>}
+      {loading && <p className="admin-muted">Загрузка…</p>}
       {error && <p className="admin-error">{error}</p>}
       <div className="admin-card">
         <table className="admin-table">
@@ -70,11 +70,10 @@ const AdminShipCompaniesList: React.FC = () => {
                 <td>{company.contact}</td>
                 <td className="admin-table-actions">
                   <Link to={`/admin/ship-companies/${company.shipCompanyId}`}>Изменить</Link>
-                  {' | '}
                   <button
                     type="button"
+                    className="admin-btn--danger"
                     onClick={() => handleDelete(company.shipCompanyId)}
-                    style={{ background: 'none', border: 'none', color: '#dc3545', cursor: 'pointer' }}
                   >
                     Удалить
                   </button>

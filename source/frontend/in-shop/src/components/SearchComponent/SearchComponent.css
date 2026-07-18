@@ -408,7 +408,6 @@
     background-color: transparent;
     overflow: visible;
     border-bottom: 1px solid rgba(255, 255, 255, 0.28);
-    transition: border-color 0.2s ease;
   }
 
   .header .search-component-wrapper:focus-within .search-input-container {

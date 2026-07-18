@@ -39,10 +39,10 @@ const AdminLogin: React.FC = () => {
   };
 
   return (
-    <div className="admin-layout" style={{ justifyContent: 'center', alignItems: 'center' }}>
-      <div className="admin-card" style={{ maxWidth: 400, width: '100%', margin: '4rem auto' }}>
-        <h2 style={{ marginTop: 0 }}>InShop Admin</h2>
-        <p style={{ color: '#6c757d', fontSize: '0.9rem' }}>Вход по корпоративному email</p>
+    <div className="admin-layout admin-layout--centered">
+      <div className="admin-card admin-card--login">
+        <h2>InShop Admin</h2>
+        <p className="admin-muted">Вход по корпоративному email</p>
         <form className="admin-form" onSubmit={handleSubmit(onSubmit)}>
           <label>Email</label>
           <input

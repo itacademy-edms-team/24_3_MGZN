@@ -26,13 +26,13 @@ const OrderDetailsModal: React.FC<Props> = ({ orderId, onClose }) => {
   return (
     <div className="admin-modal-overlay" onClick={onClose}>
       <div className="admin-card admin-order-details" onClick={(e) => e.stopPropagation()}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="admin-modal-header">
           <h3>Заказ #{orderId}</h3>
           <button type="button" className="admin-btn admin-btn--secondary" onClick={onClose}>
             Закрыть
           </button>
         </div>
-        {loading && <p>Загрузка…</p>}
+        {loading && <p className="admin-muted">Загрузка…</p>}
         {error && <p className="admin-error">{error}</p>}
         {details && (
           <>
@@ -41,7 +41,7 @@ const OrderDetailsModal: React.FC<Props> = ({ orderId, onClose }) => {
               <p>
                 <strong>Статус:</strong> {details.orderStatus}
                 {details.rawOrderStatus && details.rawOrderStatus !== details.orderStatus && (
-                  <span style={{ color: '#6c757d' }}> (БД: {details.rawOrderStatus})</span>
+                  <span className="admin-muted"> (БД: {details.rawOrderStatus})</span>
                 )}
               </p>
               <p><strong>Дата:</strong> {details.orderDate}</p>
@@ -94,7 +94,7 @@ const OrderDetailsModal: React.FC<Props> = ({ orderId, onClose }) => {
             <section className="admin-details-section">
               <h4>История статусов</h4>
               {details.statusHistory.length === 0 ? (
-                <p style={{ color: '#6c757d' }}>Записей пока нет</p>
+                <p className="admin-muted">Записей пока нет</p>
               ) : (
                 <ul className="admin-timeline">
                   {details.statusHistory.map((entry, idx) => (

@@ -13,7 +13,7 @@ const AdminPagination: React.FC<Props> = ({ page, totalCount, pageSize, onPageCh
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
   return (
-    <div className="admin-pagination" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', margin: '0.75rem 0' }}>
+    <div className="admin-pagination">
       <button
         type="button"
         className="admin-btn admin-btn--secondary"

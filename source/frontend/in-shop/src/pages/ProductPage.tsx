@@ -56,6 +56,27 @@ const ProductPage = () => {
     const [reviewCountForDisplay, setReviewCountForDisplay] = useState<number | null>(null);
 
     const { addToCart } = useContext(CartContext);
+    const [cartFeedback, setCartFeedback] = useState(false);
+    const [isAddingToCart, setIsAddingToCart] = useState(false);
+
+    const handleAddToCart = async () => {
+        if (!product || isAddingToCart || cartFeedback) return;
+        try {
+            setIsAddingToCart(true);
+            await addToCart(product);
+            setCartFeedback(true);
+        } catch {
+            // ошибка уже в CartContext
+        } finally {
+            setIsAddingToCart(false);
+        }
+    };
+
+    useEffect(() => {
+        if (!cartFeedback) return undefined;
+        const timeoutId = window.setTimeout(() => setCartFeedback(false), 1400);
+        return () => window.clearTimeout(timeoutId);
+    }, [cartFeedback]);
 
     useEffect(() => {
         if (!productId) return;
@@ -214,13 +235,37 @@ const ProductPage = () => {
                         <p className="product-description">{product.productDescription}</p>
 
                         {product.productStockQuantity > 0 ? (
-                            <button
-                                className="add-to-cart-button"
-                                data-testid="add-to-cart-button"
-                                onClick={() => addToCart(product)}
-                            >
-                                Добавить в корзину
-                            </button>
+                            <div className="add-to-cart-wrap">
+                                <button
+                                    type="button"
+                                    className="add-to-cart-button"
+                                    data-testid="add-to-cart-button"
+                                    onClick={handleAddToCart}
+                                    disabled={isAddingToCart}
+                                >
+                                    Добавить в корзину
+                                </button>
+                                <div
+                                    className={`add-to-cart-feedback${cartFeedback ? ' is-active' : ''}`}
+                                    aria-hidden="true"
+                                >
+                                    <svg
+                                        className="add-to-cart-feedback__check"
+                                        viewBox="0 0 52 52"
+                                        aria-hidden="true"
+                                    >
+                                        <path
+                                            className="add-to-cart-feedback__check-path"
+                                            d="M14 27 L22 35 L38 17"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            strokeWidth="4"
+                                            strokeLinecap="square"
+                                            strokeLinejoin="miter"
+                                        />
+                                    </svg>
+                                </div>
+                            </div>
                         ) : null}
                         
                         <button className="write-review-button" onClick={openCreateModal}>

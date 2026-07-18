@@ -43,6 +43,32 @@
   display: block;
 }
 
+.error-icon {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid #000;
+  background: #fff;
+  font-size: 2.5rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.error-detail {
+  color: #444 !important;
+  font-size: 0.95rem !important;
+}
+
+.hint {
+  margin-top: 16px !important;
+  font-size: 0.9rem !important;
+  line-height: 1.45;
+  color: #333 !important;
+}
+
 /* Стили для спиннера загрузки */
 .loading-spinner {
   width: 60px;

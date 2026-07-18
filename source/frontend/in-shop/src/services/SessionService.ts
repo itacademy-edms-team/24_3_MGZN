@@ -12,7 +12,13 @@ export const sessionService = {
      */
     createSession: async (dto?: UserSessionDto): Promise<SessionCreationResult> => {
         const response = await apiClient.post<SessionCreationResult>('/UserSession', dto || {});
-        return response.data;
+        const data = response.data;
+
+        if (typeof data?.orderId !== 'number' || typeof data?.sessionId !== 'number') {
+            throw new Error('Invalid session creation response: missing orderId/sessionId');
+        }
+
+        return data;
     },
     
     /**

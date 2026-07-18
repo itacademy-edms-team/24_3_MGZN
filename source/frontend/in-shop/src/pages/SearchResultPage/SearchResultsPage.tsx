@@ -302,12 +302,10 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
       setSpecFiltersState(urlSpecFilters);
     }
 
-    if (hasFilterChanges || hasSortChanges || specsChanged) {
-      clear();
-      lastSearchKeyRef.current = '';
-      lastSearchParamsRef.current = null;
-    }
-  }, [urlQuery, urlFilters, forcedCategory, searchParams, urlSpecFilters, clear]);
+    // Не вызываем clear() и не сбрасываем lastSearchKey здесь:
+    // иначе эффект поиска перезапускается со старыми debounced-значениями
+    // и абортит только что отправленный запрос (CanceledError + дубль REPLACE).
+  }, [urlQuery, urlFilters, forcedCategory, searchParams, urlSpecFilters]);
 
   useEffect(() => {
     if (isInitialMount.current) {
@@ -338,10 +336,11 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
         setFilters(prev => ({ ...prev, category: forcedCategory }));
         setSpecFiltersState(null);
         setSpecDisplayNames({});
-        clear();
+        lastSearchKeyRef.current = '';
+        lastSearchParamsRef.current = null;
       }
     }
-  }, [forcedCategory, filters.category, clear]);
+  }, [forcedCategory, filters.category]);
 
   // Синхронизация State -> URL
   useEffect(() => {
@@ -393,11 +392,11 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
       (debouncedSpecFilters && Object.keys(debouncedSpecFilters).length > 0);
 
     if (!hasSearchCriteria) {
-      if (results.length > 0 || recommended.length > 0) {
+      if (lastSearchKeyRef.current !== '') {
         clear();
+        lastSearchKeyRef.current = '';
+        lastSearchParamsRef.current = null;
       }
-      lastSearchKeyRef.current = '';
-      lastSearchParamsRef.current = null;
       return;
     }
 
@@ -442,8 +441,8 @@ const SearchResultsPage = memo<SearchResultsPageProps>(({
 
     lastSearchParamsRef.current = request;
     
-    search(request, false);
-  }, [debouncedFilters, debouncedSort, debouncedSpecFilters, search, clear, results.length, recommended.length]);
+    void search(request, false);
+  }, [debouncedFilters, debouncedSort, debouncedSpecFilters, search, clear]);
 
   const handleLoadMore = useCallback(() => {
     if (!lastSearchParamsRef.current) return;

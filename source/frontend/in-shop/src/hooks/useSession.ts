@@ -18,60 +18,56 @@ export const useSession = () => {
     });
 
     const isInitialized = useRef(false);
-    const isOperationRunning = useRef(false); // <-- Новый флаг
-    const abortControllerRef = useRef<AbortController | null>(null); // <-- Для отмены
+    const isOperationRunning = useRef(false);
+    const pendingRerun = useRef(false);
+    const initGeneration = useRef(0);
 
-    const runWithLock = useCallback(
-        async (operation: (signal: AbortSignal) => Promise<void>) => {
-            if (isOperationRunning.current) {
-                // Отменяем предыдущую операцию, если она была
-                abortControllerRef.current?.abort('New operation started');
-                abortControllerRef.current = new AbortController();
-            }
+    /**
+     * Одна операция за раз. Повторные вызовы не abort'ят текущую
+     * (иначе createSession может завершиться на сервере, но не сохраниться в state),
+     * а ставятся в очередь на ещё один проход после завершения.
+     */
+    const runExclusive = useCallback(async (operation: () => Promise<void>) => {
+        if (isOperationRunning.current) {
+            pendingRerun.current = true;
+            return;
+        }
 
-            isOperationRunning.current = true;
-            const controller = new AbortController();
-            abortControllerRef.current = controller;
-
-            try {
-                await operation(controller.signal);
-            } catch (error) {
-                if (error instanceof Error && error.name === 'AbortError') {
-                    if (isDevelopment) {
-                        console.log('[Session] Operation aborted');
-                    }
-                } else {
-                    throw error;
-                }
-            } finally {
-                if (abortControllerRef.current === controller) {
-                    abortControllerRef.current = null;
-                }
-                isOperationRunning.current = false;
-            }
-        },
-        []
-    );
+        isOperationRunning.current = true;
+        try {
+            do {
+                pendingRerun.current = false;
+                await operation();
+            } while (pendingRerun.current);
+        } finally {
+            isOperationRunning.current = false;
+        }
+    }, []);
 
     const initializeSession = useCallback(async () => {
-        if (isInitialized.current) return;
+        await runExclusive(async () => {
+            if (isInitialized.current) return;
 
-        await runWithLock(async (signal) => {
+            const generationAtStart = initGeneration.current;
             let initializedSuccessfully = false;
-
-            if (signal.aborted) return;
 
             try {
                 setState(prev => ({ ...prev, isLoading: true, error: null }));
 
                 const storedOrderId = localStorage.getItem(STORAGE_KEY_ORDER_ID);
                 const storedSessionId = localStorage.getItem(STORAGE_KEY_SESSION_ID);
+                let hasLocalSession = false;
+                let localOrderId: number | null = null;
+                let localSessionId: number | null = null;
 
                 if (storedOrderId && storedSessionId) {
-                    const orderId = parseInt(storedOrderId);
-                    const sessionId = parseInt(storedSessionId);
+                    const orderId = parseInt(storedOrderId, 10);
+                    const sessionId = parseInt(storedSessionId, 10);
 
                     if (!isNaN(orderId) && !isNaN(sessionId)) {
+                        localOrderId = orderId;
+                        localSessionId = sessionId;
+                        hasLocalSession = true;
                         setState(prev => ({
                             ...prev,
                             isValid: true,
@@ -82,40 +78,51 @@ export const useSession = () => {
                     }
                 }
 
-                if (signal.aborted) return;
+                // Валидируем только при наличии локальных id (иначе лишний 401 и риск гонок)
+                if (hasLocalSession) {
+                    const validation = await sessionService.validateSession();
 
-                const validation = await sessionService.validateSession();
-                const isValid = validation.isValid;
-
-                if (signal.aborted) return;
-
-                if (isValid) {
-                    if (typeof validation.orderId === 'number') {
-                        localStorage.setItem(STORAGE_KEY_ORDER_ID, validation.orderId.toString());
-                    }
-                    if (typeof validation.sessionId === 'number') {
-                        localStorage.setItem(STORAGE_KEY_SESSION_ID, validation.sessionId.toString());
+                    if (generationAtStart !== initGeneration.current) {
+                        return;
                     }
 
-                    setState(prev => ({
-                        ...prev,
-                        isValid: true,
-                        sessionId: validation.sessionId ?? prev.sessionId,
-                        orderId: validation.orderId ?? prev.orderId,
-                        expiresAt: validation.expiresAt ? new Date(validation.expiresAt) : prev.expiresAt,
-                        isLoading: false,
-                        error: null,
-                    }));
-                    initializedSuccessfully = true;
-                } else {
-                    localStorage.removeItem(STORAGE_KEY_ORDER_ID);
-                    localStorage.removeItem(STORAGE_KEY_SESSION_ID);
+                    const resolvedOrderId = validation.orderId ?? localOrderId;
+                    const resolvedSessionId = validation.sessionId ?? localSessionId;
 
-                    if (signal.aborted) return;
+                    if (
+                        validation.isValid &&
+                        typeof resolvedOrderId === 'number' &&
+                        typeof resolvedSessionId === 'number'
+                    ) {
+                        localStorage.setItem(STORAGE_KEY_ORDER_ID, resolvedOrderId.toString());
+                        localStorage.setItem(STORAGE_KEY_SESSION_ID, resolvedSessionId.toString());
+
+                        setState(prev => ({
+                            ...prev,
+                            isValid: true,
+                            sessionId: resolvedSessionId,
+                            orderId: resolvedOrderId,
+                            expiresAt: validation.expiresAt ? new Date(validation.expiresAt) : prev.expiresAt,
+                            isLoading: false,
+                            error: null,
+                        }));
+                        initializedSuccessfully = true;
+                    } else {
+                        localStorage.removeItem(STORAGE_KEY_ORDER_ID);
+                        localStorage.removeItem(STORAGE_KEY_SESSION_ID);
+                    }
+                }
+
+                if (!initializedSuccessfully) {
+                    if (generationAtStart !== initGeneration.current) {
+                        return;
+                    }
 
                     const result = await sessionService.createSession();
 
-                    if (signal.aborted) return;
+                    if (generationAtStart !== initGeneration.current) {
+                        return;
+                    }
 
                     localStorage.setItem(STORAGE_KEY_ORDER_ID, result.orderId.toString());
                     localStorage.setItem(STORAGE_KEY_SESSION_ID, result.sessionId.toString());
@@ -132,7 +139,9 @@ export const useSession = () => {
                     initializedSuccessfully = true;
                 }
             } catch (error) {
-                if (signal.aborted) return;
+                if (generationAtStart !== initGeneration.current) {
+                    return;
+                }
 
                 console.error('[Session] Initialization error:', error);
 
@@ -143,15 +152,20 @@ export const useSession = () => {
                     error: error instanceof Error ? error.message : 'Failed to initialize session',
                 }));
             } finally {
-                // Do not lock further init attempts when startup failed.
-                isInitialized.current = initializedSuccessfully;
+                // Не помечаем успех, если за время init пришёл invalidate (session:updated и т.п.)
+                if (generationAtStart === initGeneration.current) {
+                    isInitialized.current = initializedSuccessfully;
+                }
             }
         });
-    }, [runWithLock]);
+    }, [runExclusive]);
 
     const recreateSession = useCallback(async () => {
-        await runWithLock(async (signal) => {
-            if (signal.aborted) return;
+        initGeneration.current += 1;
+        isInitialized.current = false;
+
+        await runExclusive(async () => {
+            const generationAtStart = initGeneration.current;
 
             try {
                 setState(prev => ({ ...prev, isLoading: true, error: null }));
@@ -159,11 +173,11 @@ export const useSession = () => {
                 localStorage.removeItem(STORAGE_KEY_ORDER_ID);
                 localStorage.removeItem(STORAGE_KEY_SESSION_ID);
 
-                if (signal.aborted) return;
-
                 const result = await sessionService.createSession();
 
-                if (signal.aborted) return;
+                if (generationAtStart !== initGeneration.current) {
+                    return;
+                }
 
                 localStorage.setItem(STORAGE_KEY_ORDER_ID, result.orderId.toString());
                 localStorage.setItem(STORAGE_KEY_SESSION_ID, result.sessionId.toString());
@@ -177,23 +191,30 @@ export const useSession = () => {
                     isLoading: false,
                     error: null,
                 }));
+                isInitialized.current = true;
             } catch (error) {
-                if (signal.aborted) return;
+                if (generationAtStart !== initGeneration.current) {
+                    return;
+                }
 
                 console.error('[Session] Recreation error:', error);
 
                 setState(prev => ({
                     ...prev,
                     isLoading: false,
+                    isValid: false,
                     error: error instanceof Error ? error.message : 'Failed to recreate session',
                 }));
 
                 throw error;
             }
         });
-    }, [runWithLock]);
+    }, [runExclusive]);
 
     const logout = useCallback(async () => {
+        initGeneration.current += 1;
+        isInitialized.current = false;
+
         try {
             await sessionService.logout();
         } catch (error) {
@@ -225,6 +246,12 @@ export const useSession = () => {
         }
     }, []);
 
+    const requestReinitialize = useCallback(() => {
+        initGeneration.current += 1;
+        isInitialized.current = false;
+        initializeSession();
+    }, [initializeSession]);
+
     useEffect(() => {
         initializeSession();
     }, [initializeSession]);
@@ -235,29 +262,25 @@ export const useSession = () => {
                 if (isDevelopment) {
                     console.log('[Session] Storage changed in another tab, revalidating...');
                 }
-                isInitialized.current = false; // <-- Сброс флага
-                initializeSession();
+                requestReinitialize();
             }
         };
 
         window.addEventListener('storage', handleStorageChange);
         return () => window.removeEventListener('storage', handleStorageChange);
-    }, [initializeSession]);
+    }, [requestReinitialize]);
 
-    // Когда интерцептор пересоздаёт сессию в этой же вкладке, события storage не будет.
-    // Поэтому слушаем кастомный сигнал и повторно подтягиваем состояние.
     useEffect(() => {
         const handleSessionUpdated = () => {
             if (isDevelopment) {
-                console.log('[Session] Session updated event, revalidating...');
+                console.log('[Session] Session updated event received, revalidating...');
             }
-            isInitialized.current = false;
-            initializeSession();
+            requestReinitialize();
         };
 
         window.addEventListener(SESSION_UPDATED_EVENT, handleSessionUpdated);
         return () => window.removeEventListener(SESSION_UPDATED_EVENT, handleSessionUpdated);
-    }, [initializeSession]);
+    }, [requestReinitialize]);
 
     return {
         sessionId: state.sessionId,
@@ -266,11 +289,10 @@ export const useSession = () => {
         isValid: state.isValid,
         isLoading: state.isLoading,
         error: state.error,
-
         recreateSession,
         logout,
         updateOrderId,
-        refresh: initializeSession,
+        refresh: requestReinitialize,
     };
 };
 

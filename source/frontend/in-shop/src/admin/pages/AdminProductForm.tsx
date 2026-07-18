@@ -180,12 +180,14 @@ const AdminProductForm: React.FC = () => {
 
         {error && <p className="admin-error">{error}</p>}
 
-        <button type="submit" className="admin-btn" disabled={isSubmitting}>
-          Сохранить
-        </button>
-        <button type="button" className="admin-btn admin-btn--secondary" style={{ marginLeft: 8 }} disabled={isSubmitting} onClick={() => navigate(-1)}>
-          Отмена
-        </button>
+        <div className="admin-form-actions">
+          <button type="submit" className="admin-btn" disabled={isSubmitting}>
+            Сохранить
+          </button>
+          <button type="button" className="admin-btn admin-btn--secondary" disabled={isSubmitting} onClick={() => navigate(-1)}>
+            Отмена
+          </button>
+        </div>
       </form>
 
       {successMessage && (

@@ -44,13 +44,13 @@ const AdminCategoriesList: React.FC = () => {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="admin-page-header">
         <h2>Категории</h2>
-        <Link to="/admin/categories/new" className="admin-btn" style={{ textDecoration: 'none' }}>
+        <Link to="/admin/categories/new" className="admin-btn">
           + Добавить
         </Link>
       </div>
-      {loading && <p>Загрузка…</p>}
+      {loading && <p className="admin-muted">Загрузка…</p>}
       {error && <p className="admin-error">{error}</p>}
       <div className="admin-card">
         <table className="admin-table">
@@ -70,11 +70,10 @@ const AdminCategoriesList: React.FC = () => {
                 <td>{category.imageURL || '—'}</td>
                 <td className="admin-table-actions">
                   <Link to={`/admin/categories/${category.categoryId}`}>Изменить</Link>
-                  {' | '}
                   <button
                     type="button"
+                    className="admin-btn--danger"
                     onClick={() => handleDelete(category.categoryId)}
-                    style={{ background: 'none', border: 'none', color: '#dc3545', cursor: 'pointer' }}
                   >
                     Удалить
                   </button>

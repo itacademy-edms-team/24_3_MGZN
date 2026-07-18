@@ -10,7 +10,7 @@
   margin-right: calc(-1 * var(--space-page, 16px));
   padding: 0 0 48px;
   width: calc(100% + (var(--space-page, 16px) * 2));
-  max-width: 100vw;
+  max-width: none;
   box-sizing: border-box;
 }
 
@@ -541,26 +541,36 @@
 /* ===== Hero mobile ===== */
 @media (max-width: 768px) {
   .catalog-page {
-    margin: 0;
-    padding-bottom: 32px;
-  }
-
-  .catalog-hero {
     margin-top: calc(-1 * var(--space-edge, 16px));
     margin-left: calc(-1 * var(--space-edge, 16px));
     margin-right: calc(-1 * var(--space-edge, 16px));
-    padding: 36px var(--space-edge, 16px) 28px;
+    width: calc(100% + (var(--space-edge, 16px) * 2));
+    max-width: none;
+    padding: 0 0 32px;
+    box-sizing: border-box;
+  }
+
+  .catalog-hero {
+    margin: 0;
+    width: 100%;
+    max-width: none;
+    padding: 32px var(--space-edge, 16px) 28px;
     border: none;
     box-shadow: none;
+    box-sizing: border-box;
   }
 
   .catalog-hero__inner {
     gap: 14px;
+    width: 100%;
+    max-width: none;
+    min-width: 0;
   }
 
   .catalog-hero__brand {
-    font-size: clamp(2.4rem, 12vw, 3.25rem);
+    font-size: clamp(2.25rem, 11vw, 3.1rem);
     letter-spacing: -0.05em;
+    word-break: keep-all;
   }
 
   .catalog-hero__tagline {
@@ -569,8 +579,13 @@
     max-width: none;
   }
 
+  .catalog-hero__form {
+    width: 100%;
+    min-width: 0;
+  }
+
   .catalog-categories {
-    padding: 44px 0 16px;
+    padding: 44px var(--space-edge, 16px) 16px;
   }
 
   .catalog-categories__title {
@@ -579,7 +594,7 @@
   }
 
   .catalog-picks {
-    padding: 36px 0 0;
+    padding: 36px var(--space-edge, 16px) 0;
   }
 
   .catalog-picks__title {
@@ -677,6 +692,10 @@
 
 @media (max-width: 480px) {
   .catalog-page {
+    margin-top: calc(-1 * var(--space-edge, 14px));
+    margin-left: calc(-1 * var(--space-edge, 14px));
+    margin-right: calc(-1 * var(--space-edge, 14px));
+    width: calc(100% + (var(--space-edge, 14px) * 2));
     padding-bottom: 32px;
   }
 
@@ -689,7 +708,7 @@
   }
 
   .catalog-hero__brand {
-    font-size: clamp(2.2rem, 14vw, 2.85rem);
+    font-size: clamp(2.1rem, 12vw, 2.75rem);
   }
 
   .catalog-hero__tagline {
@@ -735,7 +754,7 @@
   }
 
   .catalog-categories {
-    padding: 36px 0 12px;
+    padding: 36px var(--space-edge, 14px) 12px;
   }
 
   .catalog-categories__title {
@@ -745,7 +764,7 @@
   }
 
   .catalog-picks {
-    padding: 28px 0 0;
+    padding: 28px var(--space-edge, 14px) 0;
   }
 
   .catalog-picks__title {

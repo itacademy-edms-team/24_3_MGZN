@@ -466,14 +466,14 @@
   cursor: pointer;
 }
 
-@keyframes filters-modal-slide-up {
+@keyframes filters-modal-center-in {
   from {
     opacity: 0;
-    transform: translateY(100%);
+    transform: translateY(18px) scale(0.97);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
   }
 }
 
@@ -707,12 +707,13 @@
     display: none;
   }
 
-  /* Bottom sheet фильтров */
+  /* Центрированная модалка фильтров */
   .filters-modal-overlay.modal-overlay {
-    align-items: flex-end;
+    align-items: center;
     justify-content: center;
     padding: var(--space-edge, 16px);
     padding-top: calc(var(--space-edge, 16px) + env(safe-area-inset-top, 0px));
+    padding-bottom: calc(var(--space-edge, 16px) + env(safe-area-inset-bottom, 0px));
   }
 
   .filters-modal-content.modal-content {
@@ -720,22 +721,20 @@
     flex-direction: column;
     width: 100%;
     max-width: 100%;
-    max-height: min(calc(92dvh - var(--space-edge, 16px)), 100%);
+    max-height: calc(90dvh - (var(--space-edge, 16px) * 2) - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
     min-height: 0;
     margin: 0;
     padding: 0;
     overflow: hidden;
     border: var(--border-brutal, 2px solid #000);
-    border-bottom: none;
-    box-shadow: 0 -4px 0 #000, var(--shadow-brutal-sm, 2px 2px 0 #000);
-    animation: filters-modal-slide-up 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: var(--shadow-brutal-sm, 4px 4px 0 #000);
+    animation: filters-modal-center-in 0.28s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .filters-modal-content .modal-header {
     flex-shrink: 0;
     margin-bottom: 0;
     padding: 16px var(--space-edge, 16px) 8px;
-    padding-top: calc(12px + env(safe-area-inset-top, 0px));
     border-bottom: none;
   }
 
@@ -788,7 +787,6 @@
   .filters-modal-content .filters-modal-footer {
     flex-shrink: 0;
     padding: 12px var(--space-edge, 16px);
-    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
     border-top: var(--border-brutal, 2px solid #000);
     background: #fff;
   }

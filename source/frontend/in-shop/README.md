@@ -43,7 +43,13 @@ npm run test:ci
 
 Базовый URL API задаётся через `REACT_APP_API_BASE_URL`.
 
-Если переменная не указана, frontend использует `/api`. Это удобно для Docker/nginx, где запросы проксируются из frontend-контейнера в `inshop-api`.
+Для локальной разработки используйте `/api` (значение по умолчанию и в `.env`).
+Запросы идут same-origin через `src/setupProxy.js` → `http://localhost:5269`, без самоподписанного HTTPS API.
+Иначе браузер получает Network Error на сертификате, хотя бэкенд сессию уже создал.
+
+Целевой хост прокси можно переопределить: `INSHOP_API_PROXY_TARGET=http://localhost:5269`.
+
+В Docker/nginx `REACT_APP_API_BASE_URL=/api` тоже корректен: nginx проксирует `/api` в `inshop-api`.
 
 ## Docker
 
